@@ -1,5 +1,13 @@
 # ROTT64 change log
 
+## Cross-build revision 10
+
+- Revision 9 advanced through nearly the entire Taradino C source list and stopped while compiling `rt_str.c`.
+- Replaced six overlapping `strcpy()` string-shift operations in the normal and masked text editors with length-bounded `memmove()` calls that include the terminating NUL byte.
+- This fixes the three fatal `-Werror=restrict` diagnostics reported for Delete and also corrects the equivalent Backspace paths before they can trigger the same undefined behavior.
+- Added deterministic preparation regression tests for all six replacements.
+- This revision is based directly on the uploaded `n64-build.log` from commit `c6e22b11e977d86d55b123b1b98e1c628fab499a`.
+
 ## Cross-build revision 9
 
 - Revision 8 advanced through more of the real Taradino MIPS build and stopped in `rt_menu.c` and `rt_net.c`.

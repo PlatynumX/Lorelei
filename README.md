@@ -1,3 +1,5 @@
+> **Revision 10 cross-build fix:** the latest MIPS build reached `rt_str.c` and exposed overlapping `strcpy()` calls used to delete characters from menu text buffers. The N64 preparation step now converts all six normal/password Backspace and Delete shifts to `memmove()` with the terminating NUL included.
+
 > **Revision 4 build fix:** the real preflight report showed that all remaining uncovered SDL renderer symbols came from Taradino's desktop `vgatext.c` shutdown screen. The N64 preparation step now replaces that file with a no-op instead of emulating a second 640x400 SDL renderer.
 
 > **Revision 2:** fixes the first Android/GitHub Actions failure in the engine-preparation stage caused by Taradino's blank line before the `main()` opening brace.
@@ -96,5 +98,5 @@ finished port.
 The first real MIPS build reached Taradino compilation and stopped because the N64 C library rejects `<dirent.h>`. Revision 6 supplies a target-local compatibility header. Directory enumeration is intentionally empty; game data discovery remains the fixed `rom:/rott` path with direct file opens. This removes the exact compiler error without introducing a fake writable filesystem.
 ## Current cross-build status
 
-Revision 8 passed preparation and preflight, compiled substantially more of the real Taradino engine, and then stopped on three signed-character `isspace()` calls in `rt_menu.c` and a variadic format-width mismatch in `rt_net.c`. Revision 9 patches those exact diagnostics while preserving the strict warning policy. It has not yet produced or boot-tested a ROM.
+Revision 9 passed preparation and preflight and compiled almost the full Taradino source list. It stopped in `rt_str.c` because legacy character-deletion code used `strcpy()` on overlapping ranges. Revision 10 replaces every equivalent Backspace/Delete shift with `memmove()`. It has not yet produced, linked, or boot-tested a ROM.
 

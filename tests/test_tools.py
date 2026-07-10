@@ -91,6 +91,22 @@ def test_prepare_engine() -> None:
             '                         player->y, player->angle, oldpolltime); }\n',
             encoding="utf-8",
         )
+        (source / "rt_str.c").write_text(
+            '#include <string.h>\n'
+            'void normal(char *s, int cursor) {\n'
+            '    strcpy(s + cursor - 1, s + cursor);\n'
+            '    strcpy(s + cursor, s + cursor + 1);\n'
+            '}\n'
+            'void normal2(char *s, int cursor) {\n'
+            '    strcpy(s + cursor - 1, s + cursor);\n'
+            '    strcpy(s + cursor, s + cursor + 1);\n'
+            '}\n'
+            'void masked(char *xx, int cursor) {\n'
+            '    strcpy(xx + cursor - 1, xx + cursor);\n'
+            '    strcpy(xx + cursor, xx + cursor + 1);\n'
+            '}\n',
+            encoding="utf-8",
+        )
         run(
             "python3", "tools/prepare_engine.py",
             "--upstream", str(upstream), "--output", str(output),
@@ -122,6 +138,17 @@ def test_prepare_engine() -> None:
         assert 'x=%4lx y=%4lx a=%4x time=%5d\\n' in net
         assert "(unsigned long)player->x" in net
         assert "(unsigned long)player->y" in net
+        rt_str = (output / "rt_str.c").read_text()
+        assert rt_str.count("memmove(s + cursor - 1, s + cursor, strlen(s + cursor) + 1);") == 2
+        assert rt_str.count("memmove(s + cursor, s + cursor + 1, strlen(s + cursor + 1) + 1);") == 2
+        assert "memmove(xx + cursor - 1, xx + cursor, strlen(xx + cursor) + 1);" in rt_str
+        assert "memmove(xx + cursor, xx + cursor + 1, strlen(xx + cursor + 1) + 1);" in rt_str
+        assert "strcpy(s + cursor" not in rt_str
+        assert "strcpy(xx + cursor" not in rt_str
+        run(
+            "cc", "-std=c11", "-Wall", "-Wextra", "-Werror",
+            "-c", str(output / "rt_str.c"), "-o", str(base / "rt_str.o"),
+        )
         version = (output / "version.h").read_text()
         assert "#define ROTTMAJORVERSION 1" in version
         assert "#define ROTTMINORVERSION 4" in version

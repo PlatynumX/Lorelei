@@ -59,3 +59,10 @@ The first real MIPS build reached Taradino compilation and stopped because the N
 - Change: cast ctype inputs to `unsigned char`, use `%lx` for the fixed-width coordinates, and cast those variadic arguments to `unsigned long`.
 - Host preparation tests verify all four exact transformations.
 - N64 link and runtime remain unverified until the next Actions run.
+## Revision 10
+
+- Grounded failure: `rt_str.c` used overlapping `strcpy()` calls while shifting text left after Delete; MIPS GCC rejected three calls with fatal `-Werror=restrict`.
+- Change: replace all six equivalent Backspace/Delete shifts across `US_LineInput()` and `US_lineinput()` with `memmove()`, moving `strlen(source) + 1` bytes so the NUL terminator is preserved.
+- Host engine-preparation tests verify all six transformations and reject any remaining overlapping `strcpy()` form.
+- N64 link and runtime remain unverified until the next Actions run.
+

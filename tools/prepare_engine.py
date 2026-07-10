@@ -142,6 +142,47 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
     )
     net_path.write_text(net_text, encoding="utf-8")
 
+    # The original text editors use strcpy() to shift the remainder of a
+    # string left after Backspace/Delete. Those source and destination ranges
+    # overlap, which is undefined for strcpy() and is rejected by GCC's
+    # -Werror=restrict. memmove() is the intended operation; include the NUL
+    # terminator in the moved byte count. Patch both the normal and masked
+    # password-entry versions, including Backspace paths that GCC does not
+    # currently diagnose but have the same overlap.
+    str_path = output / "rt_str.c"
+    str_text = str_path.read_text(encoding="utf-8", errors="strict")
+    for old, new, expected, label in (
+        (
+            "strcpy(s + cursor - 1, s + cursor);",
+            "memmove(s + cursor - 1, s + cursor, strlen(s + cursor) + 1);",
+            2,
+            "rt_str Backspace plain buffer",
+        ),
+        (
+            "strcpy(xx + cursor - 1, xx + cursor);",
+            "memmove(xx + cursor - 1, xx + cursor, strlen(xx + cursor) + 1);",
+            1,
+            "rt_str Backspace masked buffer",
+        ),
+        (
+            "strcpy(s + cursor, s + cursor + 1);",
+            "memmove(s + cursor, s + cursor + 1, strlen(s + cursor + 1) + 1);",
+            2,
+            "rt_str Delete plain buffer",
+        ),
+        (
+            "strcpy(xx + cursor, xx + cursor + 1);",
+            "memmove(xx + cursor, xx + cursor + 1, strlen(xx + cursor + 1) + 1);",
+            1,
+            "rt_str Delete masked buffer",
+        ),
+    ):
+        count = str_text.count(old)
+        if count != expected:
+            raise RuntimeError(f"{label}: expected {expected} matches, found {count}")
+        str_text = str_text.replace(old, new)
+    str_path.write_text(str_text, encoding="utf-8")
+
     # Taradino normally generates this from rott/version.h.in through CMake.
     # The legacy config parser still requires ROTTVERSION (1.4 -> 14), while
     # the modern title/version paths use CMAKE_PROJECT_VERSION. Reproduce both
