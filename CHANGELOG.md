@@ -1,5 +1,12 @@
 # Changelog
 
+## Android build-fix revision 4
+
+- Replaced Taradino's desktop-only `vgatext.c` with a tiny N64 no-op implementation.
+- Removes the exact SDL renderer/texture/surface API set reported by the real `preflight.log`.
+- Added regression coverage proving the desktop VGA text renderer is overwritten during engine preparation.
+- This fix is based on the uploaded preflight report rather than another source-format assumption.
+
 ## Android build-fix revision 3
 
 - Fixed the Taradino preparation step to match the real upstream whitespace around `CheckCommandLineParameters()` instead of requiring exactly four leading spaces.

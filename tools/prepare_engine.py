@@ -42,6 +42,10 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
     shutil.copy2(platform/"fx_silent.c", output/"fx_mixer.c")
     shutil.copy2(platform/"music_silent.c", output/"dukemusc.c")
     shutil.copy2(platform/"rt_datadir_n64.c", output/"rt_datadir.c")
+    # Taradino's desktop VGA text screen creates its own SDL renderer, textures,
+    # and 640x400 RGB surfaces. It is only an exit/shutdown presentation path,
+    # so replace it with a no-op for the first gameplay target.
+    shutil.copy2(platform/"vgatext_n64.c", output/"vgatext.c")
 
     # These desktop music backends are not linked in the silent first-level target.
     for unused_backend in ("adlmusic.c", "sdlmusic.c"):
@@ -117,7 +121,8 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
     marker.write_text(
         "Taradino 20251222\n"
         "ROTT64 fixed 320x200 framebuffer\n"
-        "ROTTDS-derived low-memory/silent first-level policy\n",encoding="utf-8")
+        "ROTTDS-derived low-memory/silent first-level policy\n"
+        "Desktop VGA text renderer disabled on N64\n",encoding="utf-8")
 
 
 def main() -> int:

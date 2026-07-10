@@ -1,3 +1,5 @@
+> **Revision 4 build fix:** the real preflight report showed that all remaining uncovered SDL renderer symbols came from Taradino's desktop `vgatext.c` shutdown screen. The N64 preparation step now replaces that file with a no-op instead of emulating a second 640x400 SDL renderer.
+
 > **Revision 2:** fixes the first Android/GitHub Actions failure in the engine-preparation stage caused by Taradino's blank line before the `main()` opening brace.
 
 > **Revision 3 build fix:** the Taradino source preparer now patches startup calls with whitespace-tolerant regular expressions. This addresses the GitHub Actions failure `force silent mode: expected one match, found 0`.

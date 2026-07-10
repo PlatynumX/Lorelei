@@ -14,6 +14,12 @@ def main()->int:
     failures=[name for name,needle in checks.items() if needle not in main]
     if "rom:/rott" not in (a.engine/"rt_datadir.c").read_text(errors="replace"):
         failures.append("N64 data path")
+    vgatext=(a.engine/"vgatext.c").read_text(errors="replace")
+    if "ROTT64 replacement for Taradino's desktop VGA text renderer" not in vgatext:
+        failures.append("N64 VGA text replacement")
+    for desktop_symbol in ("SDL_CreateTexture", "SDL_GetRenderer", "SDL_RenderPresent"):
+        if desktop_symbol in vgatext:
+            failures.append(f"desktop VGA text renderer still references {desktop_symbol}")
     cfg=(a.engine/"rt_cfg.c").read_text(errors="replace")
     for needle, label in (
         ("SetSoundDefaultValues();", "read-only sound defaults"),

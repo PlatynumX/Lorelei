@@ -76,6 +76,10 @@ def test_prepare_engine() -> None:
         )
         (source / "adlmusic.c").write_text('int desktop_adl;\n', encoding="utf-8")
         (source / "sdlmusic.c").write_text('int desktop_sdl_music;\n', encoding="utf-8")
+        (source / "vgatext.c").write_text(
+            'int vgatext_main(void) { SDL_CreateTexture(); return 0; }\n',
+            encoding="utf-8",
+        )
         run(
             "python3", "tools/prepare_engine.py",
             "--upstream", str(upstream), "--output", str(output),
@@ -93,6 +97,9 @@ def test_prepare_engine() -> None:
         assert "ConfigLoaded = true;" in cfg
         assert not (output / "adlmusic.c").exists()
         assert not (output / "sdlmusic.c").exists()
+        vgatext = (output / "vgatext.c").read_text()
+        assert "ROTT64 replacement for Taradino's desktop VGA text renderer" in vgatext
+        assert "SDL_CreateTexture" not in vgatext
 
 
 def test_shareware_omits_foreign_config() -> None:

@@ -14,7 +14,7 @@ test-host:
 	$(HOST_WAD_TEST)
 	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -Isrc src/indexed_video.c src/input_map.c tests/test_platform.c -o $(HOST_PLATFORM_TEST)
 	$(HOST_PLATFORM_TEST)
-	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -Iplatform/n64 platform/n64/n64_platform.c platform/n64/sdl_n64.c platform/n64/sdl_mixer_stub.c tests/test_sdl_compat.c -o $(HOST_SDL_TEST)
+	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -Iplatform/n64 platform/n64/n64_platform.c platform/n64/sdl_n64.c platform/n64/sdl_mixer_stub.c platform/n64/vgatext_n64.c tests/test_sdl_compat.c -o $(HOST_SDL_TEST)
 	$(HOST_SDL_TEST)
 	python3 tests/test_tools.py
 

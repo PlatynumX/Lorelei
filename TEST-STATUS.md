@@ -7,8 +7,8 @@
 - indexed framebuffer and VGA-palette conversion tests;
 - normalized controller mapping tests;
 - SDL compatibility queue, timing, path, RWops, and mixer-stub host tests;
-- Python shareware extraction, WAD inventory, source audit, and deterministic
-  engine-preparation tests;
+- Python shareware extraction, WAD inventory, source audit, deterministic
+  engine-preparation tests, and desktop `vgatext.c` replacement regression test;
 - shell syntax checks for all build/fetch scripts;
 - Python bytecode compilation for all tools and tests;
 - GitHub Actions YAML parse;
