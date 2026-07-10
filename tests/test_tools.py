@@ -60,8 +60,8 @@ def test_prepare_engine() -> None:
             'int main(int argc, char *argv[])\n'
             '\n'
             '{\n'
-            '    CheckCommandLineParameters();\n'
-            '    SetRottScreenRes(iGLOBAL_SCREENWIDTH, iGLOBAL_SCREENHEIGHT);\n'
+            '\tCheckCommandLineParameters ( );\n'
+            'SetRottScreenRes ( iGLOBAL_SCREENWIDTH , iGLOBAL_SCREENHEIGHT );\n'
             '}\n',
             encoding="utf-8",
         )

@@ -63,8 +63,22 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
         '    n64_platform_init();',
         "rt_main entry",
     )
-    text=replace_once(text,'    CheckCommandLineParameters();','    CheckCommandLineParameters();\n#ifdef __N64__\n    NoSound = true;\n    quiet = true;\n#endif',"force silent mode")
-    text=replace_once(text,'    SetRottScreenRes(iGLOBAL_SCREENWIDTH, iGLOBAL_SCREENHEIGHT);','    SetRottScreenRes(320, 200);',"fixed N64 resolution")
+    text = replace_regex_once(
+        text,
+        r"(?m)^[ \t]*CheckCommandLineParameters\s*\(\s*\)\s*;[ \t]*$",
+        "    CheckCommandLineParameters();\n"
+        "#ifdef __N64__\n"
+        "    NoSound = true;\n"
+        "    quiet = true;\n"
+        "#endif",
+        "force silent mode",
+    )
+    text = replace_regex_once(
+        text,
+        r"(?m)^[ \t]*SetRottScreenRes\s*\(\s*iGLOBAL_SCREENWIDTH\s*,\s*iGLOBAL_SCREENHEIGHT\s*\)\s*;[ \t]*$",
+        "    SetRottScreenRes(320, 200);",
+        "fixed N64 resolution",
+    )
     main_path.write_text(text,encoding="utf-8")
 
     cfg_path=output/"rt_cfg.c"

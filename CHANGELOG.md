@@ -1,5 +1,12 @@
 # Changelog
 
+## Android build-fix revision 3
+
+- Fixed the Taradino preparation step to match the real upstream whitespace around `CheckCommandLineParameters()` instead of requiring exactly four leading spaces.
+- Made the fixed 320x200 resolution patch whitespace-tolerant for the same reason.
+- Added a regression test using tabbed and spaced call syntax so this preparation failure cannot silently return.
+- Keeps all revision-2 diagnostics improvements and N64 FPS controls.
+
 ## Android build-fix revision 2
 
 - Fixed the Taradino `main()` patcher to accept the upstream formatting where a blank line appears between the function signature and opening brace.
