@@ -1,3 +1,5 @@
+> **Revision 11 cross-build fix:** the latest MIPS build reached `rt_util.c` and failed on two signed-`char` calls to `isalpha()`. The N64 preparation step now casts both inputs to `unsigned char`, preserving strict warning-as-error behavior.
+
 > **Revision 10 cross-build fix:** the latest MIPS build reached `rt_str.c` and exposed overlapping `strcpy()` calls used to delete characters from menu text buffers. The N64 preparation step now converts all six normal/password Backspace and Delete shifts to `memmove()` with the terminating NUL included.
 
 > **Revision 4 build fix:** the real preflight report showed that all remaining uncovered SDL renderer symbols came from Taradino's desktop `vgatext.c` shutdown screen. The N64 preparation step now replaces that file with a no-op instead of emulating a second 640x400 SDL renderer.

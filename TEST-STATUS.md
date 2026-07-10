@@ -65,4 +65,10 @@ The first real MIPS build reached Taradino compilation and stopped because the N
 - Change: replace all six equivalent Backspace/Delete shifts across `US_LineInput()` and `US_lineinput()` with `memmove()`, moving `strlen(source) + 1` bytes so the NUL terminator is preserved.
 - Host engine-preparation tests verify all six transformations and reject any remaining overlapping `strcpy()` form.
 - N64 link and runtime remain unverified until the next Actions run.
+## Revision 11
+
+- Grounded failure: `rt_util.c` passed plain `char` values to `isalpha()` in `CheckParm()` and `US_CheckParm()`, producing two fatal `-Wchar-subscripts` diagnostics.
+- Change: cast both ctype inputs to `unsigned char`; no warning classes were disabled.
+- Host engine-preparation tests verify both transformations and compile the prepared fixture with `-Werror=char-subscripts`.
+- N64 link and runtime remain unverified until the next Actions run.
 

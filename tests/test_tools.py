@@ -86,6 +86,12 @@ def test_prepare_engine() -> None:
             'void c(char *wordtext, int pos) { while (wordtext[pos] && isspace(wordtext[pos])) pos++; }\n',
             encoding="utf-8",
         )
+        (source / "rt_util.c").write_text(
+            '#include <ctype.h>\n'
+            'int a(char *parm) { return isalpha(*parm); }\n'
+            'int b(char *parm, int length) { while ((!isalpha(*parm)) && (length > 0)) { parm++; length--; } return 0; }\n',
+            encoding="utf-8",
+        )
         (source / "rt_net.c").write_text(
             'void n(void) { SoftError("x=%4x y=%4x a=%4x time=%5d\\n", player->x,\n'
             '                         player->y, player->angle, oldpolltime); }\n',
@@ -134,6 +140,14 @@ def test_prepare_engine() -> None:
         menu = (output / "rt_menu.c").read_text()
         assert menu.count("isspace((unsigned char)*source)") == 2
         assert "isspace((unsigned char)wordtext[pos])" in menu
+        util = (output / "rt_util.c").read_text()
+        assert util.count("isalpha((unsigned char)*parm)") == 2
+        assert "isalpha(*parm)" not in util
+        run(
+            "cc", "-std=c11", "-Wall", "-Wextra", "-Werror",
+            "-Werror=char-subscripts", "-c", str(output / "rt_util.c"),
+            "-o", str(base / "rt_util.o"),
+        )
         net = (output / "rt_net.c").read_text()
         assert 'x=%4lx y=%4lx a=%4x time=%5d\\n' in net
         assert "(unsigned long)player->x" in net

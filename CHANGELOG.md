@@ -1,5 +1,13 @@
 # ROTT64 change log
 
+## Cross-build revision 11
+
+- Revision 10 compiled through `rt_str.c` and stopped near the end of the Taradino source list while compiling `rt_util.c`.
+- Fixed both legacy `isalpha(*parm)` calls by converting the input through `unsigned char`, as required by the C ctype contract.
+- This resolves the two fatal `-Werror=char-subscripts` diagnostics in `CheckParm()` and `US_CheckParm()` without weakening the compiler warning policy.
+- Added deterministic preparation and host-compile regression checks for the two exact source transformations.
+- This revision is based directly on the uploaded revision-10 `n64-build.log`.
+
 ## Cross-build revision 10
 
 - Revision 9 advanced through nearly the entire Taradino C source list and stopped while compiling `rt_str.c`.

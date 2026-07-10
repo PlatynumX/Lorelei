@@ -127,6 +127,20 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
         menu_text = menu_text.replace(old, new)
     menu_path.write_text(menu_text, encoding="utf-8")
 
+    # Apply the same signed-char ctype fix to the command-line helpers.
+    # isalpha(), like the other ctype macros, only accepts EOF or values that
+    # are representable as unsigned char. libdragon's strict MIPS build also
+    # diagnoses the legacy plain-char calls as -Wchar-subscripts.
+    util_path = output / "rt_util.c"
+    util_text = util_path.read_text(encoding="utf-8", errors="strict")
+    old = "isalpha(*parm)"
+    new = "isalpha((unsigned char)*parm)"
+    count = util_text.count(old)
+    if count != 2:
+        raise RuntimeError(f"rt_util isalpha casts: expected 2 matches, found {count}")
+    util_text = util_text.replace(old, new)
+    util_path.write_text(util_text, encoding="utf-8")
+
     # The N64 toolchain models Taradino's fixed type as long int. Match the
     # variadic debug format to the real argument width instead of relying on
     # the desktop ABI's sizeof(int) == sizeof(long) assumption.
