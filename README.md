@@ -1,3 +1,5 @@
+> **Revision 12 linker fix:** the complete imported engine now compiles to objects and reaches the final N64 link. The remaining undefined symbols were `access()`, `getcwd()`, and `chdir()`. A target-local, read-only compatibility object now supplies those exact functions for the fixed `rom:/rott` filesystem model.
+
 > **Revision 11 cross-build fix:** the latest MIPS build reached `rt_util.c` and failed on two signed-`char` calls to `isalpha()`. The N64 preparation step now casts both inputs to `unsigned char`, preserving strict warning-as-error behavior.
 
 > **Revision 10 cross-build fix:** the latest MIPS build reached `rt_str.c` and exposed overlapping `strcpy()` calls used to delete characters from menu text buffers. The N64 preparation step now converts all six normal/password Backspace and Delete shifts to `memmove()` with the terminating NUL included.
@@ -100,5 +102,5 @@ finished port.
 The first real MIPS build reached Taradino compilation and stopped because the N64 C library rejects `<dirent.h>`. Revision 6 supplies a target-local compatibility header. Directory enumeration is intentionally empty; game data discovery remains the fixed `rom:/rott` path with direct file opens. This removes the exact compiler error without introducing a fake writable filesystem.
 ## Current cross-build status
 
-Revision 9 passed preparation and preflight and compiled almost the full Taradino source list. It stopped in `rt_str.c` because legacy character-deletion code used `strcpy()` on overlapping ranges. Revision 10 replaces every equivalent Backspace/Delete shift with `memmove()`. It has not yet produced, linked, or boot-tested a ROM.
+Revision 11 compiled the full Taradino source list, the N64 platform layer, and the DragonFS image, then reached the final ELF link. The linker stopped only on missing `access()`, `getcwd()`, and `chdir()` symbols. Revision 12 supplies narrow read-only implementations for those exact calls. A successful link, ROM conversion, and boot are still unverified until the next Actions run.
 

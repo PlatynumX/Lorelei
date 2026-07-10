@@ -171,6 +171,16 @@ def test_prepare_engine() -> None:
 
 
 
+
+def test_n64_posix_link_shims() -> None:
+    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    assert "platform/n64/posix_stubs.c" in makefile
+    source = (ROOT / "platform/n64/posix_stubs.c").read_text(encoding="utf-8")
+    assert "int access(" in source
+    assert "char *getcwd(" in source
+    assert "int chdir(" in source
+    assert 'ROTT64_LOGICAL_CWD "rom:/rott"' in source
+
 def test_n64_warning_policy() -> None:
     makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
     assert "-Wno-error=maybe-uninitialized" in makefile
@@ -197,6 +207,7 @@ if __name__ == "__main__":
     test_audit()
     test_inventory()
     test_prepare_engine()
+    test_n64_posix_link_shims()
     test_n64_warning_policy()
     test_shareware_omits_foreign_config()
     print("Taradino audit, import, shareware, and WAD inventory tests passed")

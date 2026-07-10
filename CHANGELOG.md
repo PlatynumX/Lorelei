@@ -1,5 +1,13 @@
 # ROTT64 change log
 
+## Cross-build revision 12
+
+- Revision 11 compiled every Taradino and N64 platform object and reached the final linker stage.
+- The only unresolved symbols were `access`, `getcwd`, and `chdir`, which are declared by the N64 C library but not implemented.
+- Added a narrow read-only POSIX compatibility object: `access()` checks files through `fopen()`, `getcwd()` reports the logical `rom:/rott` data directory, and `chdir()` is a harmless no-op because all game-data paths are absolute.
+- Added host runtime tests and preflight checks for all three symbols.
+- This revision is based directly on the uploaded revision-11 `n64-build.log`.
+
 ## Cross-build revision 11
 
 - Revision 10 compiled through `rt_str.c` and stopped near the end of the Taradino source list while compiling `rt_util.c`.

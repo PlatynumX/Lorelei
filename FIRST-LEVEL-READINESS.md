@@ -11,8 +11,9 @@ backends, and replaces these engine boundary files:
 - `dukemusc.c`: silent music API;
 - `SDL.h` / `SDL_mixer.h`: narrow compatibility declarations.
 
-Additional platform objects supply event polling, ticks, delays, files, startup,
-Expansion Pak enforcement, and DragonFS mounting. `rt_main.c` is patched to use
+Additional platform objects supply event polling, ticks, delays, startup,
+Expansion Pak enforcement, DragonFS mounting, and narrow read-only replacements
+for the three missing POSIX calls (`access`, `getcwd`, and `chdir`). `rt_main.c` is patched to use
 `main(void)`, initialize the N64, construct a deterministic one-item argument
 vector, force silent mode, and request 320x200 output.
 

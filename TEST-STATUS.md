@@ -72,3 +72,10 @@ The first real MIPS build reached Taradino compilation and stopped because the N
 - Host engine-preparation tests verify both transformations and compile the prepared fixture with `-Werror=char-subscripts`.
 - N64 link and runtime remain unverified until the next Actions run.
 
+
+## Revision 12
+
+- Grounded failure: the full engine compiled and the final ELF link reported undefined references to `access`, `getcwd`, and `chdir`.
+- Change: add a read-only N64 POSIX compatibility object implementing only those three functions for the fixed `rom:/rott` data path.
+- Host runtime tests verify file-existence checks, read-only rejection, logical working-directory reporting, buffer bounds, and the no-op directory change.
+- The next Actions run will determine whether the ELF now links and whether a `.z64` is produced.

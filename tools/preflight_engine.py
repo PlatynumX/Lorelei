@@ -17,6 +17,19 @@ def main()->int:
     dirent=(a.engine/"dirent.h").read_text(errors="replace")
     if "ROTT64_N64_DIRENT_H" not in dirent or "static inline DIR *opendir" not in dirent:
         failures.append("N64 dirent compatibility shim")
+    posix_path = a.platform / "posix_stubs.c"
+    if not posix_path.is_file():
+        failures.append("N64 POSIX compatibility source")
+    else:
+        posix = posix_path.read_text(errors="replace")
+        for needle, label in (
+            ("int access(", "N64 access shim"),
+            ("char *getcwd(", "N64 getcwd shim"),
+            ("int chdir(", "N64 chdir shim"),
+            ("rom:/rott", "N64 logical working directory"),
+        ):
+            if needle not in posix:
+                failures.append(label)
     vgatext=(a.engine/"vgatext.c").read_text(errors="replace")
     if "ROTT64 replacement for Taradino's desktop VGA text renderer" not in vgatext:
         failures.append("N64 VGA text replacement")

@@ -19,7 +19,8 @@
 - SDL_mixer effects and music;
 - writable desktop data directories;
 - configuration/score writes for the initial read-only build;
-- desktop file discovery.
+- desktop file discovery;
+- unsupported POSIX working-directory/existence calls through a fixed read-only shim.
 
 ## Deterministic import
 

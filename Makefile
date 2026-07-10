@@ -6,6 +6,7 @@ HOST_WAD_TEST := $(HOST_BUILD_DIR)/test_wad
 HOST_PLATFORM_TEST := $(HOST_BUILD_DIR)/test_platform
 HOST_SDL_TEST := $(HOST_BUILD_DIR)/test_sdl_compat
 HOST_DIRENT_TEST := $(HOST_BUILD_DIR)/test_dirent_stub
+HOST_POSIX_TEST := $(HOST_BUILD_DIR)/test_posix_stubs
 
 .PHONY: all clean distclean test-host test-tools reports prepare preflight
 
@@ -19,6 +20,8 @@ test-host:
 	$(HOST_SDL_TEST)
 	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -D__N64__=1 -Iplatform/n64 tests/test_dirent_stub.c -o $(HOST_DIRENT_TEST)
 	$(HOST_DIRENT_TEST)
+	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -D__N64__=1 platform/n64/posix_stubs.c tests/test_posix_stubs.c -o $(HOST_POSIX_TEST)
+	$(HOST_POSIX_TEST)
 	python3 tests/test_tools.py
 
 test-tools:
@@ -58,7 +61,7 @@ BUILD_DIR := build
 include $(N64_INST)/include/n64.mk
 
 ENGINE_SOURCES := $(sort $(filter-out generated/rott/adlmusic.c generated/rott/sdlmusic.c,$(wildcard generated/rott/*.c)))
-PLATFORM_SOURCES := platform/n64/n64_platform.c platform/n64/sdl_n64.c platform/n64/sdl_mixer_stub.c
+PLATFORM_SOURCES := platform/n64/n64_platform.c platform/n64/sdl_n64.c platform/n64/sdl_mixer_stub.c platform/n64/posix_stubs.c
 ALL_SOURCES := $(ENGINE_SOURCES) $(PLATFORM_SOURCES)
 OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(ALL_SOURCES))
 
