@@ -1,3 +1,11 @@
+# Android build-fix revision 5
+
+- Reached the real N64 cross-compile stage.
+- Fixed CI diagnostics being deleted by the project `make clean` target.
+- Removed the redundant clean from the fresh GitHub Actions checkout.
+- Stores `n64-build.log` and copies earlier reports under `ci-reports/`, outside the object directory.
+- This revision intentionally does not guess at the compiler error; it preserves the exact log for the next grounded fix.
+
 # Changelog
 
 ## Android build-fix revision 4

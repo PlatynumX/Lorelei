@@ -26,3 +26,11 @@
 The GitHub workflow is structured to turn the first missing cross-compiler symbol
 or header mismatch into a downloadable `n64-build.log`. A successful workflow
 produces `rott64.z64`; it does not by itself prove runtime success.
+
+## Revision 5 CI diagnostics
+
+The revision-4 workflow reached the Nintendo 64 cross-compile, but its own
+`make clean` target deleted `build/reports/n64-build.log` before artifact
+upload. Revision 5 writes persistent diagnostics to `ci-reports/` and removes
+that redundant clean step. No engine/compiler fix is claimed until the actual
+cross-compiler output is captured.

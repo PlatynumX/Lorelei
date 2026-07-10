@@ -12,7 +12,8 @@ tools/fetch_rottds.sh || echo "ROTTDS reference download failed; continuing with
 make prepare
 make preflight
 make reports
-mkdir -p build/reports
+mkdir -p ci-reports
+cp -a build/reports/. ci-reports/ 2>/dev/null || true
 
 set -o pipefail
 docker run --rm \
@@ -26,8 +27,7 @@ docker run --rm \
     git clone --depth 1 --branch "$LIBDRAGON_REF" \
       https://github.com/DragonMinded/libdragon.git /tmp/libdragon
     make -C /tmp/libdragon -j2 install tools-install
-    make clean
     make -j2
-  ' 2>&1 | tee build/reports/n64-build.log
+  ' 2>&1 | tee ci-reports/n64-build.log
 
 sha256sum rott64.z64 | tee rott64.z64.sha256
