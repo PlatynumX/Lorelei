@@ -106,6 +106,12 @@ def test_prepare_engine() -> None:
         assert "SDL_CreateTexture" not in vgatext
 
 
+
+def test_n64_warning_policy() -> None:
+    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    assert "-Wno-error=maybe-uninitialized" in makefile
+    assert "-Wno-error" not in makefile.replace("-Wno-error=maybe-uninitialized", "")
+
 def test_shareware_omits_foreign_config() -> None:
     with tempfile.TemporaryDirectory() as temporary:
         base = Path(temporary)
@@ -127,5 +133,6 @@ if __name__ == "__main__":
     test_audit()
     test_inventory()
     test_prepare_engine()
+    test_n64_warning_policy()
     test_shareware_omits_foreign_config()
     print("Taradino audit, import, shareware, and WAD inventory tests passed")

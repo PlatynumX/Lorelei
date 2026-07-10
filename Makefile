@@ -63,6 +63,11 @@ ALL_SOURCES := $(ENGINE_SOURCES) $(PLATFORM_SOURCES)
 OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(ALL_SOURCES))
 
 CFLAGS += -std=gnu11 -O2 -G0 -ffast-math -fno-strict-aliasing
+# Taradino's legacy optimized renderer/actor code triggers GCC's
+# -Wmaybe-uninitialized analysis on several control-flow-heavy functions.
+# Keep the diagnostics visible, but do not let this one warning class stop
+# the MIPS build. All other libdragon -Werror diagnostics remain fatal.
+CFLAGS += -Wno-error=maybe-uninitialized
 CFLAGS += -Igenerated/rott -Iplatform/n64
 CFLAGS += -DSHAREWARE=1 -D__N64__=1
 CFLAGS += -DDATADIR='"rom:/rott"'

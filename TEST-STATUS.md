@@ -39,3 +39,10 @@ cross-compiler output is captured.
 ### Revision 6 cross-build note
 
 The first real MIPS build reached Taradino compilation and stopped because the N64 C library rejects `<dirent.h>`. Revision 6 supplies a target-local compatibility header. Directory enumeration is intentionally empty; game data discovery remains the fixed `rom:/rott` path with direct file opens. This removes the exact compiler error without introducing a fake writable filesystem.
+## Revision 7
+
+- Grounded failure: MIPS GCC emitted four `-Wmaybe-uninitialized` diagnostics while compiling `rt_build.c` and `rt_actor.c`; libdragon promoted them to errors.
+- Change: only that warning class is now nonfatal for the N64 build.
+- Host regression test confirms there is no blanket `-Wno-error`.
+- N64 cross-build and runtime remain unverified until the next Actions run.
+

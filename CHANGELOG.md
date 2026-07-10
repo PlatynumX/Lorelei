@@ -1,5 +1,13 @@
 # ROTT64 change log
 
+## Cross-build revision 7
+
+- The R6 build reached compilation of the real Taradino engine and compiled more than twenty engine modules before stopping.
+- The only reported failures were GCC `-Wmaybe-uninitialized` diagnostics promoted to errors by libdragon's strict warning policy.
+- Demoted only `maybe-uninitialized` from fatal to nonfatal for the N64 target; the warnings remain visible and every other warning class remains fatal.
+- Added a host regression check that prevents accidentally disabling warnings globally.
+- This revision is based directly on `latest-full-build.log` from Actions run `29101712275`.
+
 ## Cross-build revision 6
 
 - Added an N64-local `dirent.h` compatibility shim because libdragon/newlib explicitly does not support POSIX directory streams.
