@@ -23,6 +23,15 @@ def main()->int:
     for desktop_symbol in ("SDL_CreateTexture", "SDL_GetRenderer", "SDL_RenderPresent"):
         if desktop_symbol in vgatext:
             failures.append(f"desktop VGA text renderer still references {desktop_symbol}")
+    version=(a.engine/"version.h").read_text(errors="replace")
+    for needle, label in (
+        ("#define ROTTMAJORVERSION 1", "ROTT major config version"),
+        ("#define ROTTMINORVERSION 4", "ROTT minor config version"),
+        ("#define ROTTVERSION", "ROTT config version macro"),
+        ("#define CMAKE_PROJECT_VERSION", "Taradino project version"),
+    ):
+        if needle not in version:
+            failures.append(label)
     cfg=(a.engine/"rt_cfg.c").read_text(errors="replace")
     for needle, label in (
         ("SetSoundDefaultValues();", "read-only sound defaults"),

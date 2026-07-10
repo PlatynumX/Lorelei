@@ -45,4 +45,10 @@ The first real MIPS build reached Taradino compilation and stopped because the N
 - Change: only that warning class is now nonfatal for the N64 build.
 - Host regression test confirms there is no blanket `-Wno-error`.
 - N64 cross-build and runtime remain unverified until the next Actions run.
+## Revision 8
 
+- Grounded failure: `rt_cfg.c` could not compile because `ROTTVERSION` was undeclared in six config parsing/writing functions.
+- Cause: the direct Makefile build bypasses CMake's `configure_file(rott/version.h.in, ...)`, and the replacement header included only modern project-version fields.
+- Change: generate the original ROTT 1.4 config macros (`ROTTMAJORVERSION`, `ROTTMINORVERSION`, and `ROTTVERSION`) plus the Taradino project version.
+- Host preparation and preflight now verify those definitions before cross-compilation.
+- N64 link and runtime remain unverified until the next Actions run.

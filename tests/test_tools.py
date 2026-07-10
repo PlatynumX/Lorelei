@@ -104,6 +104,11 @@ def test_prepare_engine() -> None:
         vgatext = (output / "vgatext.c").read_text()
         assert "ROTT64 replacement for Taradino's desktop VGA text renderer" in vgatext
         assert "SDL_CreateTexture" not in vgatext
+        version = (output / "version.h").read_text()
+        assert "#define ROTTMAJORVERSION 1" in version
+        assert "#define ROTTMINORVERSION 4" in version
+        assert "#define ROTTVERSION ((ROTTMAJORVERSION * 10) + (ROTTMINORVERSION))" in version
+        assert '#define CMAKE_PROJECT_VERSION "2025.12.22-rott64"' in version
 
 
 

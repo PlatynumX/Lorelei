@@ -112,13 +112,20 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
             text=inject_function_return(text,function)
     cfg_path.write_text(text,encoding="utf-8")
 
-    # Taradino normally generates this through CMake.
+    # Taradino normally generates this from rott/version.h.in through CMake.
+    # The legacy config parser still requires ROTTVERSION (1.4 -> 14), while
+    # the modern title/version paths use CMAKE_PROJECT_VERSION. Reproduce both
+    # parts of the generated header for the direct libdragon Makefile build.
     (output/"version.h").write_text(
-        '#ifndef TARADINO_VERSION_H\n#define TARADINO_VERSION_H\n'
+        '#ifndef VERSION_H\n#define VERSION_H\n'
+        '#define ROTTMAJORVERSION 1\n'
+        '#define ROTTMINORVERSION 4\n'
+        '#define ROTTVERSION ((ROTTMAJORVERSION * 10) + (ROTTMINORVERSION))\n'
         '#define CMAKE_PROJECT_VERSION "2025.12.22-rott64"\n'
         '#define CMAKE_PROJECT_VERSION_MAJOR 2025\n'
         '#define CMAKE_PROJECT_VERSION_MINOR 12\n'
-        '#define CMAKE_PROJECT_VERSION_PATCH 22\n#endif\n', encoding="ascii")
+        '#define CMAKE_PROJECT_VERSION_PATCH 22\n'
+        '#endif\n', encoding="ascii")
 
     marker=output/".rott64-prepared"
     marker.write_text(

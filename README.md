@@ -96,5 +96,5 @@ finished port.
 The first real MIPS build reached Taradino compilation and stopped because the N64 C library rejects `<dirent.h>`. Revision 6 supplies a target-local compatibility header. Directory enumeration is intentionally empty; game data discovery remains the fixed `rom:/rott` path with direct file opens. This removes the exact compiler error without introducing a fake writable filesystem.
 ## Current cross-build status
 
-Revision 6 passed source preparation and preflight, then entered the real MIPS compilation. It stopped only because four legacy `-Wmaybe-uninitialized` warnings were promoted to errors. Revision 7 keeps those diagnostics visible but nonfatal; it has not yet been cross-compiled or boot-tested.
+Revision 7 passed source preparation and preflight, entered the real MIPS compilation, and compiled the engine through `rt_build.c`. It then stopped in `rt_cfg.c` because the hand-generated `version.h` omitted Taradino's original `ROTTVERSION` configuration macro. Revision 8 reproduces the complete generated version header. It has not yet produced or boot-tested a ROM.
 

@@ -1,5 +1,13 @@
 # ROTT64 change log
 
+## Cross-build revision 8
+
+- Revision 7 compiled the real Taradino engine through `rt_build.c` and then stopped in `rt_cfg.c`.
+- The direct libdragon build generated an incomplete `version.h`: it provided the modern CMake project version but omitted the original ROTT configuration macros.
+- Recreated Taradino's generated `version.h.in` definitions for `ROTTMAJORVERSION`, `ROTTMINORVERSION`, and `ROTTVERSION`, while retaining the project-version strings.
+- Added host and preflight checks so an incomplete generated version header fails before the MIPS compilation.
+- This revision is based directly on `n64-build.log` from the uploaded revision-7 Actions run.
+
 ## Cross-build revision 7
 
 - The R6 build reached compilation of the real Taradino engine and compiled more than twenty engine modules before stopping.
