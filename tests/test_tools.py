@@ -80,6 +80,17 @@ def test_prepare_engine() -> None:
             'int vgatext_main(void) { SDL_CreateTexture(); return 0; }\n',
             encoding="utf-8",
         )
+        (source / "rt_menu.c").write_text(
+            'void a(char *source, int length) { while (*source && isspace(*source) && length) source++; }\n'
+            'void b(char *source, int length) { while (*source && !isspace(*source) && length) source++; }\n'
+            'void c(char *wordtext, int pos) { while (wordtext[pos] && isspace(wordtext[pos])) pos++; }\n',
+            encoding="utf-8",
+        )
+        (source / "rt_net.c").write_text(
+            'void n(void) { SoftError("x=%4x y=%4x a=%4x time=%5d\\n", player->x,\n'
+            '                         player->y, player->angle, oldpolltime); }\n',
+            encoding="utf-8",
+        )
         run(
             "python3", "tools/prepare_engine.py",
             "--upstream", str(upstream), "--output", str(output),
@@ -104,6 +115,13 @@ def test_prepare_engine() -> None:
         vgatext = (output / "vgatext.c").read_text()
         assert "ROTT64 replacement for Taradino's desktop VGA text renderer" in vgatext
         assert "SDL_CreateTexture" not in vgatext
+        menu = (output / "rt_menu.c").read_text()
+        assert menu.count("isspace((unsigned char)*source)") == 2
+        assert "isspace((unsigned char)wordtext[pos])" in menu
+        net = (output / "rt_net.c").read_text()
+        assert 'x=%4lx y=%4lx a=%4x time=%5d\\n' in net
+        assert "(unsigned long)player->x" in net
+        assert "(unsigned long)player->y" in net
         version = (output / "version.h").read_text()
         assert "#define ROTTMAJORVERSION 1" in version
         assert "#define ROTTMINORVERSION 4" in version

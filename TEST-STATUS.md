@@ -52,3 +52,10 @@ The first real MIPS build reached Taradino compilation and stopped because the N
 - Change: generate the original ROTT 1.4 config macros (`ROTTMAJORVERSION`, `ROTTMINORVERSION`, and `ROTTVERSION`) plus the Taradino project version.
 - Host preparation and preflight now verify those definitions before cross-compilation.
 - N64 link and runtime remain unverified until the next Actions run.
+
+## Revision 9
+
+- Grounded failures: `rt_menu.c` passed plain signed `char` values to `isspace()`, producing fatal `-Wchar-subscripts`; `rt_net.c` printed `fixed` (`long int`) coordinates with `%x`, producing fatal `-Wformat` diagnostics.
+- Change: cast ctype inputs to `unsigned char`, use `%lx` for the fixed-width coordinates, and cast those variadic arguments to `unsigned long`.
+- Host preparation tests verify all four exact transformations.
+- N64 link and runtime remain unverified until the next Actions run.

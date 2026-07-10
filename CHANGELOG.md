@@ -1,5 +1,13 @@
 # ROTT64 change log
 
+## Cross-build revision 9
+
+- Revision 8 advanced through more of the real Taradino MIPS build and stopped in `rt_menu.c` and `rt_net.c`.
+- Fixed three unsafe legacy `isspace()` calls by casting the input to `unsigned char`, which also resolves libdragon's fatal `-Wchar-subscripts` diagnostics.
+- Fixed the network/debug `SoftError()` format to match the N64 build's `fixed` width (`long int`) and added explicit `unsigned long` casts for hexadecimal output.
+- Added preparation regression tests for both source transformations.
+- This revision is based directly on `n64-build.log` from Actions run `29102714206`.
+
 ## Cross-build revision 8
 
 - Revision 7 compiled the real Taradino engine through `rt_build.c` and then stopped in `rt_cfg.c`.

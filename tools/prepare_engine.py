@@ -112,6 +112,36 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
             text=inject_function_return(text,function)
     cfg_path.write_text(text,encoding="utf-8")
 
+    # Fix legacy ctype usage for targets where plain char is signed. The ctype
+    # macros are only defined for EOF or values representable as unsigned char;
+    # passing a negative char also trips libdragon's -Werror=char-subscripts.
+    menu_path = output / "rt_menu.c"
+    menu_text = menu_path.read_text(encoding="utf-8", errors="strict")
+    for old, new, expected, label in (
+        ("isspace(*source)", "isspace((unsigned char)*source)", 2, "rt_menu source ctype casts"),
+        ("isspace(wordtext[pos])", "isspace((unsigned char)wordtext[pos])", 1, "rt_menu word ctype cast"),
+    ):
+        count = menu_text.count(old)
+        if count != expected:
+            raise RuntimeError(f"{label}: expected {expected} matches, found {count}")
+        menu_text = menu_text.replace(old, new)
+    menu_path.write_text(menu_text, encoding="utf-8")
+
+    # The N64 toolchain models Taradino's fixed type as long int. Match the
+    # variadic debug format to the real argument width instead of relying on
+    # the desktop ABI's sizeof(int) == sizeof(long) assumption.
+    net_path = output / "rt_net.c"
+    net_text = net_path.read_text(encoding="utf-8", errors="strict")
+    net_text = replace_regex_once(
+        net_text,
+        r'SoftError\("x=%4x y=%4x a=%4x time=%5d\\n",\s*player->x,\s*player->y,\s*player->angle,\s*oldpolltime\);',
+        'SoftError("x=%4lx y=%4lx a=%4x time=%5d\\n",\n'
+        '                  (unsigned long)player->x,\n'
+        '                  (unsigned long)player->y, player->angle, oldpolltime);',
+        "rt_net fixed-width debug format",
+    )
+    net_path.write_text(net_text, encoding="utf-8")
+
     # Taradino normally generates this from rott/version.h.in through CMake.
     # The legacy config parser still requires ROTTVERSION (1.4 -> 14), while
     # the modern title/version paths use CMAKE_PROJECT_VERSION. Reproduce both
