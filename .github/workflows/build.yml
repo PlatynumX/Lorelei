@@ -35,10 +35,18 @@ jobs:
         run: tools/fetch_rottds.sh
 
       - name: Prepare N64 engine tree
-        run: make prepare
+        shell: bash
+        run: |
+          mkdir -p build/reports
+          set -o pipefail
+          make prepare 2>&1 | tee build/reports/prepare-engine.log
 
       - name: Run engine preflight
-        run: make preflight
+        shell: bash
+        run: |
+          mkdir -p build/reports
+          set -o pipefail
+          make preflight 2>&1 | tee build/reports/preflight.log
 
       - name: Generate source and WAD reports
         run: make reports

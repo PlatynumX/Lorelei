@@ -58,6 +58,7 @@ def test_prepare_engine() -> None:
         (source / "rt_main.c").write_text(
             '#include "SDL.h"\n'
             'int main(int argc, char *argv[])\n'
+            '\n'
             '{\n'
             '    CheckCommandLineParameters();\n'
             '    SetRottScreenRes(iGLOBAL_SCREENWIDTH, iGLOBAL_SCREENHEIGHT);\n'

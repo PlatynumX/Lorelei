@@ -6,10 +6,20 @@ from pathlib import Path
 
 
 def replace_once(text: str, old: str, new: str, label: str) -> str:
-    count=text.count(old)
+    count = text.count(old)
     if count != 1:
         raise RuntimeError(f"{label}: expected one match, found {count}")
-    return text.replace(old,new,1)
+    return text.replace(old, new, 1)
+
+
+def replace_regex_once(
+    text: str, pattern: str, replacement: str, label: str, flags: int = 0
+) -> str:
+    compiled = re.compile(pattern, flags)
+    matches = list(compiled.finditer(text))
+    if len(matches) != 1:
+        raise RuntimeError(f"{label}: expected one match, found {len(matches)}")
+    return compiled.sub(lambda _match: replacement, text, count=1)
 
 def inject_function_return(text: str, name: str) -> str:
     pattern=re.compile(rf"(void\s+{re.escape(name)}\s*\([^)]*\)\s*\{{)")
@@ -42,9 +52,9 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
     main_path=output/"rt_main.c"
     text=main_path.read_text(encoding="utf-8",errors="strict")
     text=replace_once(text,'#include "SDL.h"','#include "SDL.h"\n#include "n64_platform.h"',"rt_main include")
-    text=replace_once(
+    text = replace_regex_once(
         text,
-        'int main(int argc, char *argv[])\n{',
+        r"int\s+main\s*\(\s*int\s+argc\s*,\s*char\s*\*\s*argv\s*\[\s*\]\s*\)\s*\{",
         'int main(void)\n{\n'
         '    static char rott64_program_name[] = \"rott64\";\n'
         '    static char *rott64_argv[] = { rott64_program_name, NULL };\n'

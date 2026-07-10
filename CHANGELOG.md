@@ -1,5 +1,12 @@
 # Changelog
 
+## Android build-fix revision 2
+
+- Fixed the Taradino `main()` patcher to accept the upstream formatting where a blank line appears between the function signature and opening brace.
+- Added a regression test using that exact formatting.
+- GitHub Actions now saves `prepare-engine.log` and `preflight.log`, so failures before cross-compilation still produce a downloadable diagnostics artifact.
+
+
 ## First-level candidate — N64 FPS controls revision
 
 - Swapped the C-button and D-pad groups: C-buttons now provide digital movement/turning, while the D-pad handles confirm, weapon shortcuts, and 180-degree turn.

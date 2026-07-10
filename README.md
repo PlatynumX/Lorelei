@@ -1,3 +1,5 @@
+> **Revision 2:** fixes the first Android/GitHub Actions failure in the engine-preparation stage caused by Taradino's blank line before the `main()` opening brace.
+
 # ROTT64 shareware — first-level candidate
 
 This repository is a serious first attempt to run **Rise of the Triad: The HUNT
