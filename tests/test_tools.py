@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import json
+import struct
+import subprocess
+import tempfile
+import zipfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def run(*args: str) -> None:
+    subprocess.run(args, cwd=ROOT, check=True)
+
+
+def test_audit() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        output = Path(temporary)
+        run(
+            "python3",
+            "tools/audit_taradino.py",
+            "tests/fixtures/taradino/rott",
+            "--out",
+            str(output),
+        )
+        report = json.loads((output / "taradino-port-audit.json").read_text())
+        assert report["source_file_count"] == 2
+        assert report["direct_dependency_file_count"] == 1
+        assert report["candidate_platform_neutral_file_count"] == 1
+
+
+def test_inventory() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        output = Path(temporary)
+        wad = output / "test.wad"
+        payload = b"\x00" * 768
+        directory_offset = 12 + len(payload)
+        wad.write_bytes(
+            struct.pack("<4sII", b"IWAD", 1, directory_offset)
+            + payload
+            + struct.pack("<II8s", 12, len(payload), b"PALTEST\0")
+        )
+        run("python3", "tools/wad_inventory.py", str(wad), "--out", str(output))
+        report = json.loads((output / "huntbgin-wad-inventory.json").read_text())
+        assert report["metadata"]["lump_count"] == 1
+        assert report["lumps"][0]["size_hint"].startswith("possible 256")
+
+
+def test_prepare_engine() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        base = Path(temporary)
+        upstream = base / "upstream"
+        source = upstream / "rott"
+        output = base / "prepared"
+        source.mkdir(parents=True)
+        (source / "rt_main.c").write_text(
+            '#include "SDL.h"\n'
+            'int main(int argc, char *argv[])\n'
+            '{\n'
+            '    CheckCommandLineParameters();\n'
+            '    SetRottScreenRes(iGLOBAL_SCREENWIDTH, iGLOBAL_SCREENHEIGHT);\n'
+            '}\n',
+            encoding="utf-8",
+        )
+        (source / "rt_cfg.c").write_text(
+            'int ConfigLoaded;\n'
+            'void SetSoundDefaultValues(void) {}\n'
+            'void SetConfigDefaultValues(void) {}\n'
+            'void SetBattleDefaultValues(void) {}\n'
+            'void ReadConfig(void)\n{\n    int desktop_probe = 1;\n}\n'
+            'void WriteConfig(void)\n{\n    int untouched = 1;\n}\n',
+            encoding="utf-8",
+        )
+        (source / "adlmusic.c").write_text('int desktop_adl;\n', encoding="utf-8")
+        (source / "sdlmusic.c").write_text('int desktop_sdl_music;\n', encoding="utf-8")
+        run(
+            "python3", "tools/prepare_engine.py",
+            "--upstream", str(upstream), "--output", str(output),
+        )
+        main = (output / "rt_main.c").read_text()
+        assert "int main(void)" in main
+        assert "rott64_argv" in main
+        assert "n64_platform_init();" in main
+        assert "NoSound = true;" in main
+        assert "SetRottScreenRes(320, 200);" in main
+        cfg = (output / "rt_cfg.c").read_text()
+        assert "SetSoundDefaultValues();" in cfg
+        assert "SetConfigDefaultValues();" in cfg
+        assert "SetBattleDefaultValues();" in cfg
+        assert "ConfigLoaded = true;" in cfg
+        assert not (output / "adlmusic.c").exists()
+        assert not (output / "sdlmusic.c").exists()
+
+
+def test_shareware_omits_foreign_config() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        base = Path(temporary)
+        archive = base / "data.zip"
+        output = base / "out"
+        with zipfile.ZipFile(archive, "w") as zf:
+            for name in ("HUNTBGIN.WAD", "HUNTBGIN.RTL", "HUNTBGIN.RTC"):
+                zf.writestr(name, b"required")
+            zf.writestr("CONFIG.ROT", b"rottds key map")
+            zf.writestr("REMOTE1.RTS", b"optional")
+        run("python3", "tools/prepare_shareware.py", str(archive), str(output))
+        assert (output / "HUNTBGIN.WAD").is_file()
+        assert (output / "REMOTE1.RTS").is_file()
+        assert not (output / "CONFIG.ROT").exists()
+        assert not (output / "huntbgin").exists()
+
+
+if __name__ == "__main__":
+    test_audit()
+    test_inventory()
+    test_prepare_engine()
+    test_shareware_omits_foreign_config()
+    print("Taradino audit, import, shareware, and WAD inventory tests passed")

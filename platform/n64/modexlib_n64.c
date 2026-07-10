@@ -1,0 +1,149 @@
+/* ROTT64 replacement for Taradino's SDL-backed modexlib.c. */
+#include "modexlib.h"
+#include "SDL.h"
+#include "n64_platform.h"
+
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+#ifdef __N64__
+#include <libdragon.h>
+#endif
+
+#define ROTT_WIDTH 320
+#define ROTT_HEIGHT 200
+#define N64_HEIGHT 240
+#define BORDER_Y 20
+
+boolean StretchScreen = 0;
+byte *iG_buf_center;
+int linewidth;
+int ylookup[600];
+byte *SCREEN_BUFFER;
+int screensize;
+byte *bufferofs;
+byte *displayofs;
+boolean graphicsmode = false;
+byte *bufofsTopLimit;
+byte *bufofsBottomLimit;
+
+SDL_Surface *sdl_surface = NULL;
+SDL_Surface *unstretch_sdl_surface = NULL;
+
+static byte indexed_framebuffer[ROTT_WIDTH * ROTT_HEIGHT] __attribute__((aligned(16)));
+static SDL_Color palette_colors[256];
+static SDL_Palette framebuffer_palette = {256, palette_colors, 0, 1};
+static SDL_PixelFormat framebuffer_format = {0, &framebuffer_palette, 8, 1};
+static SDL_Surface framebuffer_surface = {0, &framebuffer_format, ROTT_WIDTH, ROTT_HEIGHT, ROTT_WIDTH, indexed_framebuffer};
+static bool display_ready;
+
+extern int iG_X_center;
+extern int iG_Y_center;
+
+static uint16_t rgba5551(SDL_Color color)
+{
+    const uint16_t r = (uint16_t)(color.r >> 3);
+    const uint16_t g = (uint16_t)(color.g >> 3);
+    const uint16_t b = (uint16_t)(color.b >> 3);
+    return (uint16_t)((r << 11) | (g << 6) | (b << 1) | 1u);
+}
+
+static void present_frame(void)
+{
+#ifdef __N64__
+    surface_t *surface;
+    uint16_t converted[256];
+    int y;
+
+    if (!display_ready) {
+        return;
+    }
+    for (int i = 0; i < 256; ++i) {
+        converted[i] = rgba5551(palette_colors[i]);
+    }
+
+    surface = display_get();
+    if (surface == NULL) {
+        return;
+    }
+
+    {
+        uint16_t *destination = (uint16_t *)surface->buffer;
+        const int destination_stride = surface->stride / (int)sizeof(uint16_t);
+        for (y = 0; y < N64_HEIGHT; ++y) {
+            uint16_t *row = destination + y * destination_stride;
+            if (y < BORDER_Y || y >= BORDER_Y + ROTT_HEIGHT) {
+                memset(row, 0, ROTT_WIDTH * sizeof(*row));
+            } else {
+                const byte *source = indexed_framebuffer + (y - BORDER_Y) * ROTT_WIDTH;
+                for (int x = 0; x < ROTT_WIDTH; ++x) {
+                    row[x] = converted[source[x]];
+                }
+            }
+        }
+    }
+    display_show(surface);
+#else
+    (void)rgba5551;
+#endif
+}
+
+SDL_Window *VL_GetVideoWindow(void) { return NULL; }
+SDL_Surface *VL_GetVideoSurface(void) { return sdl_surface; }
+int VL_SaveBMP(const char *file) { (void)file; return -1; }
+void SetShowCursor(int show) { (void)show; }
+
+void GraphicsMode(void)
+{
+    n64_platform_init();
+#ifdef __N64__
+    if (!display_ready) {
+        display_init(RESOLUTION_320x240, DEPTH_16_BPP, 2, GAMMA_NONE, ANTIALIAS_RESAMPLE);
+        display_ready = true;
+    }
+#else
+    display_ready = true;
+#endif
+    sdl_surface = &framebuffer_surface;
+    graphicsmode = true;
+}
+
+void ToggleFullScreen(void) { }
+void SetTextMode(void) { }
+void TurnOffTextCursor(void) { }
+void WaitVBL(void) { n64_platform_wait_ms(14); }
+
+void VL_SetVGAPlaneMode(void)
+{
+    int offset = 0;
+    GraphicsMode();
+    linewidth = ROTT_WIDTH;
+    for (int i = 0; i < 600; ++i) {
+        ylookup[i] = offset;
+        if (i < ROTT_HEIGHT) {
+            offset += linewidth;
+        }
+    }
+    screensize = ROTT_WIDTH * ROTT_HEIGHT;
+    SCREEN_BUFFER = displayofs = bufferofs = indexed_framebuffer;
+    iG_X_center = ROTT_WIDTH / 2;
+    iG_Y_center = ROTT_HEIGHT / 2 + 10;
+    iG_buf_center = bufferofs + screensize / 2;
+    bufofsTopLimit = bufferofs + screensize - ROTT_WIDTH;
+    bufofsBottomLimit = bufferofs + ROTT_WIDTH;
+    StretchScreen = 0;
+    memset(indexed_framebuffer, 0, sizeof(indexed_framebuffer));
+    XFlipPage();
+}
+
+void VL_CopyPlanarPage(byte *src, byte *dest) { memcpy(dest, src, (size_t)screensize); }
+void VL_CopyPlanarPageToMemory(byte *src, byte *dest) { memcpy(dest, src, (size_t)screensize); }
+void VL_ClearBuffer(byte *buf, byte color) { memset(buf, color, (size_t)screensize); }
+void VL_ClearVideo(byte color) { memset(indexed_framebuffer, color, sizeof(indexed_framebuffer)); }
+void VH_UpdateScreen(void) { present_frame(); }
+void XFlipPage(void) { present_frame(); }
+void EnableScreenStretch(void) { StretchScreen = 0; }
+void DisableScreenStretch(void) { StretchScreen = 0; }
+void DrawCenterAim(void) { }

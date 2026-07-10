@@ -1,0 +1,108 @@
+name: Build ROTT64 first-level candidate
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  LIBDRAGON_REF: trunk
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Run host validation
+        run: make test-host
+
+      - name: Fetch shareware episode
+        run: tools/fetch_shareware.sh
+
+      - name: Fetch pinned Taradino source
+        run: tools/fetch_taradino.sh
+
+      - name: Fetch ROTTDS reference source
+        continue-on-error: true
+        run: tools/fetch_rottds.sh
+
+      - name: Prepare N64 engine tree
+        run: make prepare
+
+      - name: Run engine preflight
+        run: make preflight
+
+      - name: Generate source and WAD reports
+        run: make reports
+
+      - name: Record source revisions
+        run: |
+          mkdir -p build/reports
+          cp vendor/taradino/source/.rott64-upstream-commit \
+            build/reports/taradino-upstream-commit.txt
+          if [ -f vendor/rottds/source/.rott64-version ]; then
+            cp vendor/rottds/source/.rott64-version \
+              build/reports/rottds-reference-version.txt
+          fi
+
+      - name: Cross-compile Nintendo 64 ROM
+        id: n64_build
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p build/reports
+          set -o pipefail
+          docker run --rm \
+            -e LIBDRAGON_REF="$LIBDRAGON_REF" \
+            -v "$PWD:/project" \
+            -w /project \
+            ghcr.io/dragonminded/libdragon:latest \
+            sh -lc '
+              set -eux
+              rm -rf /tmp/libdragon
+              git clone --depth 1 --branch "$LIBDRAGON_REF" \
+                https://github.com/DragonMinded/libdragon.git /tmp/libdragon
+              make -C /tmp/libdragon -j2 install tools-install
+              make clean
+              make -j2
+            ' 2>&1 | tee build/reports/n64-build.log
+
+      - name: Hash successful ROM
+        if: steps.n64_build.outcome == 'success'
+        run: sha256sum rott64.z64 | tee rott64.z64.sha256
+
+      - name: Upload ROM
+        if: steps.n64_build.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: rott64-shareware-first-level-candidate
+          path: |
+            rott64.z64
+            rott64.z64.sha256
+            build/reports/
+          if-no-files-found: error
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rott64-first-level-build-diagnostics
+          path: |
+            build/reports/
+            generated/rott/.rott64-prepared
+          if-no-files-found: warn
+
+      - name: Mark cross-build failure
+        if: steps.n64_build.outcome != 'success'
+        run: |
+          echo "The host/preflight stages passed, but the N64 cross-build failed."
+          echo "Download rott64-first-level-build-diagnostics and inspect n64-build.log."
+          exit 1

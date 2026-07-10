@@ -1,0 +1,28 @@
+# Validation status
+
+## Passed in this package
+
+- strict C11 host compile with `-Wall -Wextra -Werror` for the WAD parser;
+- WAD header, directory, name lookup, and bounded read tests;
+- indexed framebuffer and VGA-palette conversion tests;
+- normalized controller mapping tests;
+- SDL compatibility queue, timing, path, RWops, and mixer-stub host tests;
+- Python shareware extraction, WAD inventory, source audit, and deterministic
+  engine-preparation tests;
+- shell syntax checks for all build/fetch scripts;
+- Python bytecode compilation for all tools and tests;
+- GitHub Actions YAML parse;
+- checks for stale filesystem prefixes and obsolete milestone descriptions.
+
+## Not performed here
+
+- libdragon/MIPS cross-compilation;
+- link of the full imported Taradino engine;
+- execution in Ares or another N64 emulator;
+- flashcart or real-hardware boot;
+- title/menu rendering verification;
+- first-map loading or gameplay verification.
+
+The GitHub workflow is structured to turn the first missing cross-compiler symbol
+or header mismatch into a downloadable `n64-build.log`. A successful workflow
+produces `rott64.z64`; it does not by itself prove runtime success.

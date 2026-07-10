@@ -1,0 +1,4 @@
+# Official ROTTDS 0.7 source/data references.
+ROTTDS_SOURCE_URL=https://vespenegas.com/rottds-source.tar.bz2
+ROTTDS_DATA_URL=https://vespenegas.com/rottds-data.tar.bz2
+ROTTDS_VERSION=0.7

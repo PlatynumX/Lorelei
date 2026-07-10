@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+"""Fail early when the prepared source or platform overlay is incomplete."""
+from __future__ import annotations
+import argparse,re,sys
+from pathlib import Path
+
+def main()->int:
+    p=argparse.ArgumentParser(); p.add_argument("engine",type=Path); p.add_argument("platform",type=Path); a=p.parse_args()
+    required=["rt_datadir.c","rt_main.c","rt_game.c","rt_playr.c","rt_in.c","rt_vid.c","rt_cfg.c","w_wad.c","z_zone.c","modexlib.c","SDL.h","SDL_mixer.h","version.h"]
+    missing=[n for n in required if not (a.engine/n).is_file()]
+    if missing: print("missing prepared files: "+", ".join(missing),file=sys.stderr); return 1
+    main=(a.engine/"rt_main.c").read_text(errors="replace")
+    checks={"N64 main entry":"int main(void)","built-in argv":"rott64_argv","platform init":"n64_platform_init();","silent first target":"NoSound = true;","320x200":"SetRottScreenRes(320, 200);"}
+    failures=[name for name,needle in checks.items() if needle not in main]
+    if "rom:/rott" not in (a.engine/"rt_datadir.c").read_text(errors="replace"):
+        failures.append("N64 data path")
+    cfg=(a.engine/"rt_cfg.c").read_text(errors="replace")
+    for needle, label in (
+        ("SetSoundDefaultValues();", "read-only sound defaults"),
+        ("SetConfigDefaultValues();", "read-only control defaults"),
+        ("SetBattleDefaultValues();", "read-only battle defaults"),
+        ("ConfigLoaded = true;", "read-only config completion"),
+    ):
+        if needle not in cfg:
+            failures.append(label)
+    for excluded in ("adlmusic.c", "sdlmusic.c"):
+        if (a.engine / excluded).exists():
+            failures.append(f"excluded backend still present: {excluded}")
+    symbols=set()
+    for f in a.engine.glob("*.c"):
+        text=f.read_text(errors="replace")
+        symbols.update(re.findall(r"\b(?:SDL|Mix)_[A-Za-z0-9_]+\b",text))
+    declarations=(a.engine/"SDL.h").read_text()+"\n"+(a.engine/"SDL_mixer.h").read_text()+"\n"+(a.platform/"sdl_n64.c").read_text()+"\n"+(a.platform/"sdl_mixer_stub.c").read_text()
+    uncovered=sorted(s for s in symbols if s not in declarations and s not in {"SDL_VERSION_ATLEAST"})
+    if failures: print("failed engine patches: "+", ".join(failures),file=sys.stderr)
+    if uncovered: print("uncovered SDL symbols:\n  "+"\n  ".join(uncovered),file=sys.stderr)
+    if failures or uncovered: return 1
+    print(f"Preflight passed: {len(list(a.engine.glob('*.c')))} C files, {len(symbols)} SDL/Mix symbols covered")
+    return 0
+if __name__=="__main__": raise SystemExit(main())

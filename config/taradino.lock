@@ -1,0 +1,4 @@
+# Pinned upstream used by the ROTT64 port audit/import workflow.
+TARADINO_REPOSITORY=https://github.com/fabiangreffrath/taradino.git
+TARADINO_REF=20251222
+TARADINO_EXPECTED_COMMIT_PREFIX=7ecc532
