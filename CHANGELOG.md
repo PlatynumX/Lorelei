@@ -1,3 +1,13 @@
+# ROTT64 change log
+
+## Cross-build revision 6
+
+- Added an N64-local `dirent.h` compatibility shim because libdragon/newlib explicitly does not support POSIX directory streams.
+- The shim makes optional directory scans return no entries while the port continues using its fixed `rom:/rott` DragonFS path and direct `fopen()` lookups.
+- The engine preparation step now copies the shim into the generated Taradino tree so `<dirent.h>` resolves before the unsupported toolchain header.
+- Added preflight and host regression tests for the compatibility header.
+- This change is based on the first genuine MIPS cross-compiler error from revision 5: `sys/dirent.h: #error "<dirent.h> not supported"` while compiling `byteordr.c`.
+
 # Android build-fix revision 5
 
 - Reached the real N64 cross-compile stage.

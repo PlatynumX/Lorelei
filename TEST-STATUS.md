@@ -34,3 +34,8 @@ The revision-4 workflow reached the Nintendo 64 cross-compile, but its own
 upload. Revision 5 writes persistent diagnostics to `ci-reports/` and removes
 that redundant clean step. No engine/compiler fix is claimed until the actual
 cross-compiler output is captured.
+
+
+### Revision 6 cross-build note
+
+The first real MIPS build reached Taradino compilation and stopped because the N64 C library rejects `<dirent.h>`. Revision 6 supplies a target-local compatibility header. Directory enumeration is intentionally empty; game data discovery remains the fixed `rom:/rott` path with direct file opens. This removes the exact compiler error without introducing a fake writable filesystem.

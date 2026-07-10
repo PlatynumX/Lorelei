@@ -5,6 +5,7 @@ HOST_CC ?= cc
 HOST_WAD_TEST := $(HOST_BUILD_DIR)/test_wad
 HOST_PLATFORM_TEST := $(HOST_BUILD_DIR)/test_platform
 HOST_SDL_TEST := $(HOST_BUILD_DIR)/test_sdl_compat
+HOST_DIRENT_TEST := $(HOST_BUILD_DIR)/test_dirent_stub
 
 .PHONY: all clean distclean test-host test-tools reports prepare preflight
 
@@ -16,6 +17,8 @@ test-host:
 	$(HOST_PLATFORM_TEST)
 	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -Iplatform/n64 platform/n64/n64_platform.c platform/n64/sdl_n64.c platform/n64/sdl_mixer_stub.c platform/n64/vgatext_n64.c tests/test_sdl_compat.c -o $(HOST_SDL_TEST)
 	$(HOST_SDL_TEST)
+	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -D__N64__=1 -Iplatform/n64 tests/test_dirent_stub.c -o $(HOST_DIRENT_TEST)
+	$(HOST_DIRENT_TEST)
 	python3 tests/test_tools.py
 
 test-tools:

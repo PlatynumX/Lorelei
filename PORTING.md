@@ -43,3 +43,8 @@ The first implementation converts all 64,000 source pixels on every presented
 frame. Correctness comes first. Later options include a CI8/RDP upload path,
 dirty-region conversion, cached palette conversion, or a lower presentation
 rate while keeping game simulation timing intact.
+
+
+### Revision 6 cross-build note
+
+The first real MIPS build reached Taradino compilation and stopped because the N64 C library rejects `<dirent.h>`. Revision 6 supplies a target-local compatibility header. Directory enumeration is intentionally empty; game data discovery remains the fixed `rom:/rott` path with direct file opens. This removes the exact compiler error without introducing a fake writable filesystem.

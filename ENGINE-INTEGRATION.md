@@ -31,3 +31,8 @@ text no longer matches.
 `tools/preflight_engine.py` then checks required files, entry-point patches,
 resolution, silent mode, ROM path, excluded backends, and all SDL/Mix symbols
 seen in the prepared C files.
+
+
+### Revision 6 cross-build note
+
+The first real MIPS build reached Taradino compilation and stopped because the N64 C library rejects `<dirent.h>`. Revision 6 supplies a target-local compatibility header. Directory enumeration is intentionally empty; game data discovery remains the fixed `rom:/rott` path with direct file opens. This removes the exact compiler error without introducing a fake writable filesystem.

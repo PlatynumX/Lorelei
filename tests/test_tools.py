@@ -97,6 +97,10 @@ def test_prepare_engine() -> None:
         assert "ConfigLoaded = true;" in cfg
         assert not (output / "adlmusic.c").exists()
         assert not (output / "sdlmusic.c").exists()
+        assert (output / "dirent.h").is_file()
+        dirent = (output / "dirent.h").read_text()
+        assert "ROTT64_N64_DIRENT_H" in dirent
+        assert "static inline DIR *opendir" in dirent
         vgatext = (output / "vgatext.c").read_text()
         assert "ROTT64 replacement for Taradino's desktop VGA text renderer" in vgatext
         assert "SDL_CreateTexture" not in vgatext

@@ -6,7 +6,7 @@ from pathlib import Path
 
 def main()->int:
     p=argparse.ArgumentParser(); p.add_argument("engine",type=Path); p.add_argument("platform",type=Path); a=p.parse_args()
-    required=["rt_datadir.c","rt_main.c","rt_game.c","rt_playr.c","rt_in.c","rt_vid.c","rt_cfg.c","w_wad.c","z_zone.c","modexlib.c","SDL.h","SDL_mixer.h","version.h"]
+    required=["rt_datadir.c","rt_main.c","rt_game.c","rt_playr.c","rt_in.c","rt_vid.c","rt_cfg.c","w_wad.c","z_zone.c","modexlib.c","SDL.h","SDL_mixer.h","dirent.h","version.h"]
     missing=[n for n in required if not (a.engine/n).is_file()]
     if missing: print("missing prepared files: "+", ".join(missing),file=sys.stderr); return 1
     main=(a.engine/"rt_main.c").read_text(errors="replace")
@@ -14,6 +14,9 @@ def main()->int:
     failures=[name for name,needle in checks.items() if needle not in main]
     if "rom:/rott" not in (a.engine/"rt_datadir.c").read_text(errors="replace"):
         failures.append("N64 data path")
+    dirent=(a.engine/"dirent.h").read_text(errors="replace")
+    if "ROTT64_N64_DIRENT_H" not in dirent or "static inline DIR *opendir" not in dirent:
+        failures.append("N64 dirent compatibility shim")
     vgatext=(a.engine/"vgatext.c").read_text(errors="replace")
     if "ROTT64 replacement for Taradino's desktop VGA text renderer" not in vgatext:
         failures.append("N64 VGA text replacement")

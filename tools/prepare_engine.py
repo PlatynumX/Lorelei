@@ -39,6 +39,9 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
     shutil.copy2(platform/"modexlib_n64.c", output/"modexlib.c")
     shutil.copy2(platform/"SDL.h", output/"SDL.h")
     shutil.copy2(platform/"SDL_mixer.h", output/"SDL_mixer.h")
+    # Shadow libdragon/newlib's unsupported POSIX <dirent.h> with the
+    # fixed-data-directory compatibility shim used by the N64 target.
+    shutil.copy2(platform/"dirent.h", output/"dirent.h")
     shutil.copy2(platform/"fx_silent.c", output/"fx_mixer.c")
     shutil.copy2(platform/"music_silent.c", output/"dukemusc.c")
     shutil.copy2(platform/"rt_datadir_n64.c", output/"rt_datadir.c")
@@ -122,7 +125,8 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
         "Taradino 20251222\n"
         "ROTT64 fixed 320x200 framebuffer\n"
         "ROTTDS-derived low-memory/silent first-level policy\n"
-        "Desktop VGA text renderer disabled on N64\n",encoding="utf-8")
+        "Desktop VGA text renderer disabled on N64\n"
+        "POSIX directory enumeration stubbed for fixed DragonFS data path\n",encoding="utf-8")
 
 
 def main() -> int:
