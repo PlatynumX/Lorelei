@@ -1,3 +1,11 @@
+# Runtime/artifact revision 14
+
+- Fixed GitHub Actions packaging after a successful `[Z64] rott64.z64` build.
+- Validates the generated ROM by byte-order magic and minimum size.
+- Uploads the ROM based on validation of the output file rather than the Docker step outcome alone.
+- Includes a backup copy of `rott64.z64` in the diagnostics artifact.
+- Keeps the dedicated ROM artifact small and unambiguous.
+
 # ROTT64 change log
 
 ## Runtime revision 13 — first emulator boot diagnosis

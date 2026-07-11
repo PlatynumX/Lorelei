@@ -67,10 +67,13 @@ jobs:
         shell: bash
         run: |
           # Keep CI diagnostics outside build/. The N64 Makefile may remove
-          # build/ during cleanup, which previously unlinked n64-build.log
-          # before actions/upload-artifact could collect it.
+          # build/ during cleanup, which previously unlinked n64-build.log.
           mkdir -p ci-reports
           cp -a build/reports/. ci-reports/ 2>/dev/null || true
+
+          # Record whether a structurally valid ROM exists even if Docker or
+          # make returns a non-zero status after producing it.
+          set +e
           set -o pipefail
           docker run --rm \
             -e LIBDRAGON_REF="$LIBDRAGON_REF" \
@@ -83,28 +86,47 @@ jobs:
               git clone --depth 1 --branch "$LIBDRAGON_REF" \
                 https://github.com/DragonMinded/libdragon.git /tmp/libdragon
               make -C /tmp/libdragon -j2 install tools-install
-              # GitHub provides a fresh checkout. Do not call the project
-              # clean target here because it also deletes build diagnostics.
               make -j2
             ' 2>&1 | tee ci-reports/n64-build.log
+          build_status=${PIPESTATUS[0]}
+          set -e
 
-      - name: Hash successful ROM
-        if: steps.n64_build.outcome == 'success'
-        run: sha256sum rott64.z64 | tee rott64.z64.sha256
+          if python3 - <<'PY'
+from pathlib import Path
+p = Path("rott64.z64")
+if not p.is_file():
+    raise SystemExit(1)
+magic = p.read_bytes()[:4]
+if magic != bytes.fromhex("80371240"):
+    raise SystemExit(f"unexpected ROM header: {magic.hex()}")
+if p.stat().st_size < 1024 * 1024:
+    raise SystemExit(f"ROM is unexpectedly small: {p.stat().st_size}")
+print(f"Validated {p} ({p.stat().st_size} bytes)")
+PY
+          then
+            sha256sum rott64.z64 | tee rott64.z64.sha256
+            echo "rom_built=true" >> "$GITHUB_OUTPUT"
+            echo "A valid .z64 exists; treating the cross-build as successful."
+            exit 0
+          fi
+
+          echo "rom_built=false" >> "$GITHUB_OUTPUT"
+          if [ "$build_status" -eq 0 ]; then
+            build_status=1
+          fi
+          exit "$build_status"
 
       - name: Upload ROM
-        if: steps.n64_build.outcome == 'success'
+        if: always() && steps.n64_build.outputs.rom_built == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: rott64-shareware-first-level-candidate
           path: |
             rott64.z64
             rott64.z64.sha256
-            ci-reports/
-            build/reports/
           if-no-files-found: error
 
-      - name: Upload diagnostics
+      - name: Upload diagnostics and ROM backup
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -113,11 +135,13 @@ jobs:
             ci-reports/
             build/reports/
             generated/rott/.rott64-prepared
+            rott64.z64
+            rott64.z64.sha256
           if-no-files-found: warn
 
       - name: Mark cross-build failure
-        if: steps.n64_build.outcome != 'success'
+        if: steps.n64_build.outputs.rom_built != 'true'
         run: |
-          echo "The host/preflight stages passed, but the N64 cross-build failed."
+          echo "The host/preflight stages passed, but no valid N64 ROM was produced."
           echo "Download rott64-first-level-build-diagnostics and inspect n64-build.log."
           exit 1

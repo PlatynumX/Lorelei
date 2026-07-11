@@ -1,3 +1,5 @@
+**Revision 14:** GitHub now validates and uploads `rott64.z64` whenever the file was produced, with a backup copy in diagnostics.
+
 > **Runtime revision 13:** the first linked ROM was structurally valid but returned to the Android emulator list. The port had been using the incorrect DragonFS prefix `rom:/rott`; current libdragon uses `rom://rott`. This revision fixes every runtime path, adds visible boot checkpoints, sets conventional region/category metadata, and disables ELF compression for the next M64Plus FZ compatibility test.
 
 > **Revision 12 linker fix:** the complete imported engine now compiles to objects and reaches the final N64 link. The remaining undefined symbols were `access()`, `getcwd()`, and `chdir()`. A target-local, read-only compatibility object now supplies those exact functions for the fixed `rom://rott` filesystem model.
