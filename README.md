@@ -1,4 +1,6 @@
-> **Revision 12 linker fix:** the complete imported engine now compiles to objects and reaches the final N64 link. The remaining undefined symbols were `access()`, `getcwd()`, and `chdir()`. A target-local, read-only compatibility object now supplies those exact functions for the fixed `rom:/rott` filesystem model.
+> **Runtime revision 13:** the first linked ROM was structurally valid but returned to the Android emulator list. The port had been using the incorrect DragonFS prefix `rom:/rott`; current libdragon uses `rom://rott`. This revision fixes every runtime path, adds visible boot checkpoints, sets conventional region/category metadata, and disables ELF compression for the next M64Plus FZ compatibility test.
+
+> **Revision 12 linker fix:** the complete imported engine now compiles to objects and reaches the final N64 link. The remaining undefined symbols were `access()`, `getcwd()`, and `chdir()`. A target-local, read-only compatibility object now supplies those exact functions for the fixed `rom://rott` filesystem model.
 
 > **Revision 11 cross-build fix:** the latest MIPS build reached `rt_util.c` and failed on two signed-`char` calls to `isalpha()`. The N64 preparation step now casts both inputs to `unsigned char`, preserving strict warning-as-error behavior.
 
@@ -25,7 +27,7 @@ silent gameplay is stable.
 When the cross-build succeeds, `rott64.z64` should:
 
 1. require and detect the Expansion Pak;
-2. mount the embedded shareware files at `rom:/rott`;
+2. mount the embedded shareware files at `rom://rott`;
 3. start Taradino with a fixed N64 argument vector;
 4. use the real ROTT startup, title, menu, map, renderer, and game logic;
 5. render the original 320x200 indexed framebuffer centered in 320x240;
@@ -99,7 +101,7 @@ finished port.
 
 ### Revision 6 cross-build note
 
-The first real MIPS build reached Taradino compilation and stopped because the N64 C library rejects `<dirent.h>`. Revision 6 supplies a target-local compatibility header. Directory enumeration is intentionally empty; game data discovery remains the fixed `rom:/rott` path with direct file opens. This removes the exact compiler error without introducing a fake writable filesystem.
+The first real MIPS build reached Taradino compilation and stopped because the N64 C library rejects `<dirent.h>`. Revision 6 supplies a target-local compatibility header. Directory enumeration is intentionally empty; game data discovery remains the fixed `rom://rott` path with direct file opens. This removes the exact compiler error without introducing a fake writable filesystem.
 ## Current cross-build status
 
 Revision 11 compiled the full Taradino source list, the N64 platform layer, and the DragonFS image, then reached the final ELF link. The linker stopped only on missing `access()`, `getcwd()`, and `chdir()` symbols. Revision 12 supplies narrow read-only implementations for those exact calls. A successful link, ROM conversion, and boot are still unverified until the next Actions run.

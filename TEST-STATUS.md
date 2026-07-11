@@ -1,3 +1,7 @@
+## Runtime revision 13
+
+The first completed ROM exited back to the Android emulator list. Direct source inspection found the DragonFS root was wrong: `rom:/rott` instead of `rom://rott`. Revision 13 corrects all paths, verifies `HUNTBGIN.WAD` with a direct boot-time open, displays four early checkpoints, sets region/category metadata, and disables ELF compression for the next compatibility build.
+
 # Validation status
 
 ## Passed in this package
@@ -38,7 +42,7 @@ cross-compiler output is captured.
 
 ### Revision 6 cross-build note
 
-The first real MIPS build reached Taradino compilation and stopped because the N64 C library rejects `<dirent.h>`. Revision 6 supplies a target-local compatibility header. Directory enumeration is intentionally empty; game data discovery remains the fixed `rom:/rott` path with direct file opens. This removes the exact compiler error without introducing a fake writable filesystem.
+The first real MIPS build reached Taradino compilation and stopped because the N64 C library rejects `<dirent.h>`. Revision 6 supplies a target-local compatibility header. Directory enumeration is intentionally empty; game data discovery remains the fixed `rom://rott` path with direct file opens. This removes the exact compiler error without introducing a fake writable filesystem.
 ## Revision 7
 
 - Grounded failure: MIPS GCC emitted four `-Wmaybe-uninitialized` diagnostics while compiling `rt_build.c` and `rt_actor.c`; libdragon promoted them to errors.
@@ -76,6 +80,6 @@ The first real MIPS build reached Taradino compilation and stopped because the N
 ## Revision 12
 
 - Grounded failure: the full engine compiled and the final ELF link reported undefined references to `access`, `getcwd`, and `chdir`.
-- Change: add a read-only N64 POSIX compatibility object implementing only those three functions for the fixed `rom:/rott` data path.
+- Change: add a read-only N64 POSIX compatibility object implementing only those three functions for the fixed `rom://rott` data path.
 - Host runtime tests verify file-existence checks, read-only rejection, logical working-directory reporting, buffer bounds, and the no-op directory change.
 - The next Actions run will determine whether the ELF now links and whether a `.z64` is produced.

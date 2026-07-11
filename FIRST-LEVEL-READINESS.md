@@ -1,3 +1,7 @@
+## Runtime revision 13
+
+The first completed ROM exited back to the Android emulator list. Direct source inspection found the DragonFS root was wrong: `rom:/rott` instead of `rom://rott`. Revision 13 corrects all paths, verifies `HUNTBGIN.WAD` with a direct boot-time open, displays four early checkpoints, sets region/category metadata, and disables ELF compression for the next compatibility build.
+
 # First-level readiness assessment
 
 ## What is actually wired
@@ -6,7 +10,7 @@ The build imports every Taradino C source file, removes its two desktop music
 backends, and replaces these engine boundary files:
 
 - `modexlib.c`: fixed 320x200 indexed framebuffer and libdragon presentation;
-- `rt_datadir.c`: read-only `rom:/rott` lookup;
+- `rt_datadir.c`: read-only `rom://rott` lookup;
 - `fx_mixer.c`: silent sound-effect API;
 - `dukemusc.c`: silent music API;
 - `SDL.h` / `SDL_mixer.h`: narrow compatibility declarations.
@@ -68,4 +72,4 @@ without a real build and play test.
 
 ### Revision 6 cross-build note
 
-The first real MIPS build reached Taradino compilation and stopped because the N64 C library rejects `<dirent.h>`. Revision 6 supplies a target-local compatibility header. Directory enumeration is intentionally empty; game data discovery remains the fixed `rom:/rott` path with direct file opens. This removes the exact compiler error without introducing a fake writable filesystem.
+The first real MIPS build reached Taradino compilation and stopped because the N64 C library rejects `<dirent.h>`. Revision 6 supplies a target-local compatibility header. Directory enumeration is intentionally empty; game data discovery remains the fixed `rom://rott` path with direct file opens. This removes the exact compiler error without introducing a fake writable filesystem.

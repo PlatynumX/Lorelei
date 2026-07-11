@@ -14,7 +14,7 @@
 
 #ifdef __N64__
 
-#define ROTT64_LOGICAL_CWD "rom:/rott"
+#define ROTT64_LOGICAL_CWD "rom://rott"
 
 int access(const char *path, int mode)
 {
@@ -58,7 +58,7 @@ char *getcwd(char *buffer, size_t size)
 
 int chdir(const char *path)
 {
-    /* All game-data paths are resolved absolutely under rom:/rott. */
+    /* All game-data paths are resolved absolutely under rom://rott. */
     (void)path;
     return 0;
 }

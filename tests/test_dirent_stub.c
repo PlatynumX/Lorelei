@@ -2,7 +2,7 @@
 
 int main(void)
 {
-    DIR *directory = opendir("rom:/rott");
+    DIR *directory = opendir("rom://rott");
     if (directory != 0) {
         return 1;
     }

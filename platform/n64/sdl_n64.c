@@ -191,13 +191,13 @@ static char *copy_path(const char *path)
     return result;
 }
 
-char *SDL_GetBasePath(void) { return copy_path("rom:/rott/"); }
+char *SDL_GetBasePath(void) { return copy_path("rom://rott/"); }
 char *SDL_GetPrefPath(const char *org, const char *app)
 {
     (void)org;
     (void)app;
     /* Read-only target. No CONFIG.ROT is embedded, so Taradino uses defaults. */
-    return copy_path("rom:/rott/");
+    return copy_path("rom://rott/");
 }
 
 int SDL_ShowSimpleMessageBox(Uint32 flags, const char *title, const char *message, SDL_Window *window)

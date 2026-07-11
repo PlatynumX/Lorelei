@@ -1,10 +1,20 @@
 # ROTT64 change log
 
+## Runtime revision 13 — first emulator boot diagnosis
+
+- The first successfully linked ROM returned immediately to the Android emulator list.
+- Inspection of the built source found that every DragonFS path used `rom:/rott`; current libdragon mounts its in-ROM filesystem under `rom://`, so the game could not find `HUNTBGIN.WAD` even though it was embedded.
+- Corrected the data directory, SDL base/pref paths, POSIX compatibility path, tests, and preflight checks to `rom://rott`.
+- Added four visible boot checkpoints: entry into N64 `main()`, DragonFS mount, Expansion Pak detection, and direct opening of `rom://rott/HUNTBGIN.WAD`.
+- The temporary boot console is closed before Taradino initializes its 320x240 display.
+- Added conservative ROM metadata (`N` cartridge category and `E` region) and disabled ELF compression for this compatibility test so older Mupen64Plus Android cores do not also have to exercise libdragon's compressed-ELF boot path.
+- This revision is based on direct inspection of the uploaded `rott64.z64` and the source that produced it.
+
 ## Cross-build revision 12
 
 - Revision 11 compiled every Taradino and N64 platform object and reached the final linker stage.
 - The only unresolved symbols were `access`, `getcwd`, and `chdir`, which are declared by the N64 C library but not implemented.
-- Added a narrow read-only POSIX compatibility object: `access()` checks files through `fopen()`, `getcwd()` reports the logical `rom:/rott` data directory, and `chdir()` is a harmless no-op because all game-data paths are absolute.
+- Added a narrow read-only POSIX compatibility object: `access()` checks files through `fopen()`, `getcwd()` reports the logical `rom://rott` data directory, and `chdir()` is a harmless no-op because all game-data paths are absolute.
 - Added host runtime tests and preflight checks for all three symbols.
 - This revision is based directly on the uploaded revision-11 `n64-build.log`.
 
@@ -51,7 +61,7 @@
 ## Cross-build revision 6
 
 - Added an N64-local `dirent.h` compatibility shim because libdragon/newlib explicitly does not support POSIX directory streams.
-- The shim makes optional directory scans return no entries while the port continues using its fixed `rom:/rott` DragonFS path and direct `fopen()` lookups.
+- The shim makes optional directory scans return no entries while the port continues using its fixed `rom://rott` DragonFS path and direct `fopen()` lookups.
 - The engine preparation step now copies the shim into the generated Taradino tree so `<dirent.h>` resolves before the unsupported toolchain header.
 - Added preflight and host regression tests for the compatibility header.
 - This change is based on the first genuine MIPS cross-compiler error from revision 5: `sys/dirent.h: #error "<dirent.h> not supported"` while compiling `byteordr.c`.
@@ -96,7 +106,7 @@
 
 - Pivoted from the WAD-browser bootstrap to the full Taradino shareware engine.
 - Added an N64 `main(void)` startup and fixed built-in argument vector.
-- Added DragonFS `rom:/rott` data-directory replacement.
+- Added DragonFS `rom://rott` data-directory replacement.
 - Added fixed 320x200 indexed software-video presentation to 320x240 RGBA5551.
 - Added controller-generated keyboard events based on console ROTT controls.
 - Added silent effects and music backends for the first gameplay target.

@@ -73,7 +73,7 @@ CFLAGS += -std=gnu11 -O2 -G0 -ffast-math -fno-strict-aliasing
 CFLAGS += -Wno-error=maybe-uninitialized
 CFLAGS += -Igenerated/rott -Iplatform/n64
 CFLAGS += -DSHAREWARE=1 -D__N64__=1
-CFLAGS += -DDATADIR='"rom:/rott"'
+CFLAGS += -DDATADIR='"rom://rott"'
 CFLAGS += -DPACKAGE_STRING='"ROTT64 Shareware First-Level Candidate"'
 CFLAGS += -DPACKAGE_TARNAME='"rott64"'
 CFLAGS += -DNO_NETWORK=1
@@ -82,6 +82,15 @@ LDFLAGS += -lm
 all: preflight rott64.z64
 
 rott64.z64: N64_ROM_TITLE = "ROTT64 SHAREWARE"
+# Conservative emulator-facing metadata. The previous ROM left region and
+# category blank, which causes some older frontends to treat the image as an
+# invalid/unknown cartridge.
+rott64.z64: N64_ROM_REGION = E
+rott64.z64: N64_ROM_CATEGORY = N
+# Keep the first runtime test uncompressed. This removes the open IPL3 ELF
+# decompression path as a variable when testing on older Mupen64Plus Android
+# cores. It increases ROM size but does not change game code.
+rott64.z64: N64_ROM_ELFCOMPRESS = 0
 rott64.z64: $(BUILD_DIR)/rott64.elf $(BUILD_DIR)/rott64.dfs
 
 $(BUILD_DIR)/rott64.dfs: $(shell find filesystem -type f 2>/dev/null)

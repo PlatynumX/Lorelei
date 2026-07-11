@@ -179,12 +179,25 @@ def test_n64_posix_link_shims() -> None:
     assert "int access(" in source
     assert "char *getcwd(" in source
     assert "int chdir(" in source
-    assert 'ROTT64_LOGICAL_CWD "rom:/rott"' in source
+    assert 'ROTT64_LOGICAL_CWD "rom://rott"' in source
 
 def test_n64_warning_policy() -> None:
     makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
     assert "-Wno-error=maybe-uninitialized" in makefile
     assert "-Wno-error" not in makefile.replace("-Wno-error=maybe-uninitialized", "")
+
+def test_n64_runtime_boot_policy() -> None:
+    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    assert "-DDATADIR='\"rom://rott\"'" in makefile
+    assert "N64_ROM_REGION = E" in makefile
+    assert "N64_ROM_CATEGORY = N" in makefile
+    assert "N64_ROM_ELFCOMPRESS = 0" in makefile
+    platform = (ROOT / "platform/n64/n64_platform.c").read_text(encoding="utf-8")
+    assert 'fopen("rom://rott/HUNTBGIN.WAD", "rb")' in platform
+    assert "Stage 1/4: entered N64 main()" in platform
+    assert "Stage 4/4: shareware WAD found" in platform
+    for path in (ROOT / "platform/n64").glob("*.c"):
+        assert "rom:/rott" not in path.read_text(encoding="utf-8")
 
 def test_shareware_omits_foreign_config() -> None:
     with tempfile.TemporaryDirectory() as temporary:
@@ -209,5 +222,6 @@ if __name__ == "__main__":
     test_prepare_engine()
     test_n64_posix_link_shims()
     test_n64_warning_policy()
+    test_n64_runtime_boot_policy()
     test_shareware_omits_foreign_config()
     print("Taradino audit, import, shareware, and WAD inventory tests passed")

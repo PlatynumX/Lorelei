@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define ROTT64_DATA_DIR "rom:/rott"
+#define ROTT64_DATA_DIR "rom://rott"
 
 char *datadir;
 

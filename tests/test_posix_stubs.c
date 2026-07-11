@@ -23,7 +23,7 @@ int main(void)
     assert(errno == EROFS);
 
     assert(getcwd(cwd, sizeof(cwd)) == cwd);
-    assert(strcmp(cwd, "rom:/rott") == 0);
+    assert(strcmp(cwd, "rom://rott") == 0);
 
     errno = 0;
     assert(getcwd(too_small, sizeof(too_small)) == NULL);
