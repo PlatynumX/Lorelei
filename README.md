@@ -1,7 +1,7 @@
 
-## Complete registered soundtrack (R32)
+## Native sequenced soundtrack (R36)
 
-The GitHub Actions build extracts all 34 recognized MIDI music lumps from `filesystem/rott/full/DARKWAR.WAD`, renders them to mono 22050 Hz WAV, and converts them to streaming WAV64 assets for DragonFS. The generated lookup table also aliases any byte-different shareware MIDI lumps from `HUNTBGIN.WAD` to the same named rendered songs. This covers the 18 shareware songs plus 16 registered-only tracks.
+ROTT64 now plays the original Standard MIDI File lumps directly at runtime through a lightweight N64 sequencer/synthesizer. Shareware, the 34-track registered Dark War soundtrack, and compatible MIDI from custom content no longer require build-time WAV/WAV64 rendering. This sharply reduces ROM storage and removes the WAV64 streaming-loop path that previously asserted on hardware.
 
 # ROTT64 R31 - Bundled Data Selector Test
 
@@ -166,11 +166,9 @@ Expected hardware behavior: game/menu sound effects should play; music is still 
 Revision 20 stopped during preflight because the scanner interpreted the word `SDL_Mixer` in a Taradino source comment as an uncovered SDL symbol. Revision 21 corrects that scanner false positive without changing the sound-effects backend.
 
 
-## Revision 22: music milestone
+## Revision 36: native sequenced music
 
-ROTT64 now builds its music directly from the game WAD. GitHub Actions extracts the original Standard MIDI lumps, renders them offline with TiMidity/FreePats, and lets libdragon convert the resulting mono 22050 Hz WAV files to streaming WAV64/VADPCM assets. The N64 therefore does not run a MIDI synthesizer at runtime.
-
-Music uses its own mixer channel and supports looping, pause/resume, volume, and position seek/reporting. That position support is deliberately included now because original ROTT save data stores the current music position. The extraction tool already knows both the 18 shareware songs and all 34 registered-game song names, which gives us a direct path toward full-version support.
+ROTT64 now parses and plays Taradino's original MIDI lumps directly on N64. The lightweight synthesizer supports tempo changes, program-family timbres, percussion, channel volume/expression, sustain, pitch bend, pause/resume, looping, and song-position seek/reporting. The build still inventories all 34 registered Dark War tracks, but it no longer renders or embeds WAV64 soundtrack files.
 
 
 ## Save-system status
@@ -178,9 +176,6 @@ Music uses its own mixer channel and supports looping, pause/resume, volume, and
 Persistent saves are not enabled yet. See `SAVE-PORTING.md` for the N64 persistence design and implementation plan.
 
 
-### Revision 29 hardware test
+### Revision 36 hardware test
 
-This revision specifically replaces WAV64's internal loop mode with ROTT64's
-channel-level restart logic. Test menu/level music long enough to cross at least
-one complete track loop. The previous `wavpos == wav->wave.len -
-wav->wave.loop_len` assertion should no longer be reachable.
+This revision removes soundtrack WAV64 playback entirely. Test the Apogee/logo and menu music, several shareware and full-version levels, track looping, sound effects while music is active, and at least one custom content set. The first native synth pass intentionally uses compact N64-style procedural timbres rather than a large General MIDI sample bank.

@@ -40,7 +40,7 @@ reports:
 	@if [ -d vendor/rottds/source ]; then python3 tools/rottds_reference_report.py vendor/taradino/source/rott vendor/rottds/source --out build/reports; fi
 
 clean:
-	rm -rf build build-host rott64.z64 rott64.z64.sha256 rott64-diag.z64 rott64-diag.z64.sha256 filesystem/rott/music/*.wav64
+	rm -rf build build-host rott64.z64 rott64.z64.sha256 rott64-diag.z64 rott64-diag.z64.sha256
 
 distclean: clean
 	rm -rf generated/rott vendor/taradino/source vendor/rottds/source assets/music/*.mid assets/music/*.wav
@@ -65,8 +65,6 @@ PLATFORM_SOURCES := platform/n64/n64_platform.c platform/n64/n64_save.c platform
 ALL_SOURCES := $(ENGINE_SOURCES) $(PLATFORM_SOURCES)
 OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(ALL_SOURCES))
 DIAG_OBJS := $(BUILD_DIR)/platform/n64/bootdiag.o
-MUSIC_WAVS := $(wildcard assets/music/*.wav)
-MUSIC_WAV64 := $(patsubst assets/music/%.wav,filesystem/rott/music/%.wav64,$(MUSIC_WAVS))
 
 CFLAGS += -std=gnu11 -O2 -G0 -ffast-math -fno-strict-aliasing
 # Taradino's legacy optimized renderer/actor code triggers GCC's
@@ -111,12 +109,7 @@ rott64.z64: N64_ROM_REGIONFREE = true
 rott64.z64: N64_ROM_ELFCOMPRESS = 0
 rott64.z64: $(BUILD_DIR)/rott64.elf $(BUILD_DIR)/rott64.dfs
 
-filesystem/rott/music/%.wav64: assets/music/%.wav
-	@mkdir -p $(dir $@)
-	@echo " [MUSIC] $@"
-	@$(N64_AUDIOCONV) --wav-compress 1 -o filesystem/rott/music $<
-
-$(BUILD_DIR)/rott64.dfs: $(MUSIC_WAV64) $(shell find filesystem -type f 2>/dev/null)
+$(BUILD_DIR)/rott64.dfs: $(shell find filesystem -type f 2>/dev/null)
 
 $(BUILD_DIR)/rott64.elf: $(OBJS)
 

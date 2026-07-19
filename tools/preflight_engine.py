@@ -16,21 +16,14 @@ def main()->int:
         failures.append("N64 data path")
     music=(a.engine/"dukemusc.c").read_text(errors="replace")
     for needle, label in (
-        ("wav64_open", "N64 WAV64 music backend"),
+        ("load_sequence", "native Standard MIDI parser"),
+        ("midi_wave_read", "native MIDI synthesizer waveform"),
         ("MUSIC_SetSongTime", "music seek support"),
         ("MUSIC_GetSongPosition", "music position support"),
         ("ROTT64_MUSIC_CHANNEL", "reserved N64 music mixer channel"),
     ):
         if needle not in music:
             failures.append(label)
-    music_map_path=a.platform/"n64_music_map_generated.h"
-    if not music_map_path.is_file():
-        failures.append("generated N64 music map")
-    else:
-        music_map=music_map_path.read_text(errors="replace")
-        match=re.search(r"rott64_music_map_count\s*=\s*(\d+)u", music_map)
-        if not match or int(match.group(1)) < 34:
-            failures.append("complete Dark War music map (34 tracks)")
 
     fx=(a.engine/"fx_mixer.c").read_text(errors="replace")
     for needle, label in (

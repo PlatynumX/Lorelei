@@ -142,7 +142,7 @@ def test_prepare_engine() -> None:
         assert "Mix_PlayChannelTimed" in fx
         assert "Mix_SetPanning" in fx
         music = (output / "dukemusc.c").read_text()
-        assert "wav64_open" in music
+        assert "load_sequence" in music
         assert "MUSIC_SetSongTime" in music
         assert (output / "dirent.h").is_file()
         dirent = (output / "dirent.h").read_text()
@@ -268,17 +268,17 @@ def test_n64_audio_policy() -> None:
     assert 'shutil.copy2(platform/"fx_silent.c", output/"fx_mixer.c")' not in prepare
     assert "NoSound = false;" in prepare
     assert "NoSound = true;" not in prepare
-    assert 'shutil.copy2(platform/"music_wav64.c", output/"dukemusc.c")' in prepare
+    assert 'shutil.copy2(platform/"music_midi.c", output/"dukemusc.c")' in prepare
     assert "N64 sound effects enabled" in preflight
     assert '"SDL_Mixer"' in preflight
     assert "ignored_symbols" in preflight
-    music = (ROOT / "platform/n64/music_wav64.c").read_text(encoding="utf-8")
+    music = (ROOT / "platform/n64/music_midi.c").read_text(encoding="utf-8")
     makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
     assert "ROTT64_MIXER_CHANNELS 9" in (ROOT / "platform/n64/rott64_audio.h").read_text()
-    assert "wav64_open" in music
+    assert "load_sequence" in music
     assert "mixer_ch_get_pos" in music
     assert "mixer_ch_set_pos" in music
-    assert "--wav-compress 1" in makefile
+    assert "--wav-compress 1" not in makefile
 
 
 def test_shareware_omits_foreign_config() -> None:

@@ -1,3 +1,14 @@
+# ROTT64 changelog
+
+## Revision 36 - native sequenced MIDI music
+
+- Replaced the build-time MIDI -> WAV -> WAV64 soundtrack pipeline with a native Standard MIDI File parser and lightweight real-time sequencer/synthesizer.
+- Taradino now passes original MIDI lumps directly to the N64 music backend, so shareware, registered Dark War, and compatible custom MIDI can play without pre-rendered soundtrack assets.
+- Removed WAV64 soundtrack dependencies from the ROM build, eliminating the previous streaming-loop assertion path and substantially reducing soundtrack storage overhead.
+- Added basic General MIDI program-family timbres, percussion/noise, channel volume/expression, sustain, pitch bend, tempo changes, pause/resume, seek, and loop restart support.
+- Added a hard CI check rejecting final ROMs larger than 78 MiB.
+- Retains the R35 full/custom selector, SD save path, rumble support, and prior audio fixes.
+
 # ROTT64 revision 35 - prepare_engine fixture guard
 
 - Fixes the R34 host-validation regression by applying the generated `rt_actor.c` ABI format patch only when `rt_actor.c` exists in the prepared source tree.
