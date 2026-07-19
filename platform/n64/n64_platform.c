@@ -73,7 +73,7 @@ void n64_platform_init(void)
         n64_platform_fatal("Stage 4 failed: HUNTBGIN.WAD not found\nExpected rom://rott/HUNTBGIN.WAD");
     fclose(wad);
 
-    boot_display_show("Stage 4/4: WAD found\nStarting Taradino...");
+    boot_display_show("Stage 4/4: shareware WAD found\nStarting Taradino...");
     wait_ms(1500);
     boot_display_close();
 #endif

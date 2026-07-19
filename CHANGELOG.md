@@ -1,3 +1,9 @@
+# Revision 17 — Host validation fix
+
+- Fixes the revision 16 checkpoint/test string mismatch that caused `make test-host` to fail before any N64 build began.
+- The runtime checkpoint now reads `Stage 4/4: shareware WAD found`, matching the regression test.
+- No N64 runtime behavior is otherwise changed from revision 16.
+
 # Revision 16 — Mupen runtime isolation
 
 - Adds `rott64-diag.z64`, a minimal staged libdragon boot diagnostic that does not link Taradino.

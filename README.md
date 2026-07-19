@@ -122,3 +122,8 @@ last stage visible before an emulator crash or return to the ROM list. If the
 diagnostic reaches Stage 6 and remains there, the libdragon runtime, Expansion
 Pak detection, DragonFS mount, and WAD access all work in that emulator and the
 remaining crash is inside Taradino startup/game initialization.
+
+
+## Revision 17 build fix
+
+Revision 16 did not reach the N64 cross-compile because a host regression test expected a slightly different Stage 4 checkpoint string. Revision 17 fixes only that mismatch; the two-ROM Mupen diagnostic strategy remains unchanged.
