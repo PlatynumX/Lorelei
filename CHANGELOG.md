@@ -1,3 +1,26 @@
+# ROTT64 changelog
+
+## Revision 30 - native game save/load on flashcart SD
+
+- Routes Taradino's writable preference/save root to `sd:/`, producing native `sd://rottgam?.rot` save files.
+- Preserves Taradino's existing save serializer, slot names, Save Game menu, Load Game menu, and save-file format instead of inventing an N64-specific game-state serializer.
+- Keeps immutable game data under `rom://rott`; only writable save output moves to SD.
+- N64 save-slot scanning now probes exact native save filenames directly, avoiding the DragonFS-only case-insensitive directory shim.
+- Allows POSIX write-access checks for the `sd:/` filesystem while keeping DragonFS read-only.
+- Retains revision 29's manual music-loop restart fix, rumble support, EEPROM persistence test, and homebrew header metadata.
+- Intended hardware test target: SummerCart64 (and other libdragon-supported flashcarts exposing the `sd://` filesystem).
+
+# Revision 29 - hardware WAV64 loop crash fix + full-save integration groundwork
+
+- Disabled libdragon WAV64 internal looping for streamed music.
+- Added channel-level music restart from the normal non-blocking mixer pump,
+  avoiding the hardware assertion in `wav64form_waveform_read()` at loop wrap.
+- Preserves working R24 music startup, R23 near-field normalization, R26 rumble,
+  and R28 EEPROM/header behavior.
+- Expanded save-porting plan around Taradino's native `rottgam?.rot` serializer.
+  EEPROM remains a persistence probe; full save slots will move to a larger
+  cartridge-backed store after exact native slot-size measurement.
+
 # Revision 28
 
 - Fixed the main ROM Advanced Homebrew Header to declare the 16-Kbit EEPROM save hardware used by the revision-27 persistence backend.

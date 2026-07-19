@@ -213,8 +213,9 @@ char *SDL_GetPrefPath(const char *org, const char *app)
 {
     (void)org;
     (void)app;
-    /* Read-only target. No CONFIG.ROT is embedded, so Taradino uses defaults. */
-    return copy_path("rom://rott/");
+    /* Writable preference/save root. Taradino keeps its native ROTTGAM?.ROT
+       save files here; the N64 config path still uses compiled defaults. */
+    return copy_path("sd:/");
 }
 
 int SDL_ShowSimpleMessageBox(Uint32 flags, const char *title, const char *message, SDL_Window *window)

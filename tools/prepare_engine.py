@@ -127,6 +127,23 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
         if count != expected:
             raise RuntimeError(f"{label}: expected {expected} matches, found {count}")
         menu_text = menu_text.replace(old, new)
+    # On N64 the save root is the writable flashcart SD filesystem. Avoid the
+    # fixed DragonFS-only directory enumeration shim in M_FileCaseExists() and
+    # probe the exact native ROTT save filename directly. Taradino itself writes
+    # these exact lower-case names, so no case-folding search is required.
+    save_probe = "file = M_FileCaseExists(path);"
+    save_probe_replacement = (
+        "#ifdef __N64__\n"
+        "        file = (access(path, F_OK) == 0) ? strdup(path) : NULL;\n"
+        "#else\n"
+        "        file = M_FileCaseExists(path);\n"
+        "#endif"
+    )
+    count = menu_text.count(save_probe)
+    if count > 1:
+        raise RuntimeError(f"rt_menu save probe: expected at most 1 match, found {count}")
+    if count == 1:
+        menu_text = menu_text.replace(save_probe, save_probe_replacement, 1)
     menu_path.write_text(menu_text, encoding="utf-8")
 
     # Apply the same signed-char ctype fix to the command-line helpers.

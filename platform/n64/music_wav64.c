@@ -190,7 +190,12 @@ int MUSIC_PlaySong(unsigned char *song, int size, int loopflag)
     music_loopflag = loopflag;
 #ifdef __N64__
     wav64_open(&current_wav, track->path);
-    wav64_set_loop(&current_wav, loopflag == MUSIC_LoopSong);
+    /* Do not enable WAV64 internal looping here. On real hardware, the
+     * VADPCM loop state generated for some rendered tracks can reach
+     * libdragon with a loop boundary that trips wav64form_waveform_read()
+     * assertions. ROTT64 loops at the channel level instead: when the
+     * one-shot stream ends, rott64_music_pump() starts it again from zero. */
+    wav64_set_loop(&current_wav, false);
     wav64_play(&current_wav, ROTT64_MUSIC_CHANNEL);
 #endif
     current_open = 1;
@@ -242,6 +247,22 @@ void MUSIC_GetSongPosition(songposition *position)
     if (frequency > 0.0f && samples > 0.0f) {
         position->milliseconds = (unsigned long)((samples * 1000.0f) / frequency);
     }
+}
+
+
+void rott64_music_pump(void)
+{
+#ifdef __N64__
+    if (!current_open || current_paused || music_loopflag != MUSIC_LoopSong)
+        return;
+
+    /* Channel-level looping avoids the WAV64 internal loop assertion seen
+     * on hardware while preserving Taradino's MUSIC_LoopSong semantics. */
+    if (!mixer_ch_playing(ROTT64_MUSIC_CHANNEL)) {
+        wav64_play(&current_wav, ROTT64_MUSIC_CHANNEL);
+        apply_music_volume();
+    }
+#endif
 }
 
 int MUSIC_FadeVolume(int tovolume, int milliseconds)

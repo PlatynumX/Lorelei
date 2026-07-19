@@ -24,6 +24,10 @@ ROTTDS 0.7: fixed low-resolution software rendering, console key emulation,
 read-only packaged data, reduced optional subsystems, and audio postponed until
 silent gameplay is stable.
 
+## Revision 30 save support
+
+On N64 hardware, Taradino's native game saves are written to the flashcart SD filesystem as `sd://rottgam?.rot`. This preserves the original Save Game/Load Game serializer and supports normal-sized ROTT save files without squeezing them into EEPROM or a 32 KiB Controller Pak.
+
 ## Intended result
 
 When the cross-build succeeds, `rott64.z64` should:
@@ -161,3 +165,11 @@ Music uses its own mixer channel and supports looping, pause/resume, volume, and
 ## Save-system status
 
 Persistent saves are not enabled yet. See `SAVE-PORTING.md` for the N64 persistence design and implementation plan.
+
+
+### Revision 29 hardware test
+
+This revision specifically replaces WAV64's internal loop mode with ROTT64's
+channel-level restart logic. Test menu/level music long enough to cross at least
+one complete track loop. The previous `wavpos == wav->wave.len -
+wav->wave.loop_len` assertion should no longer be reachable.

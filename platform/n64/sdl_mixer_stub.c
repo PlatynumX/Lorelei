@@ -330,6 +330,10 @@ void rott64_mixer_pump(void)
         audio_write_end();
     }
 
+    /* Restart looping music only after libdragon has naturally finished the
+       one-shot WAV64 stream. This deliberately avoids wav64_set_loop(). */
+    rott64_music_pump();
+
     for (int i = 0; i < channel_count; ++i) {
         if (channel_chunk[i] != NULL && !mixer_ch_playing(i)) {
             channel_chunk[i] = NULL;

@@ -7,6 +7,7 @@
 #include <string.h>
 
 #define ROTT64_DATA_DIR "rom://rott"
+#define ROTT64_SAVE_DIR "sd:/"
 
 char *datadir;
 
@@ -51,8 +52,10 @@ static char *make_path(const char *name, int uppercase)
 
 char *GetPrefDir(void)
 {
-    /* The first-level candidate is intentionally read-only. */
-    return duplicate_string(ROTT64_DATA_DIR);
+    /* Keep game data in DragonFS, but put Taradino's native save files on the
+       flashcart SD filesystem.  M_StringJoin() adds a slash, so "sd:/"
+       becomes the canonical "sd://rottgam?.rot" path. */
+    return duplicate_string(ROTT64_SAVE_DIR);
 }
 
 char *FindFileByName(const char *name)
