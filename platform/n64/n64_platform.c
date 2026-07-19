@@ -12,6 +12,10 @@ static rott64_data_mode_t selected_data_mode = ROTT64_DATA_SHAREWARE;
 static rott64_filter_mode_t selected_filter_mode = ROTT64_FILTER_ENHANCED;
 static rott64_aspect_mode_t selected_aspect_mode = ROTT64_ASPECT_ORIGINAL;
 static int selected_brightness = 0;
+static rott64_control_mode_t selected_control_mode = ROTT64_CONTROL_MOUSELOOK;
+static int selected_look_sensitivity = 5;
+static int selected_look_deadzone = 18;
+static bool selected_invert_y = false;
 
 typedef struct {
     uint32_t magic;
@@ -19,10 +23,14 @@ typedef struct {
     uint8_t filter_mode;
     uint8_t aspect_mode;
     int8_t brightness;
+    uint8_t control_mode;
+    uint8_t look_sensitivity;
+    uint8_t look_deadzone;
+    uint8_t invert_y;
 } rott64_video_settings_t;
 
 #define ROTT64_VIDEO_SETTINGS_MAGIC 0x56363452u /* V64R */
-#define ROTT64_VIDEO_SETTINGS_VERSION 1u
+#define ROTT64_VIDEO_SETTINGS_VERSION 2u
 
 #ifdef __N64__
 static unsigned selected_custom_index;
@@ -73,6 +81,13 @@ static void load_video_settings(void)
         selected_aspect_mode = (rott64_aspect_mode_t)settings.aspect_mode;
     if (settings.brightness >= -2 && settings.brightness <= 2)
         selected_brightness = settings.brightness;
+    if (settings.control_mode <= ROTT64_CONTROL_MOUSELOOK)
+        selected_control_mode = (rott64_control_mode_t)settings.control_mode;
+    if (settings.look_sensitivity >= 1 && settings.look_sensitivity <= 10)
+        selected_look_sensitivity = settings.look_sensitivity;
+    if (settings.look_deadzone >= 4 && settings.look_deadzone <= 40)
+        selected_look_deadzone = settings.look_deadzone;
+    selected_invert_y = settings.invert_y != 0;
 }
 
 static void save_video_settings(void)
@@ -83,6 +98,10 @@ static void save_video_settings(void)
     settings.filter_mode = (uint8_t)selected_filter_mode;
     settings.aspect_mode = (uint8_t)selected_aspect_mode;
     settings.brightness = (int8_t)selected_brightness;
+    settings.control_mode = (uint8_t)selected_control_mode;
+    settings.look_sensitivity = (uint8_t)selected_look_sensitivity;
+    settings.look_deadzone = (uint8_t)selected_look_deadzone;
+    settings.invert_y = selected_invert_y ? 1u : 0u;
     (void)n64_save_write_payload(&settings, sizeof(settings));
 }
 
@@ -136,6 +155,57 @@ static void boot_video_options(void)
     }
 }
 
+
+static void boot_control_options(void)
+{
+    unsigned row = 0u;
+    for (;;) {
+        char message[384];
+        joypad_buttons_t pressed;
+        snprintf(message, sizeof(message),
+            "N64 CONTROL OPTIONS\n"
+            "%s Mode: %s\n"
+            "%s Look sensitivity: %d\n"
+            "%s Stick deadzone: %d\n"
+            "%s Invert Y: %s\n"
+            "%s Layout: Z Fire / A Use / B Run / L-R Strafe\n"
+            "%s Save & Back\n"
+            "Analog Mouselook sends relative mouse input to ROTT.\n"
+            "Up/Down select  Left/Right change  A choose  B back",
+            row==0?">":" ", selected_control_mode==ROTT64_CONTROL_MOUSELOOK?"ANALOG MOUSELOOK":"CLASSIC DIGITAL",
+            row==1?">":" ", selected_look_sensitivity,
+            row==2?">":" ", selected_look_deadzone,
+            row==3?">":" ", selected_invert_y?"ON":"OFF",
+            row==4?">":" ",
+            row==5?">":" ");
+        boot_display_show(message);
+        wait_ms(90);
+        joypad_poll();
+        pressed = joypad_get_buttons_pressed(JOYPAD_PORT_1);
+        if (pressed.d_up) row = (row + 5u) % 6u;
+        if (pressed.d_down) row = (row + 1u) % 6u;
+        if (row==0 && (pressed.d_left||pressed.d_right||pressed.a))
+            selected_control_mode = selected_control_mode==ROTT64_CONTROL_MOUSELOOK?ROTT64_CONTROL_CLASSIC:ROTT64_CONTROL_MOUSELOOK;
+        else if (row==1 && (pressed.d_left||pressed.d_right)) {
+            selected_look_sensitivity += pressed.d_right?1:-1;
+            if (selected_look_sensitivity>10) selected_look_sensitivity=1;
+            if (selected_look_sensitivity<1) selected_look_sensitivity=10;
+        } else if (row==2 && (pressed.d_left||pressed.d_right)) {
+            selected_look_deadzone += pressed.d_right?2:-2;
+            if (selected_look_deadzone>40) selected_look_deadzone=4;
+            if (selected_look_deadzone<4) selected_look_deadzone=40;
+        } else if (row==3 && (pressed.d_left||pressed.d_right||pressed.a))
+            selected_invert_y = !selected_invert_y;
+        else if (row==4 && pressed.a) {
+            /* R39 exposes the current FPS layout here; arbitrary per-action
+               capture is reserved for the next UI pass. */
+        } else if (row==5 && pressed.a) {
+            save_video_settings(); return;
+        }
+        if (pressed.b) { save_video_settings(); return; }
+    }
+}
+
 static void boot_data_selector(void)
 {
     unsigned choice = 0u;
@@ -146,20 +216,25 @@ static void boot_data_selector(void)
             const char *label =
                 choice == 0u ? "SHAREWARE" :
                 choice == 1u ? "FULL DARK WAR" :
-                choice == 2u ? "CUSTOM LEVELS" : "VIDEO OPTIONS";
+                choice == 2u ? "CUSTOM LEVELS" :
+                choice == 3u ? "VIDEO OPTIONS" : "CONTROLS";
             snprintf(message, sizeof(message),
                 "ROTT64 STARTUP\nChoose: %s\nD-Pad Up/Down: change   A/Start: select", label);
             boot_display_show(message);
             wait_ms(90);
             joypad_poll();
             pressed = joypad_get_buttons_pressed(JOYPAD_PORT_1);
-            if (pressed.d_up) choice = (choice + 3u) % 4u;
-            if (pressed.d_down) choice = (choice + 1u) % 4u;
+            if (pressed.d_up) choice = (choice + 4u) % 5u;
+            if (pressed.d_down) choice = (choice + 1u) % 5u;
             if (pressed.a || pressed.start) break;
         }
 
         if (choice == 3u) {
             boot_video_options();
+            continue;
+        }
+        if (choice == 4u) {
+            boot_control_options();
             continue;
         }
 
@@ -270,6 +345,10 @@ const char *n64_platform_custom_content(void)
 rott64_filter_mode_t n64_platform_filter_mode(void) { return selected_filter_mode; }
 rott64_aspect_mode_t n64_platform_aspect_mode(void) { return selected_aspect_mode; }
 int n64_platform_brightness(void) { return selected_brightness; }
+rott64_control_mode_t n64_platform_control_mode(void) { return selected_control_mode; }
+int n64_platform_look_sensitivity(void) { return selected_look_sensitivity; }
+int n64_platform_look_deadzone(void) { return selected_look_deadzone; }
+bool n64_platform_invert_y(void) { return selected_invert_y; }
 
 void n64_platform_fatal(const char *message)
 {

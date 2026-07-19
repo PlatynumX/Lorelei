@@ -36,4 +36,14 @@ rott64_filter_mode_t n64_platform_filter_mode(void);
 rott64_aspect_mode_t n64_platform_aspect_mode(void);
 int n64_platform_brightness(void);
 
+typedef enum {
+    ROTT64_CONTROL_CLASSIC = 0,
+    ROTT64_CONTROL_MOUSELOOK = 1
+} rott64_control_mode_t;
+
+rott64_control_mode_t n64_platform_control_mode(void);
+int n64_platform_look_sensitivity(void);
+int n64_platform_look_deadzone(void);
+bool n64_platform_invert_y(void);
+
 #endif

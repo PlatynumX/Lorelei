@@ -107,7 +107,7 @@ static void poll_n64_controller(void)
 {
     rott64_mixer_pump();
 #ifdef __N64__
-    const int deadzone = 24;
+    const int deadzone = n64_platform_look_deadzone();
     joypad_inputs_t input;
     joypad_buttons_t buttons;
     joypad_buttons_t pressed;
@@ -130,12 +130,27 @@ static void poll_n64_controller(void)
         next_auto_fire_rumble_ms = n64_platform_ticks_ms() + 85u;
     }
 
-    /* Analog movement remains available; C-buttons provide the classic
-       N64 FPS digital movement cluster. */
-    update_binding(0, buttons.c_up || input.stick_y > deadzone);
-    update_binding(1, buttons.c_down || input.stick_y < -deadzone);
-    update_binding(2, buttons.c_left || input.stick_x < -deadzone);
-    update_binding(3, buttons.c_right || input.stick_x > deadzone);
+    /* C-buttons are always the digital movement cluster. In mouselook
+       mode the analog stick feeds SDL relative-mouse deltas, allowing
+       Taradino's existing mouse-turn path to provide smooth turning. */
+    if (n64_platform_control_mode() == ROTT64_CONTROL_MOUSELOOK) {
+        int sx = input.stick_x;
+        int sy = input.stick_y;
+        int sensitivity = n64_platform_look_sensitivity();
+        if (sx > -deadzone && sx < deadzone) sx = 0;
+        if (sy > -deadzone && sy < deadzone) sy = 0;
+        relative_x += (sx * sensitivity) / 20;
+        relative_y += ((n64_platform_invert_y() ? sy : -sy) * sensitivity) / 20;
+        update_binding(0, buttons.c_up);
+        update_binding(1, buttons.c_down);
+        update_binding(2, buttons.c_left);
+        update_binding(3, buttons.c_right);
+    } else {
+        update_binding(0, buttons.c_up || input.stick_y > deadzone);
+        update_binding(1, buttons.c_down || input.stick_y < -deadzone);
+        update_binding(2, buttons.c_left || input.stick_x < -deadzone);
+        update_binding(3, buttons.c_right || input.stick_x > deadzone);
+    }
     update_binding(4, buttons.z);          /* fire (Ctrl) */
     update_binding(5, buttons.d_up);       /* menu confirm / swap weapon (Enter) */
     update_binding(6, buttons.b);          /* run (Shift) */

@@ -197,3 +197,12 @@ The ROTT64 startup selector now includes **VIDEO OPTIONS**:
 
 These N64-specific settings are persisted through the existing EEPROM settings record.
 ROTT's original in-game Screen Size / HUD view-size controls remain available and are not replaced.
+
+
+## R39 controls
+
+The startup selector now includes **CONTROLS**. `Analog Mouselook` converts the N64
+analog stick into SDL relative-mouse motion consumed by Taradino's existing mouse
+input path. Sensitivity, deadzone, invert-Y and control mode persist in EEPROM.
+`Classic Digital` retains the previous stick-to-key behavior. The C-buttons remain
+the movement cluster in Analog Mouselook mode.

@@ -1,3 +1,13 @@
+# ROTT64 Revision 39
+
+- Adds persistent Controls menu to the startup selector.
+- Adds Analog Mouselook mode: N64 analog stick feeds Taradino's existing SDL relative-mouse path for smooth turning.
+- Keeps Classic Digital mode.
+- Adds persistent look sensitivity (1-10), analog deadzone (4-40), and invert-Y option.
+- C-buttons remain digital movement while analog stick controls mouse-style turning in mouselook mode.
+- Current FPS action layout remains Z Fire, A Use, B Run, L/R Strafe, Start Menu, D-pad weapon/menu actions.
+- Keeps R38 video options, native sequenced music, SD saves, rumble, full/custom content, and 78 MiB cap.
+
 # ROTT64 Revision 38
 
 - Adds persistent N64 Video Options to the startup selector.
