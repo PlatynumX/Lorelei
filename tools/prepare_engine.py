@@ -180,16 +180,17 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
     # mismatch under -Werror=format. Patch the generated engine source at
     # preparation time so every clean build receives the ABI-correct format.
     actor_path = output / "rt_actor.c"
-    actor_text = actor_path.read_text(encoding="utf-8", errors="strict")
-    actor_text = replace_regex_once(
-        actor_text,
-        r'SoftError\("\\n follower %d temp1 set to %4x, temp2 set to %4x",\s*count,\s*temp->x,\s*temp->y\);',
-        'SoftError("\\n follower %d temp1 set to %4lx, temp2 set to %4lx",\n'
-        '                                  count, (unsigned long)temp->x,\n'
-        '                                  (unsigned long)temp->y);',
-        "rt_actor fixed-width follower debug format",
-    )
-    actor_path.write_text(actor_text, encoding="utf-8")
+    if actor_path.exists():
+        actor_text = actor_path.read_text(encoding="utf-8", errors="strict")
+        actor_text = replace_regex_once(
+            actor_text,
+            r'SoftError\("\\n follower %d temp1 set to %4x, temp2 set to %4x",\s*count,\s*temp->x,\s*temp->y\);',
+            'SoftError("\\n follower %d temp1 set to %4lx, temp2 set to %4lx",\n'
+            '                                  count, (unsigned long)temp->x,\n'
+            '                                  (unsigned long)temp->y);',
+            "rt_actor fixed-width follower debug format",
+        )
+        actor_path.write_text(actor_text, encoding="utf-8")
 
     # The original text editors use strcpy() to shift the remainder of a
     # string left after Backspace/Delete. Those source and destination ranges

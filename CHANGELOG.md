@@ -1,3 +1,9 @@
+# ROTT64 revision 35 - prepare_engine fixture guard
+
+- Fixes the R34 host-validation regression by applying the generated `rt_actor.c` ABI format patch only when `rt_actor.c` exists in the prepared source tree.
+- Preserves the real N64 cross-build fix while allowing the intentionally minimal `prepare_engine.py` host-test fixture to pass.
+- No runtime feature changes from R34/R33.
+
 # ROTT64 revision 33 - host validation fix
 
 - Fixes the R32 `-Werror=unused-variable` host-validation failure by declaring `selected_custom_index` only for N64 builds, where the custom-content selector actually uses it.
