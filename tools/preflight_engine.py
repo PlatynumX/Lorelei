@@ -70,7 +70,11 @@ def main()->int:
         text=f.read_text(errors="replace")
         symbols.update(re.findall(r"\b(?:SDL|Mix)_[A-Za-z0-9_]+\b",text))
     declarations=(a.engine/"SDL.h").read_text()+"\n"+(a.engine/"SDL_mixer.h").read_text()+"\n"+(a.platform/"sdl_n64.c").read_text()+"\n"+(a.platform/"sdl_mixer_stub.c").read_text()
-    uncovered=sorted(s for s in symbols if s not in declarations and s not in {"SDL_VERSION_ATLEAST"})
+    # `SDL_Mixer` appears in an upstream Taradino comment ("let SDL_Mixer do
+    # the actual sound mixing"). It is a project/library name, not an SDL symbol
+    # that must be implemented by the N64 compatibility layer.
+    ignored_symbols={"SDL_VERSION_ATLEAST","SDL_Mixer"}
+    uncovered=sorted(s for s in symbols if s not in declarations and s not in ignored_symbols)
     if failures: print("failed engine patches: "+", ".join(failures),file=sys.stderr)
     if uncovered: print("uncovered SDL symbols:\n  "+"\n  ".join(uncovered),file=sys.stderr)
     if failures or uncovered: return 1

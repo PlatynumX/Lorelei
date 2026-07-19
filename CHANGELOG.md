@@ -1,3 +1,11 @@
+# Revision 21 — Audio preflight false-positive fix
+
+- Fixes `Run engine preflight` failing with `uncovered SDL symbols: SDL_Mixer`.
+- `SDL_Mixer` is only text in an upstream Taradino comment, not a callable SDL symbol.
+- Adds `SDL_Mixer` to the preflight scanner's explicit non-symbol ignore set.
+- Adds a regression check for this exact false positive.
+- The revision 20 libdragon sound-effects implementation is otherwise unchanged.
+
 # Revision 20 — First real N64 sound-effects build
 
 - Keeps revision 19 as the proven real-hardware boot baseline.

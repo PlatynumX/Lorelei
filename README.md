@@ -144,3 +144,8 @@ GitHub Actions now invokes shell scripts with `bash` explicitly. This avoids exi
 This revision enables ROTT sound effects on top of the proven real-hardware booting branch. Taradino's original FX layer chooses sounds and applies game panning/volume; the local SDL_mixer bridge decodes the shareware Creative VOC lumps and feeds them to libdragon's mixer.
 
 Expected hardware behavior: game/menu sound effects should play; music is still intentionally silent. Eight simultaneous FX channels are available. The one VOC using repeat markers currently plays a single pass.
+
+
+## Revision 21 audio-build fix
+
+Revision 20 stopped during preflight because the scanner interpreted the word `SDL_Mixer` in a Taradino source comment as an uncovered SDL symbol. Revision 21 corrects that scanner false positive without changing the sound-effects backend.

@@ -237,6 +237,8 @@ def test_n64_audio_policy() -> None:
     assert "NoSound = true;" not in prepare
     assert 'shutil.copy2(platform/"music_silent.c", output/"dukemusc.c")' in prepare
     assert "N64 sound effects enabled" in preflight
+    assert '"SDL_Mixer"' in preflight
+    assert "ignored_symbols" in preflight
 
 
 def test_shareware_omits_foreign_config() -> None:
