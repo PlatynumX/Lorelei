@@ -298,3 +298,9 @@ NOTE: Full/custom mode is the first hardware integration pass and requires testi
 ## Milestone 0
 
 - Added the libdragon ROM/data bootstrap and endian-safe WAD directory browser.
+
+## Revision 34
+
+- Fixed the N64 cross-build failure in `rt_actor.c` by patching Taradino's generated `T_SnakePath` debug format to use `%lx` with explicit `unsigned long` casts for `fixed` coordinates.
+- Applies the fix in `tools/prepare_engine.py`, so clean GitHub Actions builds retain it when regenerating the engine tree.
+- No gameplay/content changes from R33.
