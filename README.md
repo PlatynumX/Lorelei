@@ -132,3 +132,8 @@ Revision 16 did not reach the N64 cross-compile because a host regression test e
 ## Revision 18 hardware finding
 
 A real N64 successfully entered the libdragon runtime and crash inspector. The first hardware failure was not Taradino: `display_init()` rejected `FILTERS_DISABLED` at 320x240/16bpp. Revision 18 uses `FILTERS_RESAMPLE` for every 320x240 display initialization path.
+
+
+## Revision 19 Android/GitHub upload fix
+
+GitHub Actions now invokes shell scripts with `bash` explicitly. This avoids exit code 126 (`Permission denied`) when executable permission bits are lost while moving the repository through ZIP files and Android storage.

@@ -1,3 +1,9 @@
+# Revision 19 — GitHub shell permission fix
+
+- Fixes GitHub Actions failing at `Fetch shareware episode` with exit code 126 / `Permission denied`.
+- Invokes repository shell scripts through `bash` explicitly so ZIP/Android uploads do not depend on executable permission bits being preserved.
+- Keeps all revision 18 real-hardware display fixes unchanged.
+
 # Revision 18 — Real-hardware VI filter fix
 
 - Real N64 hardware booted the diagnostic ROM and entered libdragon's crash inspector.

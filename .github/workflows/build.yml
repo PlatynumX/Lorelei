@@ -25,14 +25,14 @@ jobs:
         run: make test-host
 
       - name: Fetch shareware episode
-        run: tools/fetch_shareware.sh
+        run: bash tools/fetch_shareware.sh
 
       - name: Fetch pinned Taradino source
-        run: tools/fetch_taradino.sh
+        run: bash tools/fetch_taradino.sh
 
       - name: Fetch ROTTDS reference source
         continue-on-error: true
-        run: tools/fetch_rottds.sh
+        run: bash tools/fetch_rottds.sh
 
       - name: Prepare N64 engine tree
         shell: bash
