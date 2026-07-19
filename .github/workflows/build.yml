@@ -91,11 +91,19 @@ jobs:
           build_status=${PIPESTATUS[0]}
           set -e
 
+          if python3 -c 'from pathlib import Path; p = Path("rott64-diag.z64"); data = p.read_bytes() if p.is_file() else b""; ok = len(data) >= 4096 and data[:4] == bytes.fromhex("80371240"); print(f"Validated {p} ({len(data)} bytes)") if ok else None; raise SystemExit(0 if ok else 1)'
+          then
+            sha256sum rott64-diag.z64 | tee rott64-diag.z64.sha256
+            echo "diag_built=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "diag_built=false" >> "$GITHUB_OUTPUT"
+          fi
+
           if python3 -c 'from pathlib import Path; p = Path("rott64.z64"); data = p.read_bytes() if p.is_file() else b""; ok = len(data) >= 1024 * 1024 and data[:4] == bytes.fromhex("80371240"); print(f"Validated {p} ({len(data)} bytes)") if ok else None; raise SystemExit(0 if ok else 1)'
           then
             sha256sum rott64.z64 | tee rott64.z64.sha256
             echo "rom_built=true" >> "$GITHUB_OUTPUT"
-            echo "A valid .z64 exists; treating the cross-build as successful."
+            echo "A valid full .z64 exists; treating the cross-build as successful."
             exit 0
           fi
 
@@ -105,6 +113,16 @@ jobs:
           fi
           exit "$build_status"
 
+      - name: Upload diagnostic boot ROM
+        if: always() && steps.n64_build.outputs.diag_built == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: rott64-mupen-boot-diagnostic
+          path: |
+            rott64-diag.z64
+            rott64-diag.z64.sha256
+          if-no-files-found: error
+
       - name: Upload ROM
         if: always() && steps.n64_build.outputs.rom_built == 'true'
         uses: actions/upload-artifact@v4
@@ -113,6 +131,8 @@ jobs:
           path: |
             rott64.z64
             rott64.z64.sha256
+            rott64-diag.z64
+            rott64-diag.z64.sha256
           if-no-files-found: error
 
       - name: Upload diagnostics and ROM backup
@@ -126,6 +146,8 @@ jobs:
             generated/rott/.rott64-prepared
             rott64.z64
             rott64.z64.sha256
+            rott64-diag.z64
+            rott64-diag.z64.sha256
           if-no-files-found: warn
 
       - name: Mark cross-build failure

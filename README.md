@@ -108,3 +108,17 @@ The first real MIPS build reached Taradino compilation and stopped because the N
 
 Revision 11 compiled the full Taradino source list, the N64 platform layer, and the DragonFS image, then reached the final ELF link. The linker stopped only on missing `access()`, `getcwd()`, and `chdir()` symbols. Revision 12 supplies narrow read-only implementations for those exact calls. A successful link, ROM conversion, and boot are still unverified until the next Actions run.
 
+
+
+## Mupen64Plus runtime isolation build (revision 16)
+
+GitHub Actions now produces two ROMs:
+
+- `rott64-diag.z64` — a tiny staged boot diagnostic with no Taradino engine linked.
+- `rott64.z64` — the full shareware port candidate.
+
+Test `rott64-diag.z64` first on Mupen64Plus. It displays six stages. Report the
+last stage visible before an emulator crash or return to the ROM list. If the
+diagnostic reaches Stage 6 and remains there, the libdragon runtime, Expansion
+Pak detection, DragonFS mount, and WAD access all work in that emulator and the
+remaining crash is inside Taradino startup/game initialization.

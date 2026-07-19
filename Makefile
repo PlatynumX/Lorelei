@@ -40,14 +40,14 @@ reports:
 	@if [ -d vendor/rottds/source ]; then python3 tools/rottds_reference_report.py vendor/taradino/source/rott vendor/rottds/source --out build/reports; fi
 
 clean:
-	rm -rf build build-host rott64.z64 rott64.z64.sha256
+	rm -rf build build-host rott64.z64 rott64.z64.sha256 rott64-diag.z64 rott64-diag.z64.sha256
 
 distclean: clean
 	rm -rf generated/rott vendor/taradino/source vendor/rottds/source
 
 # Only load libdragon rules when a ROM target is actually requested. This keeps
 # host tests and cleanup usable on machines without an N64 toolchain.
-N64_GOALS := $(filter all rott64.z64,$(MAKECMDGOALS))
+N64_GOALS := $(filter all rott64.z64 rott64-diag.z64,$(MAKECMDGOALS))
 ifeq ($(strip $(MAKECMDGOALS)),)
 N64_GOALS := all
 endif
@@ -64,6 +64,7 @@ ENGINE_SOURCES := $(sort $(filter-out generated/rott/adlmusic.c generated/rott/s
 PLATFORM_SOURCES := platform/n64/n64_platform.c platform/n64/sdl_n64.c platform/n64/sdl_mixer_stub.c platform/n64/posix_stubs.c
 ALL_SOURCES := $(ENGINE_SOURCES) $(PLATFORM_SOURCES)
 OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(ALL_SOURCES))
+DIAG_OBJS := $(BUILD_DIR)/platform/n64/bootdiag.o
 
 CFLAGS += -std=gnu11 -O2 -G0 -ffast-math -fno-strict-aliasing
 # Taradino's legacy optimized renderer/actor code triggers GCC's
@@ -79,7 +80,15 @@ CFLAGS += -DPACKAGE_TARNAME='"rott64"'
 CFLAGS += -DNO_NETWORK=1
 LDFLAGS += -lm
 
-all: preflight rott64.z64
+all: preflight rott64-diag.z64 rott64.z64
+
+rott64-diag.z64: N64_ROM_TITLE = "ROTT64 DIAGNOSTIC"
+rott64-diag.z64: N64_ROM_REGION = E
+rott64-diag.z64: N64_ROM_CATEGORY = N
+rott64-diag.z64: N64_ROM_ELFCOMPRESS = 0
+rott64-diag.z64: $(BUILD_DIR)/rott64-diag.elf $(BUILD_DIR)/rott64.dfs
+
+$(BUILD_DIR)/rott64-diag.elf: $(DIAG_OBJS)
 
 rott64.z64: N64_ROM_TITLE = "ROTT64 SHAREWARE"
 # Conservative emulator-facing metadata. The previous ROM left region and

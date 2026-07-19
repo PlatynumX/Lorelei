@@ -1,3 +1,12 @@
+# Revision 16 — Mupen runtime isolation
+
+- Adds `rott64-diag.z64`, a minimal staged libdragon boot diagnostic that does not link Taradino.
+- Diagnostic stages test VI/display, timers, RDRAM/Expansion Pak detection, Joybus init, DragonFS, and `HUNTBGIN.WAD` access.
+- Replaces full-ROM startup `console_init()` checkpoints with direct display/graphics checkpoints.
+- Removes `debug_init_isviewer()` from normal startup during Android emulator testing.
+- Uses `FILTERS_DISABLED` for both diagnostic and game display paths to reduce emulator-specific variables.
+- GitHub Actions now uploads the diagnostic ROM separately from the full ROTT64 ROM.
+
 # ROTT64 change log
 
 ## Artifact/workflow revision 15
