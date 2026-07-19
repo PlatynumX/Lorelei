@@ -1,3 +1,8 @@
+# ROTT64 revision 33 - host validation fix
+
+- Fixes the R32 `-Werror=unused-variable` host-validation failure by declaring `selected_custom_index` only for N64 builds, where the custom-content selector actually uses it.
+- No runtime feature changes from R32: complete Dark War soundtrack, Shareware / Full Dark War / Custom Levels selector, SD-backed native saves, safe music looping, rumble, and audio fixes are retained.
+
 # ROTT64 revision 32 - complete Dark War soundtrack bundle
 
 - Music build now extracts and renders all 34 recognized ROTT tracks from the bundled registered `DARKWAR.WAD`, including the 16 full-version-exclusive songs.

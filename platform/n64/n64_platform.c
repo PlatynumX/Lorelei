@@ -9,9 +9,9 @@
 
 static bool initialized;
 static rott64_data_mode_t selected_data_mode = ROTT64_DATA_SHAREWARE;
-static unsigned selected_custom_index;
 
 #ifdef __N64__
+static unsigned selected_custom_index;
 static bool boot_display_ready;
 static uint64_t rumble_until_ms;
 static uint64_t rumble_started_ms;
