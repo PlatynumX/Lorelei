@@ -75,9 +75,9 @@ CFLAGS += -std=gnu11 -O2 -G0 -ffast-math -fno-strict-aliasing
 # the MIPS build. All other libdragon -Werror diagnostics remain fatal.
 CFLAGS += -Wno-error=maybe-uninitialized
 CFLAGS += -Igenerated/rott -Iplatform/n64
-CFLAGS += -DSHAREWARE=1 -D__N64__=1
+CFLAGS += -D__N64__=1
 CFLAGS += -DDATADIR='"rom://rott"'
-CFLAGS += -DPACKAGE_STRING='"ROTT64 Shareware First-Level Candidate"'
+CFLAGS += -DPACKAGE_STRING='"ROTT64 Data Selector"'
 CFLAGS += -DPACKAGE_TARNAME='"rott64"'
 CFLAGS += -DNO_NETWORK=1
 LDFLAGS += -lm
@@ -92,7 +92,7 @@ rott64-diag.z64: $(BUILD_DIR)/rott64-diag.elf $(BUILD_DIR)/rott64.dfs
 
 $(BUILD_DIR)/rott64-diag.elf: $(DIAG_OBJS)
 
-rott64.z64: N64_ROM_TITLE = "ROTT64 SHAREWARE"
+rott64.z64: N64_ROM_TITLE = "ROTT64"
 # Conservative emulator-facing metadata. The previous ROM left region and
 # category blank, which causes some older frontends to treat the image as an
 # invalid/unknown cartridge.

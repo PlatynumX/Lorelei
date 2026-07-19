@@ -1,3 +1,14 @@
+
+## Complete registered soundtrack (R32)
+
+The GitHub Actions build extracts all 34 recognized MIDI music lumps from `filesystem/rott/full/DARKWAR.WAD`, renders them to mono 22050 Hz WAV, and converts them to streaming WAV64 assets for DragonFS. The generated lookup table also aliases any byte-different shareware MIDI lumps from `HUNTBGIN.WAD` to the same named rendered songs. This covers the 18 shareware songs plus 16 registered-only tracks.
+
+# ROTT64 R31 - Bundled Data Selector Test
+
+This user-specific test package embeds the supplied registered Dark War data and the supplied custom-level collection directly in DragonFS. It is not intended as a redistributable source release.
+
+At boot choose Shareware, Full Dark War, or Custom Levels. Custom mode lets you cycle through the embedded RTL/RTC packages. Saves continue to use Taradino native save files on `sd:/`.
+
 **Revision 14:** GitHub now validates and uploads `rott64.z64` whenever the file was produced, with a backup copy in diagnostics.
 
 > **Runtime revision 13:** the first linked ROM was structurally valid but returned to the Android emulator list. The port had been using the incorrect DragonFS prefix `rom:/rott`; current libdragon uses `rom://rott`. This revision fixes every runtime path, adds visible boot checkpoints, sets conventional region/category metadata, and disables ELF compression for the next M64Plus FZ compatibility test.

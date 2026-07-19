@@ -4,6 +4,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+typedef enum {
+    ROTT64_DATA_SHAREWARE = 0,
+    ROTT64_DATA_FULL = 1,
+    ROTT64_DATA_CUSTOM = 2
+} rott64_data_mode_t;
+
 void n64_platform_init(void);
 void n64_platform_fatal(const char *message);
 uint64_t n64_platform_ticks_ms(void);
@@ -13,5 +19,7 @@ void n64_platform_rumble_pulse(uint32_t duration_ms, uint8_t strength);
 void n64_platform_rumble_stop(void);
 void n64_platform_rumble_note_fire(void);
 void n64_platform_rumble_nearby_audio(unsigned total, unsigned spread);
+rott64_data_mode_t n64_platform_data_mode(void);
+const char *n64_platform_custom_content(void);
 
 #endif

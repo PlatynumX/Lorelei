@@ -1,5 +1,6 @@
 #include "n64_platform.h"
 #include "n64_save.h"
+#include "n64_custom_content.h"
 #include <stdio.h>
 #include <stdlib.h>
 #ifdef __N64__
@@ -7,6 +8,8 @@
 #endif
 
 static bool initialized;
+static rott64_data_mode_t selected_data_mode = ROTT64_DATA_SHAREWARE;
+static unsigned selected_custom_index;
 
 #ifdef __N64__
 static bool boot_display_ready;
@@ -37,6 +40,46 @@ static void boot_display_show(const char *stage)
     graphics_draw_text(surface, 16, 24, "ROTT64 SHAREWARE");
     graphics_draw_text(surface, 16, 64, stage ? stage : "Starting...");
     display_show(surface);
+}
+
+
+static void boot_data_selector(void)
+{
+    unsigned choice = 0u;
+    for (;;) {
+        char message[192];
+        joypad_buttons_t pressed;
+        const char *label = choice == 0u ? "SHAREWARE" : choice == 1u ? "FULL DARK WAR" : "CUSTOM LEVELS";
+        snprintf(message, sizeof(message),
+            "Choose game data: %s\nD-Pad Up/Down: change   A/Start: select", label);
+        boot_display_show(message);
+        wait_ms(90);
+        joypad_poll();
+        pressed = joypad_get_buttons_pressed(JOYPAD_PORT_1);
+        if (pressed.d_up) choice = (choice + 2u) % 3u;
+        if (pressed.d_down) choice = (choice + 1u) % 3u;
+        if (pressed.a || pressed.start) break;
+    }
+    selected_data_mode = (rott64_data_mode_t)choice;
+
+    if (selected_data_mode == ROTT64_DATA_CUSTOM && ROTT64_CUSTOM_CONTENT_COUNT != 0u) {
+        for (;;) {
+            char message[224];
+            joypad_buttons_t pressed;
+            snprintf(message, sizeof(message),
+                "Custom %u/%u: %s\nLeft/Right: change   A/Start: select   B: back",
+                selected_custom_index + 1u, ROTT64_CUSTOM_CONTENT_COUNT,
+                rott64_custom_content[selected_custom_index]);
+            boot_display_show(message);
+            wait_ms(90);
+            joypad_poll();
+            pressed = joypad_get_buttons_pressed(JOYPAD_PORT_1);
+            if (pressed.d_left) selected_custom_index = selected_custom_index == 0u ? ROTT64_CUSTOM_CONTENT_COUNT - 1u : selected_custom_index - 1u;
+            if (pressed.d_right) selected_custom_index = (selected_custom_index + 1u) % ROTT64_CUSTOM_CONTENT_COUNT;
+            if (pressed.b) { selected_data_mode = ROTT64_DATA_SHAREWARE; break; }
+            if (pressed.a || pressed.start) break;
+        }
+    }
 }
 
 static void boot_display_close(void)
@@ -82,16 +125,40 @@ void n64_platform_init(void)
         n64_platform_fatal(message);
     }
 
-    wad = fopen("rom://rott/HUNTBGIN.WAD", "rb");
+    boot_data_selector();
+    if (selected_data_mode == ROTT64_DATA_FULL || selected_data_mode == ROTT64_DATA_CUSTOM)
+        wad = fopen("rom://rott/full/DARKWAR.WAD", "rb");
+    else
+        wad = fopen("rom://rott/HUNTBGIN.WAD", "rb");
     if (wad == NULL)
-        n64_platform_fatal("Stage 4 failed: HUNTBGIN.WAD not found\nExpected rom://rott/HUNTBGIN.WAD");
+        n64_platform_fatal("Stage 4 failed: selected game WAD not found");
     fclose(wad);
 
-    boot_display_show("Stage 4/4: shareware WAD found\nStarting Taradino...");
-    wait_ms(1500);
+    boot_display_show(selected_data_mode == ROTT64_DATA_SHAREWARE ?
+        "Stage 4/4: Shareware selected\nStarting Taradino..." :
+        selected_data_mode == ROTT64_DATA_FULL ?
+        "Stage 4/4: Full Dark War selected\nStarting Taradino..." :
+        "Stage 4/4: Custom content selected\nStarting Taradino...");
+    wait_ms(900);
     boot_display_close();
 #endif
     initialized = true;
+}
+
+rott64_data_mode_t n64_platform_data_mode(void)
+{
+    return selected_data_mode;
+}
+
+const char *n64_platform_custom_content(void)
+{
+#ifdef __N64__
+    if (ROTT64_CUSTOM_CONTENT_COUNT == 0u) return NULL;
+    if (selected_custom_index >= ROTT64_CUSTOM_CONTENT_COUNT) return NULL;
+    return rott64_custom_content[selected_custom_index];
+#else
+    return NULL;
+#endif
 }
 
 void n64_platform_fatal(const char *message)

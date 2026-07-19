@@ -27,16 +27,17 @@ jobs:
       - name: Fetch shareware episode
         run: bash tools/fetch_shareware.sh
 
-      - name: Prepare shareware music assets
+      - name: Prepare complete Dark War music assets
         shell: bash
         run: |
           sudo apt-get update
           sudo apt-get install -y timidity freepats ffmpeg
           python3 tools/extract_music.py \
-            filesystem/rott/HUNTBGIN.WAD \
+            filesystem/rott/full/DARKWAR.WAD \
             assets/music \
             platform/n64/n64_music_map_generated.h \
-            --mode shareware
+            --mode full \
+            --alias-wad filesystem/rott/HUNTBGIN.WAD
           bash tools/render_music.sh assets/music
 
       - name: Fetch pinned Taradino source

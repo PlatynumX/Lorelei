@@ -1,3 +1,21 @@
+# ROTT64 revision 32 - complete Dark War soundtrack bundle
+
+- Music build now extracts and renders all 34 recognized ROTT tracks from the bundled registered `DARKWAR.WAD`, including the 16 full-version-exclusive songs.
+- Generated runtime music map includes aliases for shareware MIDI lump variants from `HUNTBGIN.WAD`, so Shareware mode and Full Dark War mode both resolve to rendered WAV64 music.
+- Keeps R31 Shareware / Full Dark War / Custom Levels selector, R30 save path, R29 safe channel-level music looping, rumble, and audio fixes.
+- No copyrighted rendered WAV64 files are stored in the source archive; GitHub Actions renders them during the ROM build from the user-supplied bundled WAD.
+
+# ROTT64 revision 31 - bundled data selector
+
+- Bundles user-supplied DARKWAR.WAD, DARKWAR.RTL, and DARKWAR.RTC in DragonFS.
+- Bundles extracted custom RTL/RTC level sets in DragonFS.
+- Adds boot-time Shareware / Full Dark War / Custom Levels selector.
+- Custom mode provides a runtime package picker and uses the full-version resource WAD.
+- Builds the non-SHAREWARE Taradino code path; the N64 data backend maps shareware filenames at runtime.
+- Retains R30 SD-backed native save files, R29 manual music restart loop fix, rumble, and Expansion Pak runtime requirement.
+
+NOTE: Full/custom mode is the first hardware integration pass and requires testing; full-version music coverage may still need expansion beyond the currently rendered shareware music set.
+
 # ROTT64 changelog
 
 ## Revision 30 - native game save/load on flashcart SD

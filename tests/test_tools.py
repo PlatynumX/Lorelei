@@ -239,7 +239,8 @@ def test_n64_runtime_boot_policy() -> None:
     platform = (ROOT / "platform/n64/n64_platform.c").read_text(encoding="utf-8")
     assert 'fopen("rom://rott/HUNTBGIN.WAD", "rb")' in platform
     assert "Stage 1/4: entered N64 main()" in platform
-    assert "Stage 4/4: shareware WAD found" in platform
+    assert "Stage 4/4: Shareware selected" in platform
+    assert "Stage 4/4: Full Dark War selected" in platform
     # Current libdragon rejects FILTERS_DISABLED at 320px in 16bpp on NTSC hardware.
     assert "FILTERS_DISABLED" not in platform
     bootdiag = (ROOT / "platform/n64/bootdiag.c").read_text(encoding="utf-8")

@@ -90,7 +90,7 @@ def write_header(path: Path, entries: list[dict]) -> None:
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
-def extract(wad: Path, output: Path, header: Path, mode: str) -> list[dict]:
+def extract(wad: Path, output: Path, header: Path, mode: str, alias_wads: list[Path] | None = None) -> list[dict]:
     lumps = parse_wad(wad)
     required = SHAREWARE_SONGS if mode == "shareware" else ALL_SONGS if mode == "full" else ()
     missing = [name for name in required if name not in lumps]
@@ -119,13 +119,38 @@ def extract(wad: Path, output: Path, header: Path, mode: str) -> list[dict]:
         })
         print(f"[music] {name:8s} -> {stem}.mid ({len(data)} bytes)")
 
-    write_header(header, entries)
+    # Add lookup aliases from additional WADs. This lets one rendered track
+    # serve both the shareware and registered MIDI lump variants when their
+    # byte streams differ, while still embedding only one WAV64 per song name.
+    alias_entries: list[dict] = []
+    seen_keys = {(entry["size"], entry["crc32"]) for entry in entries}
+    for alias_wad in alias_wads or []:
+        alias_lumps = parse_wad(alias_wad)
+        for name in ALL_SONGS:
+            if name not in alias_lumps:
+                continue
+            data = alias_lumps[name]
+            key = (len(data), zlib.crc32(data) & 0xFFFFFFFF)
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+            alias_entries.append({
+                "name": name,
+                "slug": slug(name),
+                "size": len(data),
+                "crc32": key[1],
+                "alias_from": str(alias_wad),
+            })
+            print(f"[music] alias {name:8s} <- {alias_wad.name} ({len(data)} bytes)")
+
+    all_entries = entries + alias_entries
+    write_header(header, all_entries)
     (output / "music-map.json").write_text(
-        json.dumps({"mode": mode, "tracks": entries}, indent=2) + "\n",
+        json.dumps({"mode": mode, "tracks": entries, "aliases": alias_entries}, indent=2) + "\n",
         encoding="utf-8",
     )
-    print(f"[music] extracted {len(entries)} MIDI tracks")
-    return entries
+    print(f"[music] extracted {len(entries)} MIDI tracks with {len(alias_entries)} lookup aliases")
+    return all_entries
 
 
 def main() -> int:
@@ -134,9 +159,10 @@ def main() -> int:
     parser.add_argument("output", type=Path)
     parser.add_argument("header", type=Path)
     parser.add_argument("--mode", choices=("shareware", "full", "any"), default="shareware")
+    parser.add_argument("--alias-wad", action="append", type=Path, default=[], help="additional WAD whose MIDI lump CRCs should map to the primary rendered tracks")
     args = parser.parse_args()
     try:
-        extract(args.wad, args.output, args.header, args.mode)
+        extract(args.wad, args.output, args.header, args.mode, args.alias_wad)
     except (OSError, ValueError, struct.error) as exc:
         parser.error(str(exc))
     return 0
