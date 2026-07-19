@@ -1,6 +1,8 @@
 #include "SDL_mixer.h"
+#include "rott64_audio.h"
 
 #include <stdbool.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -8,19 +10,18 @@
 #include <libdragon.h>
 #endif
 
-#define ROTT64_MIX_CHANNELS 8
 #define VOC_SIGNATURE "Creative Voice File\x1a"
 #define VOC_SIGNATURE_LEN 20u
 
 static int opened;
 static int output_frequency = MIX_DEFAULT_FREQUENCY;
-static int channel_count = ROTT64_MIX_CHANNELS;
+static int channel_count = ROTT64_FX_CHANNELS;
 static int master_volume = MIX_MAX_VOLUME;
 static int music_volume = MIX_MAX_VOLUME;
-static int channel_volume[ROTT64_MIX_CHANNELS];
-static Uint8 channel_left[ROTT64_MIX_CHANNELS];
-static Uint8 channel_right[ROTT64_MIX_CHANNELS];
-static Mix_Chunk *channel_chunk[ROTT64_MIX_CHANNELS];
+static int channel_volume[ROTT64_FX_CHANNELS];
+static Uint8 channel_left[ROTT64_FX_CHANNELS];
+static Uint8 channel_right[ROTT64_FX_CHANNELS];
+static Mix_Chunk *channel_chunk[ROTT64_FX_CHANNELS];
 static void (*finished_callback)(int);
 
 #ifdef __N64__
@@ -290,11 +291,28 @@ static void apply_channel_mix(int channel)
     }
     chunk = channel_chunk[channel];
     base = (float)channel_volume[channel] / (float)MIX_MAX_VOLUME;
+    base *= (float)master_volume / (float)MIX_MAX_VOLUME;
     if (chunk != NULL) {
         base *= (float)chunk->volume / (float)MIX_MAX_VOLUME;
     }
     left = base * ((float)channel_left[channel] / 255.0f);
     right = base * ((float)channel_right[channel] / 255.0f);
+
+    /* Taradino's positional mixer can request near-field sounds at almost
+       full gain in both stereo channels.  On libdragon that can produce a
+       hotter-than-unity stereo vector, making immediately-nearby effects
+       distort or behave harshly while distant/panned sounds remain fine.
+       Preserve the requested pan direction and overall base volume, but
+       normalize only vectors whose combined power exceeds unity. */
+    {
+        float power = left * left + right * right;
+        if (power > 1.0f) {
+            float inv = 1.0f / sqrtf(power);
+            left *= inv;
+            right *= inv;
+        }
+    }
+
     mixer_ch_set_vol(channel, left, right);
 }
 #endif
@@ -338,7 +356,9 @@ int Mix_MasterVolume(int volume)
         master_volume = volume;
 #ifdef __N64__
         if (opened) {
-            mixer_set_vol((float)master_volume / (float)MIX_MAX_VOLUME);
+            for (int i = 0; i < channel_count; ++i) {
+                apply_channel_mix(i);
+            }
         }
 #endif
     }
@@ -356,8 +376,8 @@ int Mix_OpenAudio(int frequency, Uint16 format, int channels, int chunksize)
     }
 
     output_frequency = frequency > 0 ? frequency : 44100;
-    channel_count = ROTT64_MIX_CHANNELS;
-    for (int i = 0; i < ROTT64_MIX_CHANNELS; ++i) {
+    channel_count = ROTT64_FX_CHANNELS;
+    for (int i = 0; i < ROTT64_FX_CHANNELS; ++i) {
         channel_volume[i] = MIX_MAX_VOLUME;
         channel_left[i] = 255u;
         channel_right[i] = 255u;
@@ -367,8 +387,8 @@ int Mix_OpenAudio(int frequency, Uint16 format, int channels, int chunksize)
 #ifdef __N64__
     audio_init(output_frequency, 4);
     output_frequency = audio_get_frequency();
-    mixer_init(channel_count);
-    mixer_set_vol((float)master_volume / (float)MIX_MAX_VOLUME);
+    mixer_init(ROTT64_MIXER_CHANNELS);
+    mixer_set_vol(1.0f);
 #endif
 
     opened = 1;
@@ -382,9 +402,11 @@ void Mix_CloseAudio(void)
         return;
     }
 #ifdef __N64__
-    for (int i = 0; i < channel_count; ++i) {
+    for (int i = 0; i < ROTT64_MIXER_CHANNELS; ++i) {
         mixer_ch_stop(i);
-        channel_chunk[i] = NULL;
+        if (i < channel_count) {
+            channel_chunk[i] = NULL;
+        }
     }
     mixer_close();
     audio_close();
@@ -404,8 +426,8 @@ int Mix_QuerySpec(int *frequency, Uint16 *format, int *channels)
 int Mix_AllocateChannels(int numchans)
 {
     if (numchans >= 0) {
-        if (numchans > ROTT64_MIX_CHANNELS) {
-            numchans = ROTT64_MIX_CHANNELS;
+        if (numchans > ROTT64_FX_CHANNELS) {
+            numchans = ROTT64_FX_CHANNELS;
         }
         channel_count = numchans;
     }

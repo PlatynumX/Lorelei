@@ -44,15 +44,15 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
     shutil.copy2(platform/"dirent.h", output/"dirent.h")
     # Keep Taradino's real fx_mixer.c. The N64 SDL_mixer compatibility layer
     # decodes Creative VOC sound lumps and plays them through libdragon.
-    shutil.copy2(platform/"music_silent.c", output/"dukemusc.c")
+    shutil.copy2(platform/"music_wav64.c", output/"dukemusc.c")
     shutil.copy2(platform/"rt_datadir_n64.c", output/"rt_datadir.c")
     # Taradino's desktop VGA text screen creates its own SDL renderer, textures,
     # and 640x400 RGB surfaces. It is only an exit/shutdown presentation path,
     # so replace it with a no-op for the first gameplay target.
     shutil.copy2(platform/"vgatext_n64.c", output/"vgatext.c")
 
-    # Desktop music backends remain excluded. Sound effects are enabled, while
-    # music stays on the N64 silent dukemusc.c backend for this milestone.
+    # Desktop MIDI synthesizer backends remain excluded. ROTT64 streams
+    # build-time-rendered WAV64 music through libdragon instead.
     for unused_backend in ("adlmusic.c", "sdlmusic.c"):
         candidate = output / unused_backend
         if candidate.exists():
@@ -218,7 +218,7 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
     marker.write_text(
         "Taradino 20251222\n"
         "ROTT64 fixed 320x200 framebuffer\n"
-        "ROTTDS-derived low-memory first-level policy with libdragon sound effects\n"
+        "ROTTDS-derived low-memory policy with libdragon sound effects and WAV64 music\n"
         "Desktop VGA text renderer disabled on N64\n"
         "POSIX directory enumeration stubbed for fixed DragonFS data path\n",encoding="utf-8")
 

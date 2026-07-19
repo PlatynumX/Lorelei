@@ -21,3 +21,7 @@
 /filesystem/rott/SOURCE.txt
 __pycache__/
 *.pyc
+
+assets/music/*.mid
+assets/music/*.wav
+filesystem/rott/music/*.wav64

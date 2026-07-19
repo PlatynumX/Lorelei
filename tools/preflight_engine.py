@@ -14,6 +14,24 @@ def main()->int:
     failures=[name for name,needle in checks.items() if needle not in main]
     if "rom://rott" not in (a.engine/"rt_datadir.c").read_text(errors="replace"):
         failures.append("N64 data path")
+    music=(a.engine/"dukemusc.c").read_text(errors="replace")
+    for needle, label in (
+        ("wav64_open", "N64 WAV64 music backend"),
+        ("MUSIC_SetSongTime", "music seek support"),
+        ("MUSIC_GetSongPosition", "music position support"),
+        ("ROTT64_MUSIC_CHANNEL", "reserved N64 music mixer channel"),
+    ):
+        if needle not in music:
+            failures.append(label)
+    music_map_path=a.platform/"n64_music_map_generated.h"
+    if not music_map_path.is_file():
+        failures.append("generated N64 music map")
+    else:
+        music_map=music_map_path.read_text(errors="replace")
+        match=re.search(r"rott64_music_map_count\s*=\s*(\d+)u", music_map)
+        if not match or int(match.group(1)) < 18:
+            failures.append("shareware music map (18 tracks)")
+
     fx=(a.engine/"fx_mixer.c").read_text(errors="replace")
     for needle, label in (
         ("Mix_LoadWAV_RW", "Taradino VOC sound loading"),

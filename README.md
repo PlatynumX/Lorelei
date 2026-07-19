@@ -149,3 +149,10 @@ Expected hardware behavior: game/menu sound effects should play; music is still 
 ## Revision 21 audio-build fix
 
 Revision 20 stopped during preflight because the scanner interpreted the word `SDL_Mixer` in a Taradino source comment as an uncovered SDL symbol. Revision 21 corrects that scanner false positive without changing the sound-effects backend.
+
+
+## Revision 22: music milestone
+
+ROTT64 now builds its music directly from the game WAD. GitHub Actions extracts the original Standard MIDI lumps, renders them offline with TiMidity/FreePats, and lets libdragon convert the resulting mono 22050 Hz WAV files to streaming WAV64/VADPCM assets. The N64 therefore does not run a MIDI synthesizer at runtime.
+
+Music uses its own mixer channel and supports looping, pause/resume, volume, and position seek/reporting. That position support is deliberately included now because original ROTT save data stores the current music position. The extraction tool already knows both the 18 shareware songs and all 34 registered-game song names, which gives us a direct path toward full-version support.

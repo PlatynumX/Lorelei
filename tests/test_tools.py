@@ -6,6 +6,7 @@ import struct
 import subprocess
 import tempfile
 import zipfile
+import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -141,7 +142,8 @@ def test_prepare_engine() -> None:
         assert "Mix_PlayChannelTimed" in fx
         assert "Mix_SetPanning" in fx
         music = (output / "dukemusc.c").read_text()
-        assert "ROTT64" in music
+        assert "wav64_open" in music
+        assert "MUSIC_SetSongTime" in music
         assert (output / "dirent.h").is_file()
         dirent = (output / "dirent.h").read_text()
         assert "ROTT64_N64_DIRENT_H" in dirent
@@ -182,6 +184,36 @@ def test_prepare_engine() -> None:
         assert '#define CMAKE_PROJECT_VERSION "2025.12.22-rott64"' in version
 
 
+
+
+def test_music_extraction_and_map() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        base = Path(temporary)
+        wad = base / "music.wad"
+        out = base / "music"
+        header = base / "n64_music_map_generated.h"
+        midi_a = b"MThd" + b"\x00\x00\x00\x06" + b"\x00\x00\x00\x01\x00\x60"
+        midi_b = b"MThd" + b"\x00\x00\x00\x06" + b"\x00\x01\x00\x02\x00\x78"
+        payload = midi_a + midi_b
+        directory = 12 + len(payload)
+        wad.write_bytes(
+            struct.pack("<4sII", b"IWAD", 2, directory)
+            + payload
+            + struct.pack("<II8s", 12, len(midi_a), b"RISE\0\0\0\0")
+            + struct.pack("<II8s", 12 + len(midi_a), len(midi_b), b"GAZZ!\0\0\0")
+        )
+        run(
+            "python3", "tools/extract_music.py", str(wad), str(out), str(header),
+            "--mode", "any",
+        )
+        assert (out / "rise.mid").read_bytes() == midi_a
+        assert (out / "gazz.mid").read_bytes() == midi_b
+        text = header.read_text()
+        assert "rott64_music_map_count = 2u" in text
+        assert f"0x{zlib.crc32(midi_a) & 0xFFFFFFFF:08X}u" in text
+        assert '"rom:/rott/music/rise.wav64"' in text
+        report = json.loads((out / "music-map.json").read_text())
+        assert [track["name"] for track in report["tracks"]] == ["RISE", "GAZZ!"]
 
 
 def test_n64_posix_link_shims() -> None:
@@ -235,10 +267,17 @@ def test_n64_audio_policy() -> None:
     assert 'shutil.copy2(platform/"fx_silent.c", output/"fx_mixer.c")' not in prepare
     assert "NoSound = false;" in prepare
     assert "NoSound = true;" not in prepare
-    assert 'shutil.copy2(platform/"music_silent.c", output/"dukemusc.c")' in prepare
+    assert 'shutil.copy2(platform/"music_wav64.c", output/"dukemusc.c")' in prepare
     assert "N64 sound effects enabled" in preflight
     assert '"SDL_Mixer"' in preflight
     assert "ignored_symbols" in preflight
+    music = (ROOT / "platform/n64/music_wav64.c").read_text(encoding="utf-8")
+    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    assert "ROTT64_MIXER_CHANNELS 9" in (ROOT / "platform/n64/rott64_audio.h").read_text()
+    assert "wav64_open" in music
+    assert "mixer_ch_get_pos" in music
+    assert "mixer_ch_set_pos" in music
+    assert "--wav-compress 1" in makefile
 
 
 def test_shareware_omits_foreign_config() -> None:
@@ -265,5 +304,15 @@ if __name__ == "__main__":
     test_n64_posix_link_shims()
     test_n64_warning_policy()
     test_n64_runtime_boot_policy()
+    test_n64_audio_policy()
+    test_music_extraction_and_map()
     test_shareware_omits_foreign_config()
     print("Taradino audit, import, shareware, and WAD inventory tests passed")
+
+
+def test_n64_mixer_normalizes_over_unity_stereo_power():
+    root = Path(__file__).resolve().parents[1]
+    mixer = (root / "platform" / "n64" / "sdl_mixer_stub.c").read_text()
+    assert "float power = left * left + right * right;" in mixer
+    assert "if (power > 1.0f)" in mixer
+    assert "1.0f / sqrtf(power)" in mixer

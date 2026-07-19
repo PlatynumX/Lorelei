@@ -1,3 +1,24 @@
+# Revision 23 — Near-field positional SFX normalization
+
+- Keeps revision 22 streaming music and the proven real-hardware audio path.
+- Fixes the N64 SDL_mixer compatibility boundary for positional sounds that are effectively immediately beside the listener.
+- Preserves Taradino's requested stereo direction while applying constant-power normalization only when left/right combined output power would exceed unity.
+- Leaves distant and normally panned effects unchanged.
+- Leaves sample rates, the eight SFX channels, reserved music channel, music streaming, and master/channel volume parameters unchanged.
+- The sustained-machine-gun issue remains separately tracked; this revision may reduce it only where near-field overdrive was contributing.
+
+# Revision 22 — Streaming ROTT music on N64
+
+- Keeps revision 21 sound effects and the known-good hardware boot path.
+- Extracts the original ROTT MIDI lumps from `HUNTBGIN.WAD` during GitHub Actions.
+- Renders MIDI offline with TiMidity/FreePats at 22050 Hz mono, following the proven ROTTDS console-port approach.
+- Converts rendered tracks to libdragon WAV64/VADPCM and streams them directly from DragonFS.
+- Reserves mixer channel 8 for music while sound effects remain on channels 0–7.
+- Adds looping, pause/resume, independent music volume, and millisecond seek/reporting for future save-game music-position support.
+- Generates the runtime MIDI-to-WAV64 map from the actual WAD using CRC32 and size, so the same pipeline can later target the registered `DARKWAR.WAD`.
+- Music fades are immediate in this first milestone; smooth fades can be added after hardware validation.
+- The sustained-machine-gun sound issue remains a known SFX issue and is intentionally deferred.
+
 # Revision 21 — Audio preflight false-positive fix
 
 - Fixes `Run engine preflight` failing with `uncovered SDL symbols: SDL_Mixer`.
