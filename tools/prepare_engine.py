@@ -42,7 +42,8 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
     # Shadow libdragon/newlib's unsupported POSIX <dirent.h> with the
     # fixed-data-directory compatibility shim used by the N64 target.
     shutil.copy2(platform/"dirent.h", output/"dirent.h")
-    shutil.copy2(platform/"fx_silent.c", output/"fx_mixer.c")
+    # Keep Taradino's real fx_mixer.c. The N64 SDL_mixer compatibility layer
+    # decodes Creative VOC sound lumps and plays them through libdragon.
     shutil.copy2(platform/"music_silent.c", output/"dukemusc.c")
     shutil.copy2(platform/"rt_datadir_n64.c", output/"rt_datadir.c")
     # Taradino's desktop VGA text screen creates its own SDL renderer, textures,
@@ -50,7 +51,8 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
     # so replace it with a no-op for the first gameplay target.
     shutil.copy2(platform/"vgatext_n64.c", output/"vgatext.c")
 
-    # These desktop music backends are not linked in the silent first-level target.
+    # Desktop music backends remain excluded. Sound effects are enabled, while
+    # music stays on the N64 silent dukemusc.c backend for this milestone.
     for unused_backend in ("adlmusic.c", "sdlmusic.c"):
         candidate = output / unused_backend
         if candidate.exists():
@@ -75,10 +77,10 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
         r"(?m)^[ \t]*CheckCommandLineParameters\s*\(\s*\)\s*;[ \t]*$",
         "    CheckCommandLineParameters();\n"
         "#ifdef __N64__\n"
-        "    NoSound = true;\n"
+        "    NoSound = false;\n"
         "    quiet = true;\n"
         "#endif",
-        "force silent mode",
+        "enable N64 sound effects",
     )
     text = replace_regex_once(
         text,
@@ -216,7 +218,7 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
     marker.write_text(
         "Taradino 20251222\n"
         "ROTT64 fixed 320x200 framebuffer\n"
-        "ROTTDS-derived low-memory/silent first-level policy\n"
+        "ROTTDS-derived low-memory first-level policy with libdragon sound effects\n"
         "Desktop VGA text renderer disabled on N64\n"
         "POSIX directory enumeration stubbed for fixed DragonFS data path\n",encoding="utf-8")
 

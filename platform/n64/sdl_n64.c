@@ -1,4 +1,5 @@
 #include "SDL.h"
+#include "SDL_mixer.h"
 #include "n64_platform.h"
 
 #include <stdarg.h>
@@ -104,6 +105,7 @@ static void update_binding(unsigned index, bool held)
 
 static void poll_n64_controller(void)
 {
+    rott64_mixer_pump();
 #ifdef __N64__
     const int deadzone = 24;
     joypad_inputs_t input;
@@ -167,7 +169,7 @@ void SDL_Quit(void) { initialized_flags = 0; }
 Uint32 SDL_WasInit(Uint32 flags) { return flags ? initialized_flags & flags : initialized_flags; }
 Uint32 SDL_GetTicks(void) { return (Uint32)n64_platform_ticks_ms(); }
 Uint64 SDL_GetTicks64(void) { return n64_platform_ticks_ms(); }
-void SDL_Delay(Uint32 milliseconds) { n64_platform_wait_ms(milliseconds); }
+void SDL_Delay(Uint32 milliseconds) { rott64_mixer_pump(); n64_platform_wait_ms(milliseconds); rott64_mixer_pump(); }
 const char *SDL_GetError(void) { return error_text; }
 
 int SDL_SetError(const char *fmt, ...)

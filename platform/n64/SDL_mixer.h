@@ -10,7 +10,16 @@ extern "C" {
 #define MIX_MAX_VOLUME 128
 #define MIX_CHANNEL_POST -2
 #define SDL_MIXER_VERSION_ATLEAST(X, Y, Z) 1
-typedef struct Mix_Chunk { int allocated; Uint8 *abuf; Uint32 alen; Uint8 volume; } Mix_Chunk;
+typedef struct Mix_Chunk {
+    int allocated;
+    Uint8 *abuf;
+    Uint32 alen;
+    Uint8 volume;
+    void *backend;
+    Uint32 frequency;
+    Uint8 channels;
+    Uint8 bits;
+} Mix_Chunk;
 typedef struct Mix_Music { int unused; } Mix_Music;
 int Mix_OpenAudio(int frequency, Uint16 format, int channels, int chunksize);
 int Mix_OpenAudioDevice(int frequency, Uint16 format, int channels, int chunksize, const char *device, int allowed_changes);
@@ -38,6 +47,7 @@ int Mix_PlayingMusic(void);
 void Mix_PauseMusic(void);
 void Mix_ResumeMusic(void);
 int Mix_VolumeMusic(int volume);
+void rott64_mixer_pump(void);
 #ifdef __cplusplus
 }
 #endif

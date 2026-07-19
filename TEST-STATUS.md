@@ -90,3 +90,8 @@ The first real MIPS build reached Taradino compilation and stopped because the N
 A separate minimal N64 ROM now isolates emulator/libdragon startup from the
 Taradino engine. The diagnostic is successful if it reaches `STAGE 6 PASS` and
 remains on screen.
+
+
+## Revision 20 audio status
+
+Host tests validate Creative VOC type-1 and type-9 decoding, sample-rate extraction, and unsigned-to-signed PCM conversion. The full host validation suite passes. Actual libdragon sound output remains hardware-unverified until the resulting ROM is tested on the N64.

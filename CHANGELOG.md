@@ -1,3 +1,17 @@
+# Revision 20 — First real N64 sound-effects build
+
+- Keeps revision 19 as the proven real-hardware boot baseline.
+- Enables Taradino's real `fx_mixer.c` instead of the silent FX shim.
+- Adds an SDL_mixer compatibility backend implemented with libdragon `audio` + `mixer`.
+- Decodes ROTT Creative VOC sound lumps directly from WAD memory.
+- Supports VOC type 1, type 2 continuation, and type 9 unsigned 8-bit PCM.
+- Converts VOC audio to signed 8-bit PCM for libdragon playback.
+- Supports 8 simultaneous FX channels, stereo panning, channel volume, and master volume.
+- Pumps all writable libdragon audio buffers during SDL polling/delays and primes the queue at startup.
+- Music remains intentionally silent for this milestone.
+- Pitch shifting remains a no-op, matching Taradino's SDL_mixer FX path.
+- VOC repeat markers are accepted but not looped yet; the looping missile sound plays one pass.
+
 # Revision 19 — GitHub shell permission fix
 
 - Fixes GitHub Actions failing at `Fetch shareware episode` with exit code 126 / `Permission denied`.

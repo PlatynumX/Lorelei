@@ -137,3 +137,10 @@ A real N64 successfully entered the libdragon runtime and crash inspector. The f
 ## Revision 19 Android/GitHub upload fix
 
 GitHub Actions now invokes shell scripts with `bash` explicitly. This avoids exit code 126 (`Permission denied`) when executable permission bits are lost while moving the repository through ZIP files and Android storage.
+
+
+## Revision 20: first N64 sound-effects milestone
+
+This revision enables ROTT sound effects on top of the proven real-hardware booting branch. Taradino's original FX layer chooses sounds and applies game panning/volume; the local SDL_mixer bridge decodes the shareware Creative VOC lumps and feeds them to libdragon's mixer.
+
+Expected hardware behavior: game/menu sound effects should play; music is still intentionally silent. Eight simultaneous FX channels are available. The one VOC using repeat markers currently plays a single pass.

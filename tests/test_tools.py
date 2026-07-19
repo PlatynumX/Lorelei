@@ -76,6 +76,12 @@ def test_prepare_engine() -> None:
         )
         (source / "adlmusic.c").write_text('int desktop_adl;\n', encoding="utf-8")
         (source / "sdlmusic.c").write_text('int desktop_sdl_music;\n', encoding="utf-8")
+        (source / "fx_mixer.c").write_text(
+            '#include "SDL_mixer.h"\n'
+            'void fx(void) { Mix_Chunk *c = Mix_LoadWAV_RW(0, 0); '
+            'Mix_PlayChannelTimed(0, c, 0, -1); Mix_SetPanning(0, 255, 255); }\n',
+            encoding="utf-8",
+        )
         (source / "vgatext.c").write_text(
             'int vgatext_main(void) { SDL_CreateTexture(); return 0; }\n',
             encoding="utf-8",
@@ -121,7 +127,7 @@ def test_prepare_engine() -> None:
         assert "int main(void)" in main
         assert "rott64_argv" in main
         assert "n64_platform_init();" in main
-        assert "NoSound = true;" in main
+        assert "NoSound = false;" in main
         assert "SetRottScreenRes(320, 200);" in main
         cfg = (output / "rt_cfg.c").read_text()
         assert "SetSoundDefaultValues();" in cfg
@@ -130,6 +136,12 @@ def test_prepare_engine() -> None:
         assert "ConfigLoaded = true;" in cfg
         assert not (output / "adlmusic.c").exists()
         assert not (output / "sdlmusic.c").exists()
+        fx = (output / "fx_mixer.c").read_text()
+        assert "Mix_LoadWAV_RW" in fx
+        assert "Mix_PlayChannelTimed" in fx
+        assert "Mix_SetPanning" in fx
+        music = (output / "dukemusc.c").read_text()
+        assert "ROTT64" in music
         assert (output / "dirent.h").is_file()
         dirent = (output / "dirent.h").read_text()
         assert "ROTT64_N64_DIRENT_H" in dirent
@@ -207,6 +219,25 @@ def test_n64_runtime_boot_policy() -> None:
     assert "FILTERS_RESAMPLE" in modex
     for path in (ROOT / "platform/n64").glob("*.c"):
         assert "rom:/rott" not in path.read_text(encoding="utf-8")
+
+def test_n64_audio_policy() -> None:
+    mixer = (ROOT / "platform/n64/sdl_mixer_stub.c").read_text(encoding="utf-8")
+    sdl = (ROOT / "platform/n64/sdl_n64.c").read_text(encoding="utf-8")
+    prepare = (ROOT / "tools/prepare_engine.py").read_text(encoding="utf-8")
+    preflight = (ROOT / "tools/preflight_engine.py").read_text(encoding="utf-8")
+
+    assert "audio_init(" in mixer
+    assert "mixer_init(" in mixer
+    assert "mixer_poll(" in mixer
+    assert "Mix_LoadWAV_RW" in mixer
+    assert "Creative Voice File" in mixer
+    assert "rott64_mixer_pump();" in sdl
+    assert 'shutil.copy2(platform/"fx_silent.c", output/"fx_mixer.c")' not in prepare
+    assert "NoSound = false;" in prepare
+    assert "NoSound = true;" not in prepare
+    assert 'shutil.copy2(platform/"music_silent.c", output/"dukemusc.c")' in prepare
+    assert "N64 sound effects enabled" in preflight
+
 
 def test_shareware_omits_foreign_config() -> None:
     with tempfile.TemporaryDirectory() as temporary:
