@@ -9,6 +9,20 @@
 
 static bool initialized;
 static rott64_data_mode_t selected_data_mode = ROTT64_DATA_SHAREWARE;
+static rott64_filter_mode_t selected_filter_mode = ROTT64_FILTER_ENHANCED;
+static rott64_aspect_mode_t selected_aspect_mode = ROTT64_ASPECT_ORIGINAL;
+static int selected_brightness = 0;
+
+typedef struct {
+    uint32_t magic;
+    uint8_t version;
+    uint8_t filter_mode;
+    uint8_t aspect_mode;
+    int8_t brightness;
+} rott64_video_settings_t;
+
+#define ROTT64_VIDEO_SETTINGS_MAGIC 0x56363452u /* V64R */
+#define ROTT64_VIDEO_SETTINGS_VERSION 1u
 
 #ifdef __N64__
 static unsigned selected_custom_index;
@@ -43,24 +57,115 @@ static void boot_display_show(const char *stage)
 }
 
 
-static void boot_data_selector(void)
+
+static void load_video_settings(void)
 {
-    unsigned choice = 0u;
+    rott64_video_settings_t settings;
+    memset(&settings, 0, sizeof(settings));
+    if (!n64_save_read_payload(&settings, sizeof(settings)))
+        return;
+    if (settings.magic != ROTT64_VIDEO_SETTINGS_MAGIC ||
+        settings.version != ROTT64_VIDEO_SETTINGS_VERSION)
+        return;
+    if (settings.filter_mode <= ROTT64_FILTER_ENHANCED)
+        selected_filter_mode = (rott64_filter_mode_t)settings.filter_mode;
+    if (settings.aspect_mode <= ROTT64_ASPECT_4_3)
+        selected_aspect_mode = (rott64_aspect_mode_t)settings.aspect_mode;
+    if (settings.brightness >= -2 && settings.brightness <= 2)
+        selected_brightness = settings.brightness;
+}
+
+static void save_video_settings(void)
+{
+    rott64_video_settings_t settings;
+    settings.magic = ROTT64_VIDEO_SETTINGS_MAGIC;
+    settings.version = ROTT64_VIDEO_SETTINGS_VERSION;
+    settings.filter_mode = (uint8_t)selected_filter_mode;
+    settings.aspect_mode = (uint8_t)selected_aspect_mode;
+    settings.brightness = (int8_t)selected_brightness;
+    (void)n64_save_write_payload(&settings, sizeof(settings));
+}
+
+static void boot_video_options(void)
+{
+    unsigned row = 0u;
     for (;;) {
-        char message[192];
+        char message[320];
         joypad_buttons_t pressed;
-        const char *label = choice == 0u ? "SHAREWARE" : choice == 1u ? "FULL DARK WAR" : "CUSTOM LEVELS";
+        const char *filter = selected_filter_mode == ROTT64_FILTER_ENHANCED ? "ENHANCED" : "STANDARD";
+        const char *aspect = selected_aspect_mode == ROTT64_ASPECT_4_3 ? "4:3 CORRECTED" : "ORIGINAL";
+        const char *cursor0 = row == 0u ? ">" : " ";
+        const char *cursor1 = row == 1u ? ">" : " ";
+        const char *cursor2 = row == 2u ? ">" : " ";
+        const char *cursor3 = row == 3u ? ">" : " ";
         snprintf(message, sizeof(message),
-            "Choose game data: %s\nD-Pad Up/Down: change   A/Start: select", label);
+            "N64 VIDEO OPTIONS\n"
+            "%s Filtering: %s\n"
+            "%s Aspect: %s\n"
+            "%s Brightness: %+d\n"
+            "%s Save & Back\n"
+            "Up/Down: select  Left/Right: change  A: choose  B: back",
+            cursor0, filter, cursor1, aspect, cursor2, selected_brightness, cursor3);
         boot_display_show(message);
         wait_ms(90);
         joypad_poll();
         pressed = joypad_get_buttons_pressed(JOYPAD_PORT_1);
-        if (pressed.d_up) choice = (choice + 2u) % 3u;
-        if (pressed.d_down) choice = (choice + 1u) % 3u;
-        if (pressed.a || pressed.start) break;
+
+        if (pressed.d_up) row = (row + 3u) % 4u;
+        if (pressed.d_down) row = (row + 1u) % 4u;
+
+        if (row == 0u && (pressed.d_left || pressed.d_right || pressed.a))
+            selected_filter_mode = selected_filter_mode == ROTT64_FILTER_ENHANCED ?
+                ROTT64_FILTER_STANDARD : ROTT64_FILTER_ENHANCED;
+        else if (row == 1u && (pressed.d_left || pressed.d_right || pressed.a))
+            selected_aspect_mode = selected_aspect_mode == ROTT64_ASPECT_4_3 ?
+                ROTT64_ASPECT_ORIGINAL : ROTT64_ASPECT_4_3;
+        else if (row == 2u && (pressed.d_left || pressed.d_right)) {
+            int delta = pressed.d_right ? 1 : -1;
+            selected_brightness += delta;
+            if (selected_brightness > 2) selected_brightness = -2;
+            if (selected_brightness < -2) selected_brightness = 2;
+        } else if (row == 3u && pressed.a) {
+            save_video_settings();
+            return;
+        }
+        if (pressed.b) {
+            save_video_settings();
+            return;
+        }
     }
-    selected_data_mode = (rott64_data_mode_t)choice;
+}
+
+static void boot_data_selector(void)
+{
+    unsigned choice = 0u;
+    for (;;) {
+        for (;;) {
+            char message[224];
+            joypad_buttons_t pressed;
+            const char *label =
+                choice == 0u ? "SHAREWARE" :
+                choice == 1u ? "FULL DARK WAR" :
+                choice == 2u ? "CUSTOM LEVELS" : "VIDEO OPTIONS";
+            snprintf(message, sizeof(message),
+                "ROTT64 STARTUP\nChoose: %s\nD-Pad Up/Down: change   A/Start: select", label);
+            boot_display_show(message);
+            wait_ms(90);
+            joypad_poll();
+            pressed = joypad_get_buttons_pressed(JOYPAD_PORT_1);
+            if (pressed.d_up) choice = (choice + 3u) % 4u;
+            if (pressed.d_down) choice = (choice + 1u) % 4u;
+            if (pressed.a || pressed.start) break;
+        }
+
+        if (choice == 3u) {
+            boot_video_options();
+            continue;
+        }
+
+        selected_data_mode = (rott64_data_mode_t)choice;
+        break;
+    }
 
     if (selected_data_mode == ROTT64_DATA_CUSTOM && ROTT64_CUSTOM_CONTENT_COUNT != 0u) {
         for (;;) {
@@ -105,6 +210,7 @@ void n64_platform_init(void)
 
     joypad_init();
     (void)n64_save_init();
+    load_video_settings();
     if (dfs_init(DFS_DEFAULT_LOCATION) != DFS_ESUCCESS)
         n64_platform_fatal("Stage 3 failed: DragonFS mount error");
     {
@@ -160,6 +266,10 @@ const char *n64_platform_custom_content(void)
     return NULL;
 #endif
 }
+
+rott64_filter_mode_t n64_platform_filter_mode(void) { return selected_filter_mode; }
+rott64_aspect_mode_t n64_platform_aspect_mode(void) { return selected_aspect_mode; }
+int n64_platform_brightness(void) { return selected_brightness; }
 
 void n64_platform_fatal(const char *message)
 {

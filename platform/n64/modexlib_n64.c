@@ -42,11 +42,20 @@ static bool display_ready;
 extern int iG_X_center;
 extern int iG_Y_center;
 
+static uint8_t apply_brightness(uint8_t value)
+{
+    int level = n64_platform_brightness();
+    int adjusted = (int)value + level * 24;
+    if (adjusted < 0) adjusted = 0;
+    if (adjusted > 255) adjusted = 255;
+    return (uint8_t)adjusted;
+}
+
 static uint16_t rgba5551(SDL_Color color)
 {
-    const uint16_t r = (uint16_t)(color.r >> 3);
-    const uint16_t g = (uint16_t)(color.g >> 3);
-    const uint16_t b = (uint16_t)(color.b >> 3);
+    const uint16_t r = (uint16_t)(apply_brightness(color.r) >> 3);
+    const uint16_t g = (uint16_t)(apply_brightness(color.g) >> 3);
+    const uint16_t b = (uint16_t)(apply_brightness(color.b) >> 3);
     return (uint16_t)((r << 11) | (g << 6) | (b << 1) | 1u);
 }
 
@@ -74,10 +83,20 @@ static void present_frame(void)
         const int destination_stride = surface->stride / (int)sizeof(uint16_t);
         for (y = 0; y < N64_HEIGHT; ++y) {
             uint16_t *row = destination + y * destination_stride;
-            if (y < BORDER_Y || y >= BORDER_Y + ROTT_HEIGHT) {
-                memset(row, 0, ROTT_WIDTH * sizeof(*row));
+            int source_y;
+            if (n64_platform_aspect_mode() == ROTT64_ASPECT_4_3) {
+                /* Expand the DOS 320x200 picture to 320x240, restoring the
+                   intended 4:3 display aspect on N64 output. */
+                source_y = (y * ROTT_HEIGHT) / N64_HEIGHT;
             } else {
-                const byte *source = indexed_framebuffer + (y - BORDER_Y) * ROTT_WIDTH;
+                if (y < BORDER_Y || y >= BORDER_Y + ROTT_HEIGHT) {
+                    memset(row, 0, ROTT_WIDTH * sizeof(*row));
+                    continue;
+                }
+                source_y = y - BORDER_Y;
+            }
+            {
+                const byte *source = indexed_framebuffer + source_y * ROTT_WIDTH;
                 for (int x = 0; x < ROTT_WIDTH; ++x) {
                     row[x] = converted[source[x]];
                 }
@@ -100,7 +119,9 @@ void GraphicsMode(void)
     n64_platform_init();
 #ifdef __N64__
     if (!display_ready) {
-        display_init(RESOLUTION_320x240, DEPTH_16_BPP, 2, GAMMA_NONE, FILTERS_RESAMPLE_ANTIALIAS_DEDITHER);
+        display_init(RESOLUTION_320x240, DEPTH_16_BPP, 2, GAMMA_NONE,
+            n64_platform_filter_mode() == ROTT64_FILTER_ENHANCED ?
+                FILTERS_RESAMPLE_ANTIALIAS_DEDITHER : FILTERS_RESAMPLE);
         display_ready = true;
     }
 #else

@@ -1,3 +1,13 @@
+# ROTT64 Revision 38
+
+- Adds persistent N64 Video Options to the startup selector.
+- Filtering: Standard (VI resample) or Enhanced (resample + AA/divot + dedither).
+- Aspect: Original 320x200 letterboxed or 4:3-corrected 320x240 output.
+- Brightness: five persistent levels (-2 through +2).
+- Preserves ROTT's native in-game Screen Size / HUD view-size controls.
+- Video settings persist in the existing EEPROM settings payload.
+- Keeps native sequenced MIDI, SD save/load, rumble, full/custom content selection, and the 78 MiB ROM cap.
+
 ## Revision 37 - enhanced VI output filtering
 
 - Keeps the revision 36 native sequenced MIDI backend and all existing gameplay/save/rumble changes.

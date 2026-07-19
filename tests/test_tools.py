@@ -250,6 +250,9 @@ def test_n64_runtime_boot_policy() -> None:
     assert "FILTERS_RESAMPLE" in platform
     assert "FILTERS_RESAMPLE" in bootdiag
     assert "FILTERS_RESAMPLE" in modex
+    assert "ROTT64_FILTER_ENHANCED" in modex
+    assert "ROTT64_ASPECT_4_3" in modex
+    assert "n64_platform_brightness" in modex
     for path in (ROOT / "platform/n64").glob("*.c"):
         assert "rom:/rott" not in path.read_text(encoding="utf-8")
 

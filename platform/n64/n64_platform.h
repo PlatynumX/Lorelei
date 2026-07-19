@@ -22,4 +22,18 @@ void n64_platform_rumble_nearby_audio(unsigned total, unsigned spread);
 rott64_data_mode_t n64_platform_data_mode(void);
 const char *n64_platform_custom_content(void);
 
+typedef enum {
+    ROTT64_FILTER_STANDARD = 0,
+    ROTT64_FILTER_ENHANCED = 1
+} rott64_filter_mode_t;
+
+typedef enum {
+    ROTT64_ASPECT_ORIGINAL = 0,
+    ROTT64_ASPECT_4_3 = 1
+} rott64_aspect_mode_t;
+
+rott64_filter_mode_t n64_platform_filter_mode(void);
+rott64_aspect_mode_t n64_platform_aspect_mode(void);
+int n64_platform_brightness(void);
+
 #endif

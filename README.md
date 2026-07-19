@@ -183,3 +183,17 @@ Persistent saves are not enabled yet. See `SAVE-PORTING.md` for the N64 persiste
 ### Revision 36 hardware test
 
 This revision removes soundtrack WAV64 playback entirely. Test the Apogee/logo and menu music, several shareware and full-version levels, track looping, sound effects while music is active, and at least one custom content set. The first native synth pass intentionally uses compact N64-style procedural timbres rather than a large General MIDI sample bank.
+
+
+## R38 N64 video options
+
+The ROTT64 startup selector now includes **VIDEO OPTIONS**:
+
+- **Filtering — Standard:** N64 VI resampling.
+- **Filtering — Enhanced:** VI resampling plus anti-alias/divot filtering and dedither.
+- **Aspect — Original:** preserves the 320x200 software framebuffer with top/bottom borders.
+- **Aspect — 4:3 Corrected:** expands the 320x200 image to the full 320x240 N64 display.
+- **Brightness:** five palette-output levels from -2 to +2.
+
+These N64-specific settings are persisted through the existing EEPROM settings record.
+ROTT's original in-game Screen Size / HUD view-size controls remain available and are not replaced.
