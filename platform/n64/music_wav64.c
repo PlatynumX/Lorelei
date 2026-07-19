@@ -80,9 +80,23 @@ int MUSIC_Init(int mode)
 {
     int frequency = 0;
     (void)mode;
+
+    /* Taradino may initialize the music subsystem before its FX backend.
+     * R22/R23 treated that normal startup order as a fatal music error, so
+     * all later songs stayed silent even though FX opened the mixer afterward.
+     * Own the shared audio bootstrap here when needed; Mix_OpenAudio() is
+     * idempotent in the ROTT64 compatibility layer, so later FX startup safely
+     * reuses the same libdragon audio/mixer instance. */
     if (Mix_QuerySpec(&frequency, NULL, NULL) == 0) {
-        SDL_SetError("ROTT64 music requires the libdragon mixer to be initialized first");
-        return MUSIC_Error;
+        if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT,
+                          MIX_DEFAULT_CHANNELS, 512) != 0) {
+            SDL_SetError("ROTT64 music could not initialize the libdragon mixer");
+            return MUSIC_Error;
+        }
+        if (Mix_QuerySpec(&frequency, NULL, NULL) == 0) {
+            SDL_SetError("ROTT64 music mixer initialization did not become active");
+            return MUSIC_Error;
+        }
     }
     current_open = 0;
     current_paused = 0;

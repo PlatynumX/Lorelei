@@ -9,5 +9,7 @@ void n64_platform_fatal(const char *message);
 uint64_t n64_platform_ticks_ms(void);
 void n64_platform_wait_ms(uint32_t milliseconds);
 void n64_platform_poll(void);
+void n64_platform_rumble_pulse(uint32_t duration_ms, uint8_t strength);
+void n64_platform_rumble_stop(void);
 
 #endif

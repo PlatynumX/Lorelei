@@ -110,10 +110,23 @@ static void poll_n64_controller(void)
     const int deadzone = 24;
     joypad_inputs_t input;
     joypad_buttons_t buttons;
+    joypad_buttons_t pressed;
+    static uint64_t next_auto_fire_rumble_ms;
 
     n64_platform_poll();
     input = joypad_get_inputs(JOYPAD_PORT_1);
     buttons = joypad_get_buttons_held(JOYPAD_PORT_1);
+    pressed = joypad_get_buttons_pressed(JOYPAD_PORT_1);
+
+    if (pressed.z) {
+        n64_platform_rumble_pulse(55u, 210u);
+        next_auto_fire_rumble_ms = n64_platform_ticks_ms() + 85u;
+    } else if (buttons.z && n64_platform_ticks_ms() >= next_auto_fire_rumble_ms) {
+        /* Sustained-fire weapons get short repeating recoil rather than one
+           permanently-on motor command. */
+        n64_platform_rumble_pulse(38u, 165u);
+        next_auto_fire_rumble_ms = n64_platform_ticks_ms() + 85u;
+    }
 
     /* Analog movement remains available; C-buttons provide the classic
        N64 FPS digital movement cluster. */

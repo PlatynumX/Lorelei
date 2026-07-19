@@ -1,5 +1,6 @@
 #include "SDL_mixer.h"
 #include "rott64_audio.h"
+#include "n64_platform.h"
 
 #include <stdbool.h>
 #include <math.h>
@@ -643,6 +644,19 @@ int Mix_SetPanning(int channel, Uint8 left, Uint8 right)
     channel_right[channel] = right;
 #ifdef __N64__
     apply_channel_mix(channel);
+
+    /* Taradino applies 3D panning after starting a voice. A loud sound that
+       is nearly centered is generally at or very near the player: weapon
+       impacts, incoming damage, explosions, doors, etc. Give those events a
+       brief tactile accent. This deliberately stays below the explicit fire
+       recoil strength and is non-blocking. */
+    if (channel_chunk[channel] != NULL && mixer_ch_playing(channel)) {
+        unsigned total = (unsigned)left + (unsigned)right;
+        unsigned spread = left > right ? (unsigned)(left - right) : (unsigned)(right - left);
+        if (total >= 390u && spread <= 48u) {
+            n64_platform_rumble_pulse(48u, 145u);
+        }
+    }
 #endif
     return 1;
 }

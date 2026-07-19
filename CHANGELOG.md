@@ -1,3 +1,18 @@
+# Revision 25 - N64 Rumble Pak support
+
+- Added non-blocking Rumble Pak support through libdragon's joypad subsystem.
+- Added short recoil pulses when Z fires and repeating lighter pulses during sustained fire.
+- Added tactile feedback for loud, centered near-field sound effects, covering common close explosions, impacts, and damage-adjacent events without changing Taradino gameplay logic.
+- Rumble automatically remains inactive when no supported rumble device is attached.
+- Preserved revision 24's working WAV64 music initialization and revision 23's near-field audio normalization.
+
+# Revision 24 — music startup-order fix
+
+- Fixed silent music when Taradino initializes MUSIC before FX.
+- `MUSIC_Init()` now bootstraps the shared SDL/libdragon mixer if it is not already active.
+- Later FX initialization safely reuses the same mixer instance.
+- Keeps the R23 near-field SFX normalization and all existing 22050 Hz WAV64 music parameters unchanged.
+
 # Revision 23 — Near-field positional SFX normalization
 
 - Keeps revision 22 streaming music and the proven real-hardware audio path.
