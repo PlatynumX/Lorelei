@@ -1,3 +1,11 @@
+## Revision 37 - enhanced VI output filtering
+
+- Keeps the revision 36 native sequenced MIDI backend and all existing gameplay/save/rumble changes.
+- Upgrades the main gameplay display from `FILTERS_RESAMPLE` to `FILTERS_RESAMPLE_ANTIALIAS_DEDITHER`.
+- Retains the VI bilinear resampling pass while enabling the VI anti-alias/divot and dedither post-processing path for the 16-bit framebuffer.
+- This is final-output filtering only; Taradino still renders the game scene in software and this does not convert the renderer to polygonal MSAA.
+- Boot/diagnostic displays remain on the conservative `FILTERS_RESAMPLE` mode.
+
 # ROTT64 changelog
 
 ## Revision 36 - native sequenced MIDI music

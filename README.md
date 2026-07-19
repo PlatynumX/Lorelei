@@ -1,3 +1,7 @@
+## N64 video filtering
+
+ROTT64 revision 37 uses libdragon `FILTERS_RESAMPLE_ANTIALIAS_DEDITHER` for the main game framebuffer. The N64 VI bilinearly resamples the 320x240 output and applies its AA/divot and 16-bit dedither post-processing. This filters the final framebuffer output; it does not provide true geometry MSAA because the ROTT scene is still software-rendered.
+
 
 ## Native sequenced soundtrack (R36)
 
