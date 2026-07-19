@@ -645,17 +645,14 @@ int Mix_SetPanning(int channel, Uint8 left, Uint8 right)
 #ifdef __N64__
     apply_channel_mix(channel);
 
-    /* Taradino applies 3D panning after starting a voice. A loud sound that
-       is nearly centered is generally at or very near the player: weapon
-       impacts, incoming damage, explosions, doors, etc. Give those events a
-       brief tactile accent. This deliberately stays below the explicit fire
-       recoil strength and is non-blocking. */
+    /* Classify centered positional SFX into distance-scaled tactile events.
+       A recent fire input lets the platform upgrade a loud shot into heavy
+       weapon recoil; otherwise very strong nearby events map to blast/damage
+       feedback. The classifier remains non-blocking and safe without a Pak. */
     if (channel_chunk[channel] != NULL && mixer_ch_playing(channel)) {
         unsigned total = (unsigned)left + (unsigned)right;
         unsigned spread = left > right ? (unsigned)(left - right) : (unsigned)(right - left);
-        if (total >= 390u && spread <= 48u) {
-            n64_platform_rumble_pulse(48u, 145u);
-        }
+        n64_platform_rumble_nearby_audio(total, spread);
     }
 #endif
     return 1;

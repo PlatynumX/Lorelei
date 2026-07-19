@@ -1,3 +1,26 @@
+# Revision 28
+
+- Fixed the main ROM Advanced Homebrew Header to declare the 16-Kbit EEPROM save hardware used by the revision-27 persistence backend.
+- Marked the main ROM region-free for compatible homebrew loaders while retaining NTSC/E region metadata.
+- Kept the diagnostic ROM free of save-hardware metadata.
+- Retains revision 27 dual-record CRC32 save persistence test, revision 26 rumble behavior, and revision 24 music startup fix.
+- This is the preferred combined hardware test build for header detection, EEPROM persistence, rumble, music, and near-field audio.
+
+# Revision 27
+
+- Folded the first N64 persistent-save test into the current rumble build.
+- Added a dual-record CRC32-protected EEPROM save container.
+- Added a persistent boot counter displayed during startup so hardware/emulator save persistence can be verified immediately.
+- Added a 384-byte versioned payload API as the boundary for the next Taradino save-game integration step.
+- Retains revision 26 rumble behavior and revision 24 music initialization fix.
+
+# ROTT64 revision 26
+
+- Expanded Rumble Pak feedback with distance-scaled nearby blast/damage pulses.
+- Loud firing SFX immediately following Z-trigger input now upgrades recoil for heavy weapons.
+- Kept sustained-fire recoil and the revision-24 working music path unchanged.
+- Added `SAVE-PORTING.md` documenting the current read-only save boundary and a FlashRAM-oriented persistence plan.
+
 # Revision 25 - N64 Rumble Pak support
 
 - Added non-blocking Rumble Pak support through libdragon's joypad subsystem.
