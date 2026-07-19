@@ -127,3 +127,8 @@ remaining crash is inside Taradino startup/game initialization.
 ## Revision 17 build fix
 
 Revision 16 did not reach the N64 cross-compile because a host regression test expected a slightly different Stage 4 checkpoint string. Revision 17 fixes only that mismatch; the two-ROM Mupen diagnostic strategy remains unchanged.
+
+
+## Revision 18 hardware finding
+
+A real N64 successfully entered the libdragon runtime and crash inspector. The first hardware failure was not Taradino: `display_init()` rejected `FILTERS_DISABLED` at 320x240/16bpp. Revision 18 uses `FILTERS_RESAMPLE` for every 320x240 display initialization path.

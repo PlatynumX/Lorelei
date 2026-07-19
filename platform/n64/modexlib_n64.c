@@ -100,7 +100,7 @@ void GraphicsMode(void)
     n64_platform_init();
 #ifdef __N64__
     if (!display_ready) {
-        display_init(RESOLUTION_320x240, DEPTH_16_BPP, 2, GAMMA_NONE, FILTERS_DISABLED);
+        display_init(RESOLUTION_320x240, DEPTH_16_BPP, 2, GAMMA_NONE, FILTERS_RESAMPLE);
         display_ready = true;
     }
 #else

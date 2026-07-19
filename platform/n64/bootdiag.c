@@ -35,7 +35,7 @@ int main(void)
     FILE *wad = NULL;
     int dfs_result;
 
-    display_init(RESOLUTION_320x240, DEPTH_16_BPP, 2, GAMMA_NONE, FILTERS_DISABLED);
+    display_init(RESOLUTION_320x240, DEPTH_16_BPP, 2, GAMMA_NONE, FILTERS_RESAMPLE);
     show_stage(
         "STAGE 1 PASS: basic libdragon display",
         "If you can read this, the ROM booted and VI output works.",

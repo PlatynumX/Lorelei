@@ -13,7 +13,7 @@ static bool boot_display_ready;
 static void boot_display_open(void)
 {
     if (boot_display_ready) return;
-    display_init(RESOLUTION_320x240, DEPTH_16_BPP, 2, GAMMA_NONE, FILTERS_DISABLED);
+    display_init(RESOLUTION_320x240, DEPTH_16_BPP, 2, GAMMA_NONE, FILTERS_RESAMPLE);
     graphics_set_default_font();
     boot_display_ready = true;
 }

@@ -196,6 +196,15 @@ def test_n64_runtime_boot_policy() -> None:
     assert 'fopen("rom://rott/HUNTBGIN.WAD", "rb")' in platform
     assert "Stage 1/4: entered N64 main()" in platform
     assert "Stage 4/4: shareware WAD found" in platform
+    # Current libdragon rejects FILTERS_DISABLED at 320px in 16bpp on NTSC hardware.
+    assert "FILTERS_DISABLED" not in platform
+    bootdiag = (ROOT / "platform/n64/bootdiag.c").read_text(encoding="utf-8")
+    modex = (ROOT / "platform/n64/modexlib_n64.c").read_text(encoding="utf-8")
+    assert "FILTERS_DISABLED" not in bootdiag
+    assert "FILTERS_DISABLED" not in modex
+    assert "FILTERS_RESAMPLE" in platform
+    assert "FILTERS_RESAMPLE" in bootdiag
+    assert "FILTERS_RESAMPLE" in modex
     for path in (ROOT / "platform/n64").glob("*.c"):
         assert "rom:/rott" not in path.read_text(encoding="utf-8")
 

@@ -1,3 +1,11 @@
+# Revision 18 — Real-hardware VI filter fix
+
+- Real N64 hardware booted the diagnostic ROM and entered libdragon's crash inspector.
+- The crash was the `res.width > 320` assertion in `display_init()` because current libdragon forbids `FILTERS_DISABLED` for 16-bit display widths of 320 pixels or less on NTSC hardware.
+- Replaces `FILTERS_DISABLED` with `FILTERS_RESAMPLE` in the diagnostic display, full-ROM startup checkpoints, and Taradino framebuffer display.
+- Adds host regression checks preventing this invalid 320x240 filter combination.
+- No Taradino gameplay logic changed.
+
 # Revision 17 — Host validation fix
 
 - Fixes the revision 16 checkpoint/test string mismatch that caused `make test-host` to fail before any N64 build began.
