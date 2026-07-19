@@ -1,3 +1,11 @@
+# ROTT64 change log
+
+## Artifact/workflow revision 15
+
+- Fix GitHub Actions YAML syntax error at the ROM-validation step.
+- Replace the indentation-sensitive inline Python heredoc with a YAML-safe `python3 -c` validator.
+- Preserve revision 14 runtime fixes and artifact fallback behavior unchanged.
+
 # Runtime/artifact revision 14
 
 - Fixed GitHub Actions packaging after a successful `[Z64] rott64.z64` build.

@@ -91,18 +91,7 @@ jobs:
           build_status=${PIPESTATUS[0]}
           set -e
 
-          if python3 - <<'PY'
-from pathlib import Path
-p = Path("rott64.z64")
-if not p.is_file():
-    raise SystemExit(1)
-magic = p.read_bytes()[:4]
-if magic != bytes.fromhex("80371240"):
-    raise SystemExit(f"unexpected ROM header: {magic.hex()}")
-if p.stat().st_size < 1024 * 1024:
-    raise SystemExit(f"ROM is unexpectedly small: {p.stat().st_size}")
-print(f"Validated {p} ({p.stat().st_size} bytes)")
-PY
+          if python3 -c 'from pathlib import Path; p = Path("rott64.z64"); data = p.read_bytes() if p.is_file() else b""; ok = len(data) >= 1024 * 1024 and data[:4] == bytes.fromhex("80371240"); print(f"Validated {p} ({len(data)} bytes)") if ok else None; raise SystemExit(0 if ok else 1)'
           then
             sha256sum rott64.z64 | tee rott64.z64.sha256
             echo "rom_built=true" >> "$GITHUB_OUTPUT"
