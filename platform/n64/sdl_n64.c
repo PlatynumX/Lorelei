@@ -119,9 +119,11 @@ static void poll_n64_controller(void)
     pressed = joypad_get_buttons_pressed(JOYPAD_PORT_1);
 
     if (pressed.z) {
-        n64_platform_rumble_pulse(55u, 210u);
+        n64_platform_rumble_note_fire();
+        n64_platform_rumble_pulse(58u, 210u);
         next_auto_fire_rumble_ms = n64_platform_ticks_ms() + 85u;
     } else if (buttons.z && n64_platform_ticks_ms() >= next_auto_fire_rumble_ms) {
+        n64_platform_rumble_note_fire();
         /* Sustained-fire weapons get short repeating recoil rather than one
            permanently-on motor command. */
         n64_platform_rumble_pulse(38u, 165u);
