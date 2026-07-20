@@ -1,27 +1,3 @@
-# ROTT64 R48
-
-R48 is a targeted black-screen diagnostic. It keeps direct boot, removes Custom, and disables the N64 MIDI/music backend so normal boot tests whether MIDI playback was killing startup. Sound effects remain enabled.
-
-
-## Revision 46 quick test note
-
-The interactive version picker is bypassed. Boot normally for **The Hunt Begins**. Tap **B**, **R**, **D-Right**, or **C-Right** during the short R48 direct-boot countdown for **Dark War**. This is intended to isolate the black-screen that occurred immediately after confirming a version in the old selector.
-
-## N64 video filtering
-
-ROTT64 revision 37 uses libdragon `FILTERS_RESAMPLE_ANTIALIAS_DEDITHER` for the main game framebuffer. The N64 VI bilinearly resamples the 320x240 output and applies its AA/divot and 16-bit dedither post-processing. This filters the final framebuffer output; it does not provide true geometry MSAA because the ROTT scene is still software-rendered.
-
-
-## Native sequenced soundtrack (R36)
-
-ROTT64 now plays the original Standard MIDI File lumps directly at runtime through a lightweight N64 sequencer/synthesizer. Shareware, the 34-track registered Dark War soundtrack, and compatible MIDI from custom content no longer require build-time WAV/WAV64 rendering. This sharply reduces ROM storage and removes the WAV64 streaming-loop path that previously asserted on hardware.
-
-# ROTT64 R31 - Bundled Data Selector Test
-
-This user-specific test package embeds the supplied registered Dark War data and the supplied custom-level collection directly in DragonFS. It is not intended as a redistributable source release.
-
-Revision 46 bypasses the interactive version picker. Boot normally for Shareware / The Hunt Begins; tap **B**, **R**, **D-Right**, or **C-Right** during the short direct-boot countdown for Full Dark War. Custom levels are not part of this test branch. Saves continue to use Taradino native save files on `sd:/`.
-
 **Revision 14:** GitHub now validates and uploads `rott64.z64` whenever the file was produced, with a backup copy in diagnostics.
 
 > **Runtime revision 13:** the first linked ROM was structurally valid but returned to the Android emulator list. The port had been using the incorrect DragonFS prefix `rom:/rott`; current libdragon uses `rom://rott`. This revision fixes every runtime path, adds visible boot checkpoints, sets conventional region/category metadata, and disables ELF compression for the next M64Plus FZ compatibility test.
@@ -47,10 +23,6 @@ The engine base is the pinned Taradino release. The port policy is informed by
 ROTTDS 0.7: fixed low-resolution software rendering, console key emulation,
 read-only packaged data, reduced optional subsystems, and audio postponed until
 silent gameplay is stable.
-
-## Revision 30 save support
-
-On N64 hardware, Taradino's native game saves are written to the flashcart SD filesystem as `sd://rottgam?.rot`. This preserves the original Save Game/Load Game serializer and supports normal-sized ROTT save files without squeezing them into EEPROM or a 32 KiB Controller Pak.
 
 ## Intended result
 
@@ -179,89 +151,8 @@ Expected hardware behavior: game/menu sound effects should play; music is still 
 Revision 20 stopped during preflight because the scanner interpreted the word `SDL_Mixer` in a Taradino source comment as an uncovered SDL symbol. Revision 21 corrects that scanner false positive without changing the sound-effects backend.
 
 
-## Revision 36: native sequenced music
+## Revision 22: music milestone
 
-ROTT64 now parses and plays Taradino's original MIDI lumps directly on N64. The lightweight synthesizer supports tempo changes, program-family timbres, percussion, channel volume/expression, sustain, pitch bend, pause/resume, looping, and song-position seek/reporting. The build still inventories all 34 registered Dark War tracks, but it no longer renders or embeds WAV64 soundtrack files.
+ROTT64 now builds its music directly from the game WAD. GitHub Actions extracts the original Standard MIDI lumps, renders them offline with TiMidity/FreePats, and lets libdragon convert the resulting mono 22050 Hz WAV files to streaming WAV64/VADPCM assets. The N64 therefore does not run a MIDI synthesizer at runtime.
 
-
-## Save-system status
-
-Persistent saves are not enabled yet. See `SAVE-PORTING.md` for the N64 persistence design and implementation plan.
-
-
-### Revision 36 hardware test
-
-This revision removes soundtrack WAV64 playback entirely. Test the Apogee/logo and menu music, several shareware and full-version levels, track looping, sound effects while music is active, and at least one custom content set. The first native synth pass intentionally uses compact N64-style procedural timbres rather than a large General MIDI sample bank.
-
-
-## R38 N64 video options
-
-The ROTT64 boot/options path includes **VIDEO OPTIONS** on the selector-era builds. R48 temporarily bypasses that selector to isolate the black-screen after version selection:
-
-- **Filtering — Standard:** N64 VI resampling.
-- **Filtering — Enhanced:** VI resampling plus anti-alias/divot filtering and dedither.
-- **Aspect — Original:** preserves the 320x200 software framebuffer with top/bottom borders.
-- **Aspect — 4:3 Corrected:** expands the 320x200 image to the full 320x240 N64 display.
-- **Brightness:** five palette-output levels from -2 to +2.
-
-These N64-specific settings are persisted through the existing EEPROM settings record.
-ROTT's original in-game Screen Size / HUD view-size controls remain available and are not replaced.
-
-
-## R39 controls
-
-The startup selector now includes **CONTROLS**. `Analog Mouselook` converts the N64
-analog stick into SDL relative-mouse motion consumed by Taradino's existing mouse
-input path. Sensitivity, deadzone, invert-Y and control mode persist in EEPROM.
-`Classic Digital` retains the previous stick-to-key behavior. The C-buttons remain
-the movement cluster in Analog Mouselook mode.
-
-
-## R40 local Comm-Bat foundation
-
-The ROTT64 main menu now contains **2P Split-Screen Comm-Bat**. The option is
-not selectable unless a second controller is detected in Controller Port 2.
-The menu updates this status live and navigation skips the disabled entry.
-
-R40 also introduces the dedicated local Comm-Bat platform flag and keeps
-Controller 2 independently polled. This is the foundation for routing two local
-player command streams and rendering two independent player views; normal
-single-player, full-version, and custom-content paths are unchanged.
-
-
-## R41 actual local Comm-Bat implementation
-
-R41 moves beyond the R40 scaffold. Local Comm-Bat now enters Taradino's real
-two-player battle state (`numplayers=2`, `battle_Normal`). The original
-`PollControls` and `ThreeDRefresh` routines are wrapped so they execute once per
-local player with the matching `PLAYER[]`, `PLAYERSTATE[]`, controller port, and
-camera context. The N64 presentation layer captures both 320x200 views and
-composites them into a horizontal 320x120 + 320x120 split.
-
-This is intentionally an implementation test against the actual engine rather
-than another menu-only scaffold. The N64 cross-build and first hardware run may
-expose additional assumptions from Taradino's network-era Comm-Bat code.
-
-
-## R44 independent controller profiles
-
-The Controls menu now edits Player 1 and Player 2 separately. Each profile stores
-its own mouselook/classic mode, sensitivity, deadzone, invert-Y, and 14 action
-bindings. The remap screen captures an N64 button for the selected action and
-writes both profiles into the existing CRC-protected EEPROM settings payload.
-
-During local Comm-Bat, the engine switches the active input player before each
-`PollControls()` pass, so Player 2 now resolves both analog settings and digital
-bindings from Player 2's profile rather than inheriting Player 1's configuration.
-
-
-## R45 simplified game selection
-
-The startup selector now supports only the two official data sets bundled with the
-port:
-
-- **The Hunt Begins (Shareware)**
-- **Dark War (Full Version)**
-
-The previous Custom Levels selector and bundled custom map collection have been
-removed. This reduces ROM size and removes the custom-data handoff from startup.
+Music uses its own mixer channel and supports looping, pause/resume, volume, and position seek/reporting. That position support is deliberately included now because original ROTT save data stores the current music position. The extraction tool already knows both the 18 shareware songs and all 34 registered-game song names, which gives us a direct path toward full-version support.
