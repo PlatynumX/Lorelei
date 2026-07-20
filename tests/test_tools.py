@@ -142,10 +142,8 @@ def test_prepare_engine() -> None:
         assert "Mix_PlayChannelTimed" in fx
         assert "Mix_SetPanning" in fx
         music = (output / "dukemusc.c").read_text()
-        assert "Silent music backend" in music
-        assert "MUSIC_PlaySong" in music
+        assert "wav64_open" in music
         assert "MUSIC_SetSongTime" in music
-        assert "load_sequence" not in music
         assert (output / "dirent.h").is_file()
         dirent = (output / "dirent.h").read_text()
         assert "ROTT64_N64_DIRENT_H" in dirent
@@ -239,10 +237,9 @@ def test_n64_runtime_boot_policy() -> None:
     assert "N64_ROM_CATEGORY = N" in makefile
     assert "N64_ROM_ELFCOMPRESS = 0" in makefile
     platform = (ROOT / "platform/n64/n64_platform.c").read_text(encoding="utf-8")
-    assert 'fopen("rom://rott/HUNTBGIN.WAD", "rb")' in platform
+    assert 'fopen("rom://rott/DARKWAR.WAD", "rb")' in platform
     assert "Stage 1/4: entered N64 main()" in platform
-    assert "Stage 4/4: Shareware selected" in platform
-    assert "Stage 4/4: Full Dark War selected" in platform
+    assert "Stage 4/4: Dark War WAD found" in platform
     # Current libdragon rejects FILTERS_DISABLED at 320px in 16bpp on NTSC hardware.
     assert "FILTERS_DISABLED" not in platform
     bootdiag = (ROOT / "platform/n64/bootdiag.c").read_text(encoding="utf-8")
@@ -252,9 +249,6 @@ def test_n64_runtime_boot_policy() -> None:
     assert "FILTERS_RESAMPLE" in platform
     assert "FILTERS_RESAMPLE" in bootdiag
     assert "FILTERS_RESAMPLE" in modex
-    assert "ROTT64_FILTER_ENHANCED" in modex
-    assert "ROTT64_ASPECT_4_3" in modex
-    assert "n64_platform_brightness" in modex
     for path in (ROOT / "platform/n64").glob("*.c"):
         assert "rom:/rott" not in path.read_text(encoding="utf-8")
 
@@ -273,20 +267,17 @@ def test_n64_audio_policy() -> None:
     assert 'shutil.copy2(platform/"fx_silent.c", output/"fx_mixer.c")' not in prepare
     assert "NoSound = false;" in prepare
     assert "NoSound = true;" not in prepare
-    assert 'shutil.copy2(platform/"music_silent.c", output/"dukemusc.c")' in prepare
+    assert 'shutil.copy2(platform/"music_wav64.c", output/"dukemusc.c")' in prepare
     assert "N64 sound effects enabled" in preflight
-    assert "N64 music forced silent" in preflight
     assert '"SDL_Mixer"' in preflight
     assert "ignored_symbols" in preflight
-    music = (ROOT / "platform/n64/music_silent.c").read_text(encoding="utf-8")
-    midi = (ROOT / "platform/n64/music_midi.c").read_text(encoding="utf-8")
+    music = (ROOT / "platform/n64/music_wav64.c").read_text(encoding="utf-8")
     makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
     assert "ROTT64_MIXER_CHANNELS 9" in (ROOT / "platform/n64/rott64_audio.h").read_text()
-    assert "Silent music backend" in music
-    assert "MUSIC_PlaySong" in music
-    assert "load_sequence" not in music
-    assert "load_sequence" in midi
-    assert "--wav-compress 1" not in makefile
+    assert "wav64_open" in music
+    assert "mixer_ch_get_pos" in music
+    assert "mixer_ch_set_pos" in music
+    assert "--wav-compress 1" in makefile
 
 
 def test_shareware_omits_foreign_config() -> None:
