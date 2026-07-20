@@ -330,10 +330,6 @@ void rott64_mixer_pump(void)
         audio_write_end();
     }
 
-    /* Restart looping music only after libdragon has naturally finished the
-       one-shot WAV64 stream. This deliberately avoids wav64_set_loop(). */
-    rott64_music_pump();
-
     for (int i = 0; i < channel_count; ++i) {
         if (channel_chunk[i] != NULL && !mixer_ch_playing(i)) {
             channel_chunk[i] = NULL;
@@ -649,14 +645,17 @@ int Mix_SetPanning(int channel, Uint8 left, Uint8 right)
 #ifdef __N64__
     apply_channel_mix(channel);
 
-    /* Classify centered positional SFX into distance-scaled tactile events.
-       A recent fire input lets the platform upgrade a loud shot into heavy
-       weapon recoil; otherwise very strong nearby events map to blast/damage
-       feedback. The classifier remains non-blocking and safe without a Pak. */
+    /* Taradino applies 3D panning after starting a voice. A loud sound that
+       is nearly centered is generally at or very near the player: weapon
+       impacts, incoming damage, explosions, doors, etc. Give those events a
+       brief tactile accent. This deliberately stays below the explicit fire
+       recoil strength and is non-blocking. */
     if (channel_chunk[channel] != NULL && mixer_ch_playing(channel)) {
         unsigned total = (unsigned)left + (unsigned)right;
         unsigned spread = left > right ? (unsigned)(left - right) : (unsigned)(right - left);
-        n64_platform_rumble_nearby_audio(total, spread);
+        if (total >= 390u && spread <= 48u) {
+            n64_platform_rumble_pulse(48u, 145u);
+        }
     }
 #endif
     return 1;
