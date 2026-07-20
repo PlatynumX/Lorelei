@@ -426,7 +426,7 @@ static void boot_control_options(void)
 
 static void boot_data_selector(void)
 {
-    /* R46: the interactive Shareware/Dark War chooser is bypassed because
+    /* R47: the interactive Shareware/Dark War chooser is bypassed because
        hardware tests still black-screen immediately after confirming a
        version. Keep both games available without the risky selector handoff:
        default boots The Hunt Begins; tap B/R/D-Right during this short direct
@@ -443,7 +443,7 @@ static void boot_data_selector(void)
         unsigned seconds_left = (24u - ticks + 7u) / 8u;
 
         snprintf(message, sizeof(message),
-            "ROTT64 DIRECT BOOT R46\n"
+            "ROTT64 DIRECT BOOT R47\n"
             "Default: THE HUNT BEGINS\n"
             "Tap B / R / D-Right now for DARK WAR\n"
             "Mode: %s\n"

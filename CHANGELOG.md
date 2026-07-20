@@ -1,3 +1,10 @@
+# ROTT64 R47 - MIDI-kill direct boot diagnostic
+
+- Keeps the R47 version selector bypass/direct boot behavior.
+- Replaces the N64 MIDI sequencer backend with the silent music backend during engine preparation.
+- Sound effects path remains intact; only music/MIDI playback is suppressed.
+- Purpose: test whether the black screen after The Hunt Begins/Dark War selection is caused by MIDI initialization or first song playback.
+
 # ROTT64 Revision 46 — direct boot selector bypass
 
 - Bypasses the interactive Shareware/Dark War version selector because testing still black-screens immediately after confirming a version.

@@ -1,7 +1,11 @@
+# ROTT64 R47
+
+R47 is a targeted black-screen diagnostic. It keeps direct boot, removes Custom, and disables the N64 MIDI/music backend so normal boot tests whether MIDI playback was killing startup. Sound effects remain enabled.
+
 
 ## Revision 46 quick test note
 
-The interactive version picker is bypassed. Boot normally for **The Hunt Begins**. Tap **B**, **R**, **D-Right**, or **C-Right** during the short R46 direct-boot countdown for **Dark War**. This is intended to isolate the black-screen that occurred immediately after confirming a version in the old selector.
+The interactive version picker is bypassed. Boot normally for **The Hunt Begins**. Tap **B**, **R**, **D-Right**, or **C-Right** during the short R47 direct-boot countdown for **Dark War**. This is intended to isolate the black-screen that occurred immediately after confirming a version in the old selector.
 
 ## N64 video filtering
 
@@ -192,7 +196,7 @@ This revision removes soundtrack WAV64 playback entirely. Test the Apogee/logo a
 
 ## R38 N64 video options
 
-The ROTT64 boot/options path includes **VIDEO OPTIONS** on the selector-era builds. R46 temporarily bypasses that selector to isolate the black-screen after version selection:
+The ROTT64 boot/options path includes **VIDEO OPTIONS** on the selector-era builds. R47 temporarily bypasses that selector to isolate the black-screen after version selection:
 
 - **Filtering — Standard:** N64 VI resampling.
 - **Filtering — Enhanced:** VI resampling plus anti-alias/divot filtering and dedither.

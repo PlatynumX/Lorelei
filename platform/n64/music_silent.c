@@ -37,3 +37,5 @@ void MUSIC_SetSongTime(unsigned long milliseconds) { (void)milliseconds; }
 void MUSIC_GetSongPosition(songposition *position) { if (position != NULL) *position = (songposition){0}; }
 int MUSIC_FadeVolume(int volume, int milliseconds) { (void)milliseconds; MUSIC_SetVolume(volume); return MUSIC_Ok; }
 int MUSIC_FadeActive(void) { return __FX_FALSE; }
+
+void rott64_music_pump(void) { }
