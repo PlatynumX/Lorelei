@@ -142,10 +142,8 @@ def test_prepare_engine() -> None:
         assert "Mix_PlayChannelTimed" in fx
         assert "Mix_SetPanning" in fx
         music = (output / "dukemusc.c").read_text()
-        assert "Silent music backend" in music
-        assert "MUSIC_PlaySong" in music
+        assert "load_sequence" in music
         assert "MUSIC_SetSongTime" in music
-        assert "load_sequence" not in music
         assert (output / "dirent.h").is_file()
         dirent = (output / "dirent.h").read_text()
         assert "ROTT64_N64_DIRENT_H" in dirent
@@ -263,6 +261,9 @@ def test_n64_audio_policy() -> None:
     sdl = (ROOT / "platform/n64/sdl_n64.c").read_text(encoding="utf-8")
     prepare = (ROOT / "tools/prepare_engine.py").read_text(encoding="utf-8")
     preflight = (ROOT / "tools/preflight_engine.py").read_text(encoding="utf-8")
+    music = (ROOT / "platform/n64/music_midi.c").read_text(encoding="utf-8")
+    audio_header = (ROOT / "platform/n64/rott64_audio.h").read_text(encoding="utf-8")
+    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
 
     assert "audio_init(" in mixer
     assert "mixer_init(" in mixer
@@ -273,19 +274,30 @@ def test_n64_audio_policy() -> None:
     assert 'shutil.copy2(platform/"fx_silent.c", output/"fx_mixer.c")' not in prepare
     assert "NoSound = false;" in prepare
     assert "NoSound = true;" not in prepare
-    assert 'shutil.copy2(platform/"music_silent.c", output/"dukemusc.c")' in prepare
+    assert 'shutil.copy2(platform/"music_midi.c", output/"dukemusc.c")' in prepare
     assert "N64 sound effects enabled" in preflight
-    assert "N64 music forced silent" in preflight
     assert '"SDL_Mixer"' in preflight
     assert "ignored_symbols" in preflight
-    music = (ROOT / "platform/n64/music_silent.c").read_text(encoding="utf-8")
-    midi = (ROOT / "platform/n64/music_midi.c").read_text(encoding="utf-8")
-    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
-    assert "ROTT64_MIXER_CHANNELS 9" in (ROOT / "platform/n64/rott64_audio.h").read_text()
-    assert "Silent music backend" in music
-    assert "MUSIC_PlaySong" in music
-    assert "load_sequence" not in music
-    assert "load_sequence" in midi
+
+    assert "ROTT64_FX_CHANNELS 8" in audio_header
+    assert "ROTT64_MUSIC_CHANNEL_BASE 8" in audio_header
+    assert "ROTT64_MUSIC_VOICES 8" in audio_header
+    assert "ROTT64_MIXER_CHANNELS 16" in audio_header
+
+    assert "load_sequence" in music
+    assert "ROTT64_MIDI_VOICES 8" in music
+    assert "tone_wave_read" in music
+    assert "percussion_wave_read" in music
+    assert "mixer_ch_play" in music
+    assert "mixer_ch_set_freq" in music
+    assert "mixer_ch_set_vol" in music
+    assert "rott64_music_pump" in music
+    assert music.count("static int current_volume = 255;") == 1
+    assert music.count("static int current_open;") == 1
+    assert music.count("static int current_paused;") == 1
+    assert "synth_state_t" not in music
+    assert "midi_waves[2]" not in music
+    assert "midi_wave_index" not in music
     assert "--wav-compress 1" not in makefile
 
 
