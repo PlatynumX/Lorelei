@@ -2,15 +2,9 @@ name: Build ROTT64 first-level candidate
 
 on:
   push:
-  pull_request:
+    branches:
+      - full-version
   workflow_dispatch:
-
-permissions:
-  contents: read
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  LIBDRAGON_REF: trunk
 
 jobs:
   build:
@@ -152,15 +146,15 @@ jobs:
       - name: Name final Dark War ROM
         if: always() && steps.n64_build.outputs.rom_built == 'true'
         run: |
-          cp rott64.z64 rott64-darkwar-r32.z64
-          cp rott64.z64.sha256 rott64-darkwar-r32.z64.sha256
+          cp rott64.z64 rott64-darkwar-r33.z64
+          cp rott64.z64.sha256 rott64-darkwar-r33.z64.sha256
 
       - name: Verify final ROM size
         if: always() && steps.n64_build.outputs.rom_built == 'true'
         shell: bash
         run: |
-          test -f rott64-darkwar-r32.z64
-          bytes=$(stat -c%s rott64-darkwar-r32.z64)
+          test -f rott64-darkwar-r33.z64
+          bytes=$(stat -c%s rott64-darkwar-r33.z64)
           echo "Final ROM size: $bytes bytes"
           test "$bytes" -le 78000000
 
@@ -168,8 +162,8 @@ jobs:
         if: always() && steps.n64_build.outputs.rom_built == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-darkwar-r32
-          path: rott64-darkwar-r32.z64
+          name: rott64-darkwar-r33
+          path: rott64-darkwar-r33.z64
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
@@ -183,8 +177,8 @@ jobs:
             ci-reports/
             build/reports/
             generated/rott/.rott64-prepared
-            rott64-darkwar-r32.z64
-            rott64-darkwar-r32.z64.sha256
+            rott64-darkwar-r33.z64
+            rott64-darkwar-r33.z64.sha256
             rott64-diag.z64
             rott64-diag.z64.sha256
           if-no-files-found: warn
