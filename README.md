@@ -244,3 +244,15 @@ writes both profiles into the existing CRC-protected EEPROM settings payload.
 During local Comm-Bat, the engine switches the active input player before each
 `PollControls()` pass, so Player 2 now resolves both analog settings and digital
 bindings from Player 2's profile rather than inheriting Player 1's configuration.
+
+
+## R45 simplified game selection
+
+The startup selector now supports only the two official data sets bundled with the
+port:
+
+- **The Hunt Begins (Shareware)**
+- **Dark War (Full Version)**
+
+The previous Custom Levels selector and bundled custom map collection have been
+removed. This reduces ROM size and removes the custom-data handoff from startup.

@@ -1,3 +1,16 @@
+# ROTT64 Revision 45 — Hunt Begins / Dark War Only
+
+- Removes the Custom Levels option from the ROTT64 startup menu.
+- Removes the bundled custom `.RTL/.RTC` level payload from the ROM filesystem.
+- Startup game choices are now only:
+  - The Hunt Begins (Shareware)
+  - Dark War (Full Version)
+- Keeps 2P Split-Screen Comm-Bat, Video Options, and Controls as separate menu items.
+- Comm-Bat still requires Controller 2 before it can be selected.
+- Accidental legacy Custom data-mode requests fall back to the full Dark War data path.
+- Keeps R44 persistent P1/P2 controls, R43/R42 Comm-Bat work, native sequenced music,
+  SD save support, rumble, and the 78 MiB ROM cap.
+
 # ROTT64 Revision 44 — Persistent P1/P2 Remapping
 
 - Adds two independent persistent controller profiles.

@@ -438,11 +438,11 @@ static void boot_data_selector(void)
             pad2 = joypad_is_connected(JOYPAD_PORT_2);
 
             const char *label =
-                choice == 0u ? "SHAREWARE" :
-                choice == 1u ? "FULL DARK WAR" :
-                choice == 2u ? "CUSTOM LEVELS" :
-                choice == 3u ? (pad2 ? "2P SPLIT-SCREEN COMM-BAT" : "2P SPLIT-SCREEN COMM-BAT [CONTROLLER 2 REQUIRED]") :
-                choice == 4u ? "VIDEO OPTIONS" : "CONTROLS";
+                choice == 0u ? "THE HUNT BEGINS (SHAREWARE)" :
+                choice == 1u ? "DARK WAR (FULL VERSION)" :
+                choice == 2u ? (pad2 ? "2P SPLIT-SCREEN COMM-BAT" :
+                    "2P SPLIT-SCREEN COMM-BAT [CONTROLLER 2 REQUIRED]") :
+                choice == 3u ? "VIDEO OPTIONS" : "CONTROLS";
 
             snprintf(message, sizeof(message),
                 "ROTT64 MAIN MENU\n"
@@ -450,6 +450,7 @@ static void boot_data_selector(void)
                 "Controller 2: %s\n"
                 "D-Pad Up/Down: change   A/Start: select",
                 label, pad2 ? "CONNECTED" : "NOT CONNECTED");
+
             boot_display_show(message);
             wait_ms(90);
             joypad_poll();
@@ -457,68 +458,42 @@ static void boot_data_selector(void)
 
             if (pressed.d_up) {
                 do {
-                    choice = (choice + 5u) % 6u;
-                } while (choice == 3u && !joypad_is_connected(JOYPAD_PORT_2));
+                    choice = (choice + 4u) % 5u;
+                } while (choice == 2u && !joypad_is_connected(JOYPAD_PORT_2));
             }
+
             if (pressed.d_down) {
                 do {
-                    choice = (choice + 1u) % 6u;
-                } while (choice == 3u && !joypad_is_connected(JOYPAD_PORT_2));
+                    choice = (choice + 1u) % 5u;
+                } while (choice == 2u && !joypad_is_connected(JOYPAD_PORT_2));
             }
 
             if ((pressed.a || pressed.start) &&
-                !(choice == 3u && !joypad_is_connected(JOYPAD_PORT_2))) {
+                !(choice == 2u && !joypad_is_connected(JOYPAD_PORT_2))) {
                 break;
             }
         }
 
-        if (choice == 4u) {
+        if (choice == 3u) {
             boot_video_options();
             continue;
         }
-        if (choice == 5u) {
+
+        if (choice == 4u) {
             boot_control_options();
             continue;
         }
 
-        if (choice == 3u) {
-            /* Controller 2 is guaranteed to be present here because the menu
-               skips and rejects this item otherwise. This flag is consumed by
-               the local Comm-Bat integration path. */
+        if (choice == 2u) {
             selected_split_commbat = true;
             selected_data_mode = ROTT64_DATA_FULL;
             break;
         }
 
         selected_split_commbat = false;
-        selected_data_mode = (rott64_data_mode_t)choice;
+        selected_data_mode =
+            choice == 0u ? ROTT64_DATA_SHAREWARE : ROTT64_DATA_FULL;
         break;
-    }
-
-    if (selected_data_mode == ROTT64_DATA_CUSTOM && ROTT64_CUSTOM_CONTENT_COUNT != 0u) {
-        for (;;) {
-            char message[224];
-            joypad_buttons_t pressed;
-            snprintf(message, sizeof(message),
-                "Custom %u/%u: %s\nLeft/Right: change   A/Start: select   B: back",
-                selected_custom_index + 1u, ROTT64_CUSTOM_CONTENT_COUNT,
-                rott64_custom_content[selected_custom_index]);
-            boot_display_show(message);
-            wait_ms(90);
-            joypad_poll();
-            pressed = joypad_get_buttons_pressed(JOYPAD_PORT_1);
-            if (pressed.d_left)
-                selected_custom_index = selected_custom_index == 0u ?
-                    ROTT64_CUSTOM_CONTENT_COUNT - 1u : selected_custom_index - 1u;
-            if (pressed.d_right)
-                selected_custom_index = (selected_custom_index + 1u) % ROTT64_CUSTOM_CONTENT_COUNT;
-            if (pressed.b) {
-                selected_data_mode = ROTT64_DATA_SHAREWARE;
-                break;
-            }
-            if (pressed.a || pressed.start)
-                break;
-        }
     }
 }
 
