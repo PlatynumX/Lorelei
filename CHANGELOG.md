@@ -1,207 +1,22 @@
-# R48 build-host music-silent validation fix
+# ROTT64 Revision 60 — Full Dark War Soundtrack Fix
 
-- Keeps R47 behavior: direct boot with MIDI/music disabled and sound effects left enabled.
-- Fixes host validation and preflight so the silent music backend is expected instead of the native MIDI sequencer.
-- This tests whether the black screen after normal boot is caused by MIDI/song startup.
+- Restores the full-version `DARKWAR.WAD` into the dedicated Dark War source package.
+- Changes the music pipeline from Shareware `HUNTBGIN.WAD --mode shareware`
+  to `filesystem/rott/full/DARKWAR.WAD --mode full`.
+- Extracts all mapped Dark War MIDI lumps.
+- Renders those tracks through the existing R25 Timidity/WAV/WAV64 pipeline.
+- Generates the full Dark War `n64_music_map_generated.h`.
+- Shareware build is unchanged.
+- Keeps the exact R25 rumble-era runtime baseline otherwise.
 
-# ROTT64 R48 - MIDI-kill direct boot diagnostic
+# ROTT64 Revision 59 — Dedicated Dark War (Full Version)
 
-- Keeps the R48 version selector bypass/direct boot behavior.
-- Replaces the N64 MIDI sequencer backend with the silent music backend during engine preparation.
-- Sound effects path remains intact; only music/MIDI playback is suppressed.
-- Purpose: test whether the black screen after The Hunt Begins/Dark War selection is caused by MIDI initialization or first song playback.
-
-# ROTT64 Revision 46 — direct boot selector bypass
-
-- Bypasses the interactive Shareware/Dark War version selector because testing still black-screens immediately after confirming a version.
-- Defaults directly to **The Hunt Begins**.
-- Tap **B**, **R**, **D-Right**, or **C-Right** during the short boot countdown to launch **Dark War** instead.
-- Custom levels remain removed; only Hunt Begins and Dark War paths remain.
-- Stable GitHub repo remains `rott64-shareware-n64`.
-
-# ROTT64 Revision 45 — Hunt Begins / Dark War Only
-
-- Removes the Custom Levels option from the ROTT64 startup menu.
-- Removes the bundled custom `.RTL/.RTC` level payload from the ROM filesystem.
-- Startup game choices are now only:
-  - The Hunt Begins (Shareware)
-  - Dark War (Full Version)
-- Keeps 2P Split-Screen Comm-Bat, Video Options, and Controls as separate menu items.
-- Comm-Bat still requires Controller 2 before it can be selected.
-- Accidental legacy Custom data-mode requests fall back to the full Dark War data path.
-- Keeps R44 persistent P1/P2 controls, R43/R42 Comm-Bat work, native sequenced music,
-  SD save support, rumble, and the 78 MiB ROM cap.
-
-# ROTT64 Revision 44 — Persistent P1/P2 Remapping
-
-- Adds two independent persistent controller profiles.
-- Player 1 and Player 2 each save their own:
-  - Classic Digital / Analog Mouselook mode
-  - look sensitivity
-  - analog deadzone
-  - invert-Y
-  - all 14 digital action bindings
-- Adds actual button-remap UI. Choose an action and press the N64 button to bind.
-- Remappable actions: Forward, Backward, Turn Left/Right, Fire, Confirm/Swap,
-  Run, Menu/Pause, Weapon 1/2, Strafe Left/Right, Use/Open, and Turn 180.
-- P2 Comm-Bat input now consumes Player 2's own saved profile instead of P1's settings.
-- Migrates the prior V2 global control settings into both P1 and P2 profiles on first load.
-- Z in the remap screen resets only the selected player's profile to defaults.
-- Keeps R43 local Comm-Bat work, video options, native sequenced music, SD saves,
-  rumble, full/custom content, and the 78 MiB ROM cap.
-
-# ROTT64 Revision 43 — Dual-Camera Renderer Context Fix
-
-- Fixes R42 N64 cross-build failure caused by using `consoleplayer` inside generated `rt_draw.c`.
-- Removes unnecessary `consoleplayer` switching from the split-screen `ThreeDRefresh()` wrapper.
-- Keeps the actual per-view context switching through `player = PLAYER[0/1]` and `locplayerstate = &PLAYERSTATE[0/1]`.
-- Retains real 2-player Comm-Bat bootstrap, independent controller passes, dual camera renders, and top/bottom split composition.
-- No intended single-player changes.
-
-# ROTT64 Revision 42 — Comm-Bat Cross-Build Fix
-
-- Fixes R41 N64 cross-build failure in generated `modexlib.c`.
-- Adds the missing aligned dual split-screen framebuffer storage.
-- Adds the per-view validity flags used by the 320x120 top/bottom compositor.
-- Retains R41's actual local Comm-Bat engine hooks: `numplayers=2`,
-  `battle_Normal`, independent P1/P2 control passes, and dual camera rendering.
-- No intentional single-player behavior changes.
-
-# ROTT64 Revision 41 — Actual Local Comm-Bat Attempt
-
-- Replaces the R40 controller-only scaffold with engine-level local multiplayer integration.
-- Selecting 2P Comm-Bat now boots Taradino with `numplayers = 2` and real `battle_Normal` rules.
-- ROTT's original `PollControls()` is executed independently for Player 1 and Player 2.
-- Controller Port 1 feeds `PLAYERSTATE[0]`; Controller Port 2 feeds `PLAYERSTATE[1]`.
-- ROTT's original `ThreeDRefresh()` is executed from `PLAYER[0]` and `PLAYER[1]` independently.
-- Both 320x200 software-rendered camera frames are captured and composed as 320x120 top/bottom views.
-- Uses the original PLAYER/PLAYERSTATE/BATTLE systems rather than duplicating one camera.
-- Controller 2 remains mandatory before the Comm-Bat menu entry can be selected.
-- This is the first real hardware implementation attempt; GitHub N64 cross-build/hardware testing will determine remaining Taradino assumptions that require patching.
-
-# ROTT64 Revision 40
-
-- Adds a main-menu entry for **2P Split-Screen Comm-Bat**.
-- The Comm-Bat entry is disabled and automatically skipped when Controller 2 is not connected.
-- The menu reports Controller 2 connected/not-connected status live.
-- Selecting 2P Comm-Bat sets a dedicated N64 local-Comm-Bat mode flag and uses the full Dark War data set.
-- Adds Controller 2 polling plumbing without merging Player 2 input into Player 1.
-- This revision establishes the controller-gated menu and two-player platform boundary; full dual-player state/render integration remains the next implementation stage.
-- Keeps R39 controls/mouselook, R38 video options, sequenced music, SD saves, rumble, full/custom content, and the 78 MiB ROM cap.
-
-# ROTT64 Revision 39
-
-- Adds persistent Controls menu to the startup selector.
-- Adds Analog Mouselook mode: N64 analog stick feeds Taradino's existing SDL relative-mouse path for smooth turning.
-- Keeps Classic Digital mode.
-- Adds persistent look sensitivity (1-10), analog deadzone (4-40), and invert-Y option.
-- C-buttons remain digital movement while analog stick controls mouse-style turning in mouselook mode.
-- Current FPS action layout remains Z Fire, A Use, B Run, L/R Strafe, Start Menu, D-pad weapon/menu actions.
-- Keeps R38 video options, native sequenced music, SD saves, rumble, full/custom content, and 78 MiB cap.
-
-# ROTT64 Revision 38
-
-- Adds persistent N64 Video Options to the startup selector.
-- Filtering: Standard (VI resample) or Enhanced (resample + AA/divot + dedither).
-- Aspect: Original 320x200 letterboxed or 4:3-corrected 320x240 output.
-- Brightness: five persistent levels (-2 through +2).
-- Preserves ROTT's native in-game Screen Size / HUD view-size controls.
-- Video settings persist in the existing EEPROM settings payload.
-- Keeps native sequenced MIDI, SD save/load, rumble, full/custom content selection, and the 78 MiB ROM cap.
-
-## Revision 37 - enhanced VI output filtering
-
-- Keeps the revision 36 native sequenced MIDI backend and all existing gameplay/save/rumble changes.
-- Upgrades the main gameplay display from `FILTERS_RESAMPLE` to `FILTERS_RESAMPLE_ANTIALIAS_DEDITHER`.
-- Retains the VI bilinear resampling pass while enabling the VI anti-alias/divot and dedither post-processing path for the 16-bit framebuffer.
-- This is final-output filtering only; Taradino still renders the game scene in software and this does not convert the renderer to polygonal MSAA.
-- Boot/diagnostic displays remain on the conservative `FILTERS_RESAMPLE` mode.
-
-# ROTT64 changelog
-
-## Revision 36 - native sequenced MIDI music
-
-- Replaced the build-time MIDI -> WAV -> WAV64 soundtrack pipeline with a native Standard MIDI File parser and lightweight real-time sequencer/synthesizer.
-- Taradino now passes original MIDI lumps directly to the N64 music backend, so shareware, registered Dark War, and compatible custom MIDI can play without pre-rendered soundtrack assets.
-- Removed WAV64 soundtrack dependencies from the ROM build, eliminating the previous streaming-loop assertion path and substantially reducing soundtrack storage overhead.
-- Added basic General MIDI program-family timbres, percussion/noise, channel volume/expression, sustain, pitch bend, tempo changes, pause/resume, seek, and loop restart support.
-- Added a hard CI check rejecting final ROMs larger than 78 MiB.
-- Retains the R35 full/custom selector, SD save path, rumble support, and prior audio fixes.
-
-# ROTT64 revision 35 - prepare_engine fixture guard
-
-- Fixes the R34 host-validation regression by applying the generated `rt_actor.c` ABI format patch only when `rt_actor.c` exists in the prepared source tree.
-- Preserves the real N64 cross-build fix while allowing the intentionally minimal `prepare_engine.py` host-test fixture to pass.
-- No runtime feature changes from R34/R33.
-
-# ROTT64 revision 33 - host validation fix
-
-- Fixes the R32 `-Werror=unused-variable` host-validation failure by declaring `selected_custom_index` only for N64 builds, where the custom-content selector actually uses it.
-- No runtime feature changes from R32: complete Dark War soundtrack, Shareware / Full Dark War / Custom Levels selector, SD-backed native saves, safe music looping, rumble, and audio fixes are retained.
-
-# ROTT64 revision 32 - complete Dark War soundtrack bundle
-
-- Music build now extracts and renders all 34 recognized ROTT tracks from the bundled registered `DARKWAR.WAD`, including the 16 full-version-exclusive songs.
-- Generated runtime music map includes aliases for shareware MIDI lump variants from `HUNTBGIN.WAD`, so Shareware mode and Full Dark War mode both resolve to rendered WAV64 music.
-- Keeps R31 Shareware / Full Dark War / Custom Levels selector, R30 save path, R29 safe channel-level music looping, rumble, and audio fixes.
-- No copyrighted rendered WAV64 files are stored in the source archive; GitHub Actions renders them during the ROM build from the user-supplied bundled WAD.
-
-# ROTT64 revision 31 - bundled data selector
-
-- Bundles user-supplied DARKWAR.WAD, DARKWAR.RTL, and DARKWAR.RTC in DragonFS.
-- Bundles extracted custom RTL/RTC level sets in DragonFS.
-- Adds boot-time Shareware / Full Dark War / Custom Levels selector.
-- Custom mode provides a runtime package picker and uses the full-version resource WAD.
-- Builds the non-SHAREWARE Taradino code path; the N64 data backend maps shareware filenames at runtime.
-- Retains R30 SD-backed native save files, R29 manual music restart loop fix, rumble, and Expansion Pak runtime requirement.
-
-NOTE: Full/custom mode is the first hardware integration pass and requires testing; full-version music coverage may still need expansion beyond the currently rendered shareware music set.
-
-# ROTT64 changelog
-
-## Revision 30 - native game save/load on flashcart SD
-
-- Routes Taradino's writable preference/save root to `sd:/`, producing native `sd://rottgam?.rot` save files.
-- Preserves Taradino's existing save serializer, slot names, Save Game menu, Load Game menu, and save-file format instead of inventing an N64-specific game-state serializer.
-- Keeps immutable game data under `rom://rott`; only writable save output moves to SD.
-- N64 save-slot scanning now probes exact native save filenames directly, avoiding the DragonFS-only case-insensitive directory shim.
-- Allows POSIX write-access checks for the `sd:/` filesystem while keeping DragonFS read-only.
-- Retains revision 29's manual music-loop restart fix, rumble support, EEPROM persistence test, and homebrew header metadata.
-- Intended hardware test target: SummerCart64 (and other libdragon-supported flashcarts exposing the `sd://` filesystem).
-
-# Revision 29 - hardware WAV64 loop crash fix + full-save integration groundwork
-
-- Disabled libdragon WAV64 internal looping for streamed music.
-- Added channel-level music restart from the normal non-blocking mixer pump,
-  avoiding the hardware assertion in `wav64form_waveform_read()` at loop wrap.
-- Preserves working R24 music startup, R23 near-field normalization, R26 rumble,
-  and R28 EEPROM/header behavior.
-- Expanded save-porting plan around Taradino's native `rottgam?.rot` serializer.
-  EEPROM remains a persistence probe; full save slots will move to a larger
-  cartridge-backed store after exact native slot-size measurement.
-
-# Revision 28
-
-- Fixed the main ROM Advanced Homebrew Header to declare the 16-Kbit EEPROM save hardware used by the revision-27 persistence backend.
-- Marked the main ROM region-free for compatible homebrew loaders while retaining NTSC/E region metadata.
-- Kept the diagnostic ROM free of save-hardware metadata.
-- Retains revision 27 dual-record CRC32 save persistence test, revision 26 rumble behavior, and revision 24 music startup fix.
-- This is the preferred combined hardware test build for header detection, EEPROM persistence, rumble, music, and near-field audio.
-
-# Revision 27
-
-- Folded the first N64 persistent-save test into the current rumble build.
-- Added a dual-record CRC32-protected EEPROM save container.
-- Added a persistent boot counter displayed during startup so hardware/emulator save persistence can be verified immediately.
-- Added a 384-byte versioned payload API as the boundary for the next Taradino save-game integration step.
-- Retains revision 26 rumble behavior and revision 24 music initialization fix.
-
-# ROTT64 revision 26
-
-- Expanded Rumble Pak feedback with distance-scaled nearby blast/damage pulses.
-- Loud firing SFX immediately following Z-trigger input now upgrades recoil for heavy weapons.
-- Kept sustained-fire recoil and the revision-24 working music path unchanged.
-- Added `SAVE-PORTING.md` documenting the current read-only save boundary and a FlashRAM-oriented persistence plan.
+- Built from the exact R25 rumble baseline.
+- Dedicated Dark War (Full Version) build.
+- No runtime Shareware/Full selector.
+- Output ROM filename: `rott64-darkwar-r59.z64`.
+- Preserves R25 rumble behavior and the R25 audio/music implementation.
+- Does not include later save/video/remapping/split-screen/native-MIDI experimental work.
 
 # Revision 25 - N64 Rumble Pak support
 
@@ -434,9 +249,3 @@ NOTE: Full/custom mode is the first hardware integration pass and requires testi
 ## Milestone 0
 
 - Added the libdragon ROM/data bootstrap and endian-safe WAD directory browser.
-
-## Revision 34
-
-- Fixed the N64 cross-build failure in `rt_actor.c` by patching Taradino's generated `T_SnakePath` debug format to use `%lx` with explicit `unsigned long` casts for `fixed` coordinates.
-- Applies the fix in `tools/prepare_engine.py`, so clean GitHub Actions builds retain it when regenerating the engine tree.
-- No gameplay/content changes from R33.
