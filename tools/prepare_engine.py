@@ -44,16 +44,15 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
     shutil.copy2(platform/"dirent.h", output/"dirent.h")
     # Keep Taradino's real fx_mixer.c. The N64 SDL_mixer compatibility layer
     # decodes Creative VOC sound lumps and plays them through libdragon.
-    shutil.copy2(platform/"music_silent.c", output/"dukemusc.c")
+    shutil.copy2(platform/"music_wav64.c", output/"dukemusc.c")
     shutil.copy2(platform/"rt_datadir_n64.c", output/"rt_datadir.c")
     # Taradino's desktop VGA text screen creates its own SDL renderer, textures,
     # and 640x400 RGB surfaces. It is only an exit/shutdown presentation path,
     # so replace it with a no-op for the first gameplay target.
     shutil.copy2(platform/"vgatext_n64.c", output/"vgatext.c")
 
-    # Desktop MIDI synthesizer backends remain excluded. R48 deliberately
-    # installs the silent music backend so level startup can be tested without
-    # the native MIDI sequencer touching libdragon audio channels.
+    # Desktop MIDI synthesizer backends remain excluded. ROTT64 streams
+    # build-time-rendered WAV64 music through libdragon instead.
     for unused_backend in ("adlmusic.c", "sdlmusic.c"):
         candidate = output / unused_backend
         if candidate.exists():
@@ -128,23 +127,6 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
         if count != expected:
             raise RuntimeError(f"{label}: expected {expected} matches, found {count}")
         menu_text = menu_text.replace(old, new)
-    # On N64 the save root is the writable flashcart SD filesystem. Avoid the
-    # fixed DragonFS-only directory enumeration shim in M_FileCaseExists() and
-    # probe the exact native ROTT save filename directly. Taradino itself writes
-    # these exact lower-case names, so no case-folding search is required.
-    save_probe = "file = M_FileCaseExists(path);"
-    save_probe_replacement = (
-        "#ifdef __N64__\n"
-        "        file = (access(path, F_OK) == 0) ? strdup(path) : NULL;\n"
-        "#else\n"
-        "        file = M_FileCaseExists(path);\n"
-        "#endif"
-    )
-    count = menu_text.count(save_probe)
-    if count > 1:
-        raise RuntimeError(f"rt_menu save probe: expected at most 1 match, found {count}")
-    if count == 1:
-        menu_text = menu_text.replace(save_probe, save_probe_replacement, 1)
     menu_path.write_text(menu_text, encoding="utf-8")
 
     # Apply the same signed-char ctype fix to the command-line helpers.
@@ -175,23 +157,6 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
         "rt_net fixed-width debug format",
     )
     net_path.write_text(net_text, encoding="utf-8")
-
-    # T_SnakePath has a legacy debug SoftError using %x for fixed values.
-    # On the N64 ABI fixed is long int, so GCC rejects the variadic format
-    # mismatch under -Werror=format. Patch the generated engine source at
-    # preparation time so every clean build receives the ABI-correct format.
-    actor_path = output / "rt_actor.c"
-    if actor_path.exists():
-        actor_text = actor_path.read_text(encoding="utf-8", errors="strict")
-        actor_text = replace_regex_once(
-            actor_text,
-            r'SoftError\("\\n follower %d temp1 set to %4x, temp2 set to %4x",\s*count,\s*temp->x,\s*temp->y\);',
-            'SoftError("\\n follower %d temp1 set to %4lx, temp2 set to %4lx",\n'
-            '                                  count, (unsigned long)temp->x,\n'
-            '                                  (unsigned long)temp->y);',
-            "rt_actor fixed-width follower debug format",
-        )
-        actor_path.write_text(actor_text, encoding="utf-8")
 
     # The original text editors use strcpy() to shift the remainder of a
     # string left after Backspace/Delete. Those source and destination ranges
@@ -234,148 +199,6 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
         str_text = str_text.replace(old, new)
     str_path.write_text(str_text, encoding="utf-8")
 
-
-    # R41: real two-local-player Comm-Bat engine integration.
-    # Skip these patches for the intentionally tiny synthetic host-test fixture;
-    # apply them only when the corresponding real Taradino functions are present.
-    main_path = output / "rt_main.c"
-    main_text = main_path.read_text(encoding="utf-8", errors="strict")
-
-    battle_old = (
-        "gamestate.battlemode = battle_StandAloneGame;\n"
-        "BATTLE_SetOptions(&BATTLE_Options[battle_StandAloneGame]);"
-    )
-    battle_new = (
-        "#ifdef __N64__\n"
-        "if (n64_platform_split_commbat_requested()) {\n"
-        "    numplayers = 2;\n"
-        "    consoleplayer = 0;\n"
-        "    modemgame = false;\n"
-        "    networkgame = false;\n"
-        "    gamestate.battlemode = battle_Normal;\n"
-        "    BATTLE_SetOptions(&BATTLE_Options[battle_Normal]);\n"
-        "} else\n"
-        "#endif\n"
-        "{\n"
-        "    gamestate.battlemode = battle_StandAloneGame;\n"
-        "    BATTLE_SetOptions(&BATTLE_Options[battle_StandAloneGame]);\n"
-        "}"
-    )
-    if battle_old in main_text:
-        main_text = main_text.replace(battle_old, battle_new, 1)
-        main_path.write_text(main_text, encoding="utf-8")
-
-    playr_path = output / "rt_playr.c"
-    if playr_path.exists():
-        playr_text = playr_path.read_text(encoding="utf-8", errors="strict")
-        poll_pattern = re.compile(r"void\s+PollControls\s*\(\s*void\s*\)\s*\{")
-        if poll_pattern.search(playr_text):
-            playr_text = poll_pattern.sub(
-                "static void ROTT64_PollControlsSingle(void)\n{",
-                playr_text,
-                count=1,
-            )
-            if '#include "n64_platform.h"' not in playr_text:
-                playr_text = playr_text.replace(
-                    '#include "rt_playr.h"',
-                    '#include "rt_playr.h"\n#include "n64_platform.h"',
-                    1,
-                )
-            playr_text += r"""
-
-#ifdef __N64__
-/* Local split-screen Comm-Bat input adapter. Each pass executes ROTT's
-   original control code against a different local playertype/objtype. */
-void PollControls(void)
-{
-    if (!n64_platform_split_commbat_requested()) {
-        n64_platform_set_local_input_player(0u);
-        ROTT64_PollControlsSingle();
-        return;
-    }
-
-    {
-        objtype *saved_player = player;
-        playertype *saved_state = locplayerstate;
-
-        n64_platform_set_local_input_player(0u);
-        player = PLAYER[0];
-        locplayerstate = &PLAYERSTATE[0];
-        ROTT64_PollControlsSingle();
-
-        n64_platform_set_local_input_player(1u);
-        player = PLAYER[1];
-        locplayerstate = &PLAYERSTATE[1];
-        ROTT64_PollControlsSingle();
-
-        n64_platform_set_local_input_player(0u);
-        player = saved_player;
-        locplayerstate = saved_state;
-    }
-}
-#else
-void PollControls(void)
-{
-    ROTT64_PollControlsSingle();
-}
-#endif
-"""
-            playr_path.write_text(playr_text, encoding="utf-8")
-
-    draw_path = output / "rt_draw.c"
-    if draw_path.exists():
-        draw_text = draw_path.read_text(encoding="utf-8", errors="strict")
-        refresh_pattern = re.compile(r"void\s+ThreeDRefresh\s*\(\s*void\s*\)\s*\{")
-        if refresh_pattern.search(draw_text):
-            draw_text = refresh_pattern.sub(
-                "static void ROTT64_ThreeDRefreshSingle(void)\n{",
-                draw_text,
-                count=1,
-            )
-            if '#include "n64_platform.h"' not in draw_text:
-                draw_text = draw_text.replace(
-                    '#include "rt_draw.h"',
-                    '#include "rt_draw.h"\n#include "n64_platform.h"',
-                    1,
-                )
-            draw_text += r"""
-
-#ifdef __N64__
-void ThreeDRefresh(void)
-{
-    if (!n64_platform_split_commbat_requested() || numplayers < 2 ||
-        PLAYER[0] == NULL || PLAYER[1] == NULL) {
-        ROTT64_ThreeDRefreshSingle();
-        return;
-    }
-
-    {
-        objtype *saved_player = player;
-        playertype *saved_state = locplayerstate;
-
-        player = PLAYER[0];
-        locplayerstate = &PLAYERSTATE[0];
-        ROTT64_ThreeDRefreshSingle();
-        n64_platform_capture_split_view(0u, bufferofs, 320u * 200u);
-
-        player = PLAYER[1];
-        locplayerstate = &PLAYERSTATE[1];
-        ROTT64_ThreeDRefreshSingle();
-        n64_platform_capture_split_view(1u, bufferofs, 320u * 200u);
-
-        player = saved_player;
-        locplayerstate = saved_state;
-    }
-}
-#else
-void ThreeDRefresh(void)
-{
-    ROTT64_ThreeDRefreshSingle();
-}
-#endif
-"""
-            draw_path.write_text(draw_text, encoding="utf-8")
-
     # Taradino normally generates this from rott/version.h.in through CMake.
     # The legacy config parser still requires ROTTVERSION (1.4 -> 14), while
     # the modern title/version paths use CMAKE_PROJECT_VERSION. Reproduce both
@@ -395,7 +218,7 @@ void ThreeDRefresh(void)
     marker.write_text(
         "Taradino 20251222\n"
         "ROTT64 fixed 320x200 framebuffer\n"
-        "ROTTDS-derived low-memory policy with libdragon sound effects and native MIDI music\n"
+        "ROTTDS-derived low-memory policy with libdragon sound effects and WAV64 music\n"
         "Desktop VGA text renderer disabled on N64\n"
         "POSIX directory enumeration stubbed for fixed DragonFS data path\n",encoding="utf-8")
 
