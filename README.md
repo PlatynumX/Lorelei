@@ -232,3 +232,15 @@ composites them into a horizontal 320x120 + 320x120 split.
 This is intentionally an implementation test against the actual engine rather
 than another menu-only scaffold. The N64 cross-build and first hardware run may
 expose additional assumptions from Taradino's network-era Comm-Bat code.
+
+
+## R44 independent controller profiles
+
+The Controls menu now edits Player 1 and Player 2 separately. Each profile stores
+its own mouselook/classic mode, sensitivity, deadzone, invert-Y, and 14 action
+bindings. The remap screen captures an N64 button for the selected action and
+writes both profiles into the existing CRC-protected EEPROM settings payload.
+
+During local Comm-Bat, the engine switches the active input player before each
+`PollControls()` pass, so Player 2 now resolves both analog settings and digital
+bindings from Player 2's profile rather than inheriting Player 1's configuration.

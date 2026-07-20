@@ -47,6 +47,48 @@ int n64_platform_look_sensitivity(void);
 int n64_platform_look_deadzone(void);
 bool n64_platform_invert_y(void);
 
+typedef enum {
+    ROTT64_PAD_A = 0,
+    ROTT64_PAD_B,
+    ROTT64_PAD_Z,
+    ROTT64_PAD_START,
+    ROTT64_PAD_L,
+    ROTT64_PAD_R,
+    ROTT64_PAD_C_UP,
+    ROTT64_PAD_C_DOWN,
+    ROTT64_PAD_C_LEFT,
+    ROTT64_PAD_C_RIGHT,
+    ROTT64_PAD_D_UP,
+    ROTT64_PAD_D_DOWN,
+    ROTT64_PAD_D_LEFT,
+    ROTT64_PAD_D_RIGHT,
+    ROTT64_PAD_BUTTON_COUNT
+} rott64_pad_button_t;
+
+typedef enum {
+    ROTT64_ACTION_FORWARD = 0,
+    ROTT64_ACTION_BACKWARD,
+    ROTT64_ACTION_TURN_LEFT,
+    ROTT64_ACTION_TURN_RIGHT,
+    ROTT64_ACTION_FIRE,
+    ROTT64_ACTION_CONFIRM,
+    ROTT64_ACTION_RUN,
+    ROTT64_ACTION_MENU,
+    ROTT64_ACTION_WEAPON_1,
+    ROTT64_ACTION_WEAPON_2,
+    ROTT64_ACTION_STRAFE_LEFT,
+    ROTT64_ACTION_STRAFE_RIGHT,
+    ROTT64_ACTION_USE,
+    ROTT64_ACTION_TURN_180,
+    ROTT64_ACTION_COUNT
+} rott64_control_action_t;
+
+rott64_control_mode_t n64_platform_control_mode_for_player(unsigned player_index);
+int n64_platform_look_sensitivity_for_player(unsigned player_index);
+int n64_platform_look_deadzone_for_player(unsigned player_index);
+bool n64_platform_invert_y_for_player(unsigned player_index);
+rott64_pad_button_t n64_platform_binding_for_action(unsigned player_index, rott64_control_action_t action);
+
 bool n64_platform_second_controller_connected(void);
 bool n64_platform_split_commbat_requested(void);
 

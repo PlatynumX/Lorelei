@@ -1,3 +1,21 @@
+# ROTT64 Revision 44 — Persistent P1/P2 Remapping
+
+- Adds two independent persistent controller profiles.
+- Player 1 and Player 2 each save their own:
+  - Classic Digital / Analog Mouselook mode
+  - look sensitivity
+  - analog deadzone
+  - invert-Y
+  - all 14 digital action bindings
+- Adds actual button-remap UI. Choose an action and press the N64 button to bind.
+- Remappable actions: Forward, Backward, Turn Left/Right, Fire, Confirm/Swap,
+  Run, Menu/Pause, Weapon 1/2, Strafe Left/Right, Use/Open, and Turn 180.
+- P2 Comm-Bat input now consumes Player 2's own saved profile instead of P1's settings.
+- Migrates the prior V2 global control settings into both P1 and P2 profiles on first load.
+- Z in the remap screen resets only the selected player's profile to defaults.
+- Keeps R43 local Comm-Bat work, video options, native sequenced music, SD saves,
+  rumble, full/custom content, and the 78 MiB ROM cap.
+
 # ROTT64 Revision 43 — Dual-Camera Renderer Context Fix
 
 - Fixes R42 N64 cross-build failure caused by using `consoleplayer` inside generated `rt_draw.c`.
