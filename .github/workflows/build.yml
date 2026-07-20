@@ -1,4 +1,4 @@
-name: Build ROTT64 R48 MIDI-kill direct boot
+name: Build ROTT64 first-level candidate
 
 on:
   push:
@@ -24,19 +24,17 @@ jobs:
       - name: Run host validation
         run: make test-host
 
-      - name: Fetch shareware episode
-        run: bash tools/fetch_shareware.sh
-
-      - name: Validate complete Dark War MIDI soundtrack
+      - name: Prepare full Dark War music assets
         shell: bash
         run: |
+          sudo apt-get update
+          sudo apt-get install -y timidity freepats ffmpeg
           python3 tools/extract_music.py \
-            filesystem/rott/full/DARKWAR.WAD \
+            filesystem/rott/DARKWAR.WAD \
             assets/music \
             platform/n64/n64_music_map_generated.h \
-            --mode full \
-            --alias-wad filesystem/rott/HUNTBGIN.WAD
-          echo "R48 keeps MIDI metadata extraction for reports only; runtime music backend is forced silent."
+            --mode full
+          bash tools/render_music.sh assets/music
 
       - name: Fetch pinned Taradino source
         run: bash tools/fetch_taradino.sh
@@ -51,6 +49,21 @@ jobs:
           mkdir -p build/reports
           set -o pipefail
           make prepare 2>&1 | tee build/reports/prepare-engine.log
+
+      - name: Fix Dark War strict format compatibility
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("generated/rott/rt_actor.c")
+          s = p.read_text()
+          old = 'SoftError("\\n follower %d temp1 set to %4x, temp2 set to %4x",'
+          new = 'SoftError("\\n follower %d temp1 set to %4lx, temp2 set to %4lx",'
+          if old not in s:
+              raise SystemExit("Expected rt_actor.c legacy format string not found")
+          p.write_text(s.replace(old, new, 1))
+          print("Patched rt_actor.c legacy fixed/long format mismatch")
+          PY
 
       - name: Run engine preflight
         shell: bash
@@ -114,17 +127,9 @@ jobs:
 
           if python3 -c 'from pathlib import Path; p = Path("rott64.z64"); data = p.read_bytes() if p.is_file() else b""; ok = len(data) >= 1024 * 1024 and data[:4] == bytes.fromhex("80371240"); print(f"Validated {p} ({len(data)} bytes)") if ok else None; raise SystemExit(0 if ok else 1)'
           then
-            rom_size=$(stat -c %s rott64.z64)
-            max_size=$((78 * 1024 * 1024))
-            echo "Final ROM size: $rom_size bytes; limit: $max_size bytes (78 MiB)"
-            if [ "$rom_size" -gt "$max_size" ]; then
-              echo "ERROR: rott64.z64 exceeds the 78 MiB project limit."
-              echo "rom_built=false" >> "$GITHUB_OUTPUT"
-              exit 1
-            fi
             sha256sum rott64.z64 | tee rott64.z64.sha256
             echo "rom_built=true" >> "$GITHUB_OUTPUT"
-            echo "A valid full .z64 exists within the 78 MiB limit; treating the cross-build as successful."
+            echo "A valid full .z64 exists; treating the cross-build as successful."
             exit 0
           fi
 
@@ -144,17 +149,30 @@ jobs:
             rott64-diag.z64.sha256
           if-no-files-found: error
 
-      - name: Upload ROM
+      - name: Name final Dark War ROM
+        if: always() && steps.n64_build.outputs.rom_built == 'true'
+        run: |
+          cp rott64.z64 rott64-darkwar-r30.z64
+          cp rott64.z64.sha256 rott64-darkwar-r30.z64.sha256
+
+      - name: Verify final ROM size
+        if: always() && steps.n64_build.outputs.rom_built == 'true'
+        shell: bash
+        run: |
+          test -f rott64-darkwar-r30.z64
+          bytes=$(stat -c%s rott64-darkwar-r30.z64)
+          echo "Final ROM size: $bytes bytes"
+          test "$bytes" -le 78000000
+
+      - name: Upload Dark War ROM only
         if: always() && steps.n64_build.outputs.rom_built == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-shareware-first-level-candidate
-          path: |
-            rott64.z64
-            rott64.z64.sha256
-            rott64-diag.z64
-            rott64-diag.z64.sha256
+          name: rott64-darkwar-r30
+          path: rott64-darkwar-r30.z64
           if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
 
       - name: Upload diagnostics and ROM backup
         if: always()
@@ -165,8 +183,8 @@ jobs:
             ci-reports/
             build/reports/
             generated/rott/.rott64-prepared
-            rott64.z64
-            rott64.z64.sha256
+            rott64-darkwar-r30.z64
+            rott64-darkwar-r30.z64.sha256
             rott64-diag.z64
             rott64-diag.z64.sha256
           if-no-files-found: warn
