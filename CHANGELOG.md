@@ -1,23 +1,31 @@
-# R48 build-host music-silent validation fix
+# ROTT64 Revision 52 — Shareware Music Asset Workflow Fix
 
-- Keeps R47 behavior: direct boot with MIDI/music disabled and sound effects left enabled.
-- Fixes host validation and preflight so the silent music backend is expected instead of the native MIDI sequencer.
-- This tests whether the black screen after normal boot is caused by MIDI/song startup.
+- Fixes the dedicated Shareware native-music build after report generation
+  failed on a missing `assets/music/music-map.json`.
+- Adds a Shareware-specific MIDI extraction step from `HUNTBGIN.WAD`.
+- Generates the Shareware native MIDI lookup header/map before engine preparation.
+- Makes report collection tolerant if the optional music-map JSON is absent.
+- Dark War validation remains skipped when `DARKWAR.WAD` is not bundled.
+- Native sequenced music remains enabled.
+- No runtime/gameplay changes from R51.
 
-# ROTT64 R48 - MIDI-kill direct boot diagnostic
+# ROTT64 Revision 51 — Dedicated Shareware Workflow Fix
 
-- Keeps the R48 version selector bypass/direct boot behavior.
-- Replaces the N64 MIDI sequencer backend with the silent music backend during engine preparation.
-- Sound effects path remains intact; only music/MIDI playback is suppressed.
-- Purpose: test whether the black screen after The Hunt Begins/Dark War selection is caused by MIDI initialization or first song playback.
+- Fixes the dedicated Shareware GitHub Actions build.
+- Dark War MIDI soundtrack validation now runs only when
+  `filesystem/rott/full/DARKWAR.WAD` exists.
+- The dedicated Shareware build no longer requires or searches for the full-version WAD.
+- Native sequenced music remains enabled.
+- No runtime/gameplay changes from R50 Shareware.
 
-# ROTT64 Revision 46 — direct boot selector bypass
+# ROTT64 Revision 50 — Dedicated The Hunt Begins (Shareware) + Native Sequenced Music
 
-- Bypasses the interactive Shareware/Dark War version selector because testing still black-screens immediately after confirming a version.
-- Defaults directly to **The Hunt Begins**.
-- Tap **B**, **R**, **D-Right**, or **C-Right** during the short boot countdown to launch **Dark War** instead.
-- Custom levels remain removed; only Hunt Begins and Dark War paths remain.
-- Stable GitHub repo remains `rott64-shareware-n64`.
+- Removes the runtime Shareware/Dark War selector.
+- Boots directly into **The Hunt Begins (Shareware)**.
+- Restores the native sequenced music backend (`music_midi.c` -> generated `dukemusc.c`).
+- Does not use rendered WAV64 soundtrack files.
+- Keeps P1/P2 control profiles, remapping, video options, save support, rumble, and local Comm-Bat work.
+- No Custom Levels support.
 
 # ROTT64 Revision 45 — Hunt Begins / Dark War Only
 
