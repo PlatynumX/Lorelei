@@ -1,3 +1,11 @@
+# ROTT64 Revision 43 — Dual-Camera Renderer Context Fix
+
+- Fixes R42 N64 cross-build failure caused by using `consoleplayer` inside generated `rt_draw.c`.
+- Removes unnecessary `consoleplayer` switching from the split-screen `ThreeDRefresh()` wrapper.
+- Keeps the actual per-view context switching through `player = PLAYER[0/1]` and `locplayerstate = &PLAYERSTATE[0/1]`.
+- Retains real 2-player Comm-Bat bootstrap, independent controller passes, dual camera renders, and top/bottom split composition.
+- No intended single-player changes.
+
 # ROTT64 Revision 42 — Comm-Bat Cross-Build Fix
 
 - Fixes R41 N64 cross-build failure in generated `modexlib.c`.

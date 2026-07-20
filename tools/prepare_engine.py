@@ -349,23 +349,19 @@ void ThreeDRefresh(void)
     }
 
     {
-        int saved_console = consoleplayer;
         objtype *saved_player = player;
         playertype *saved_state = locplayerstate;
 
-        consoleplayer = 0;
         player = PLAYER[0];
         locplayerstate = &PLAYERSTATE[0];
         ROTT64_ThreeDRefreshSingle();
         n64_platform_capture_split_view(0u, bufferofs, 320u * 200u);
 
-        consoleplayer = 1;
         player = PLAYER[1];
         locplayerstate = &PLAYERSTATE[1];
         ROTT64_ThreeDRefreshSingle();
         n64_platform_capture_split_view(1u, bufferofs, 320u * 200u);
 
-        consoleplayer = saved_console;
         player = saved_player;
         locplayerstate = saved_state;
     }
