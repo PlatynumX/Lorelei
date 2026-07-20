@@ -238,8 +238,10 @@ def test_n64_runtime_boot_policy() -> None:
     assert "N64_ROM_ELFCOMPRESS = 0" in makefile
     platform = (ROOT / "platform/n64/n64_platform.c").read_text(encoding="utf-8")
     assert 'fopen("rom://rott/DARKWAR.WAD", "rb")' in platform
+    assert 'fopen("rom://rott/DARKWAR.RTL", "rb")' in platform
+    assert 'fopen("rom://rott/DARKWAR.RTC", "rb")' in platform
     assert "Stage 1/4: entered N64 main()" in platform
-    assert "Stage 4/4: Dark War WAD found" in platform
+    assert "Stage 4/4: Dark War data set found" in platform
     # Current libdragon rejects FILTERS_DISABLED at 320px in 16bpp on NTSC hardware.
     assert "FILTERS_DISABLED" not in platform
     bootdiag = (ROOT / "platform/n64/bootdiag.c").read_text(encoding="utf-8")
