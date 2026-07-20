@@ -1,12 +1,3 @@
-# ROTT64 R48
-
-R48 is a targeted black-screen diagnostic. It keeps direct boot, removes Custom, and disables the N64 MIDI/music backend so normal boot tests whether MIDI playback was killing startup. Sound effects remain enabled.
-
-
-## Revision 46 quick test note
-
-The interactive version picker is bypassed. Boot normally for **The Hunt Begins**. Tap **B**, **R**, **D-Right**, or **C-Right** during the short R48 direct-boot countdown for **Dark War**. This is intended to isolate the black-screen that occurred immediately after confirming a version in the old selector.
-
 ## N64 video filtering
 
 ROTT64 revision 37 uses libdragon `FILTERS_RESAMPLE_ANTIALIAS_DEDITHER` for the main game framebuffer. The N64 VI bilinearly resamples the 320x240 output and applies its AA/divot and 16-bit dedither post-processing. This filters the final framebuffer output; it does not provide true geometry MSAA because the ROTT scene is still software-rendered.
@@ -20,7 +11,7 @@ ROTT64 now plays the original Standard MIDI File lumps directly at runtime throu
 
 This user-specific test package embeds the supplied registered Dark War data and the supplied custom-level collection directly in DragonFS. It is not intended as a redistributable source release.
 
-Revision 46 bypasses the interactive version picker. Boot normally for Shareware / The Hunt Begins; tap **B**, **R**, **D-Right**, or **C-Right** during the short direct-boot countdown for Full Dark War. Custom levels are not part of this test branch. Saves continue to use Taradino native save files on `sd:/`.
+At boot choose Shareware, Full Dark War, or Custom Levels. Custom mode lets you cycle through the embedded RTL/RTC packages. Saves continue to use Taradino native save files on `sd:/`.
 
 **Revision 14:** GitHub now validates and uploads `rott64.z64` whenever the file was produced, with a backup copy in diagnostics.
 
@@ -196,7 +187,7 @@ This revision removes soundtrack WAV64 playback entirely. Test the Apogee/logo a
 
 ## R38 N64 video options
 
-The ROTT64 boot/options path includes **VIDEO OPTIONS** on the selector-era builds. R48 temporarily bypasses that selector to isolate the black-screen after version selection:
+The ROTT64 startup selector now includes **VIDEO OPTIONS**:
 
 - **Filtering — Standard:** N64 VI resampling.
 - **Filtering — Enhanced:** VI resampling plus anti-alias/divot filtering and dedither.
@@ -265,3 +256,10 @@ port:
 
 The previous Custom Levels selector and bundled custom map collection have been
 removed. This reduces ROM size and removes the custom-data handoff from startup.
+
+
+## R50 dedicated full build
+
+This source package boots directly into **Dark War (Full Version)** with no version-selection
+handoff. The N64 build uses `platform/n64/music_midi.c` as Taradino's
+`dukemusc.c`, restoring compact native sequenced music playback.
