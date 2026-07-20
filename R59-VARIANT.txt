@@ -1,0 +1,3 @@
+variant=shareware
+rom=rott64-shareware-r59.z64
+base=R25-rumble
