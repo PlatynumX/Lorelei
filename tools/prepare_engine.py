@@ -233,6 +233,152 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
         str_text = str_text.replace(old, new)
     str_path.write_text(str_text, encoding="utf-8")
 
+
+    # R41: real two-local-player Comm-Bat engine integration.
+    # Skip these patches for the intentionally tiny synthetic host-test fixture;
+    # apply them only when the corresponding real Taradino functions are present.
+    main_path = output / "rt_main.c"
+    main_text = main_path.read_text(encoding="utf-8", errors="strict")
+
+    battle_old = (
+        "gamestate.battlemode = battle_StandAloneGame;\n"
+        "BATTLE_SetOptions(&BATTLE_Options[battle_StandAloneGame]);"
+    )
+    battle_new = (
+        "#ifdef __N64__\n"
+        "if (n64_platform_split_commbat_requested()) {\n"
+        "    numplayers = 2;\n"
+        "    consoleplayer = 0;\n"
+        "    modemgame = false;\n"
+        "    networkgame = false;\n"
+        "    gamestate.battlemode = battle_Normal;\n"
+        "    BATTLE_SetOptions(&BATTLE_Options[battle_Normal]);\n"
+        "} else\n"
+        "#endif\n"
+        "{\n"
+        "    gamestate.battlemode = battle_StandAloneGame;\n"
+        "    BATTLE_SetOptions(&BATTLE_Options[battle_StandAloneGame]);\n"
+        "}"
+    )
+    if battle_old in main_text:
+        main_text = main_text.replace(battle_old, battle_new, 1)
+        main_path.write_text(main_text, encoding="utf-8")
+
+    playr_path = output / "rt_playr.c"
+    if playr_path.exists():
+        playr_text = playr_path.read_text(encoding="utf-8", errors="strict")
+        poll_pattern = re.compile(r"void\s+PollControls\s*\(\s*void\s*\)\s*\{")
+        if poll_pattern.search(playr_text):
+            playr_text = poll_pattern.sub(
+                "static void ROTT64_PollControlsSingle(void)\n{",
+                playr_text,
+                count=1,
+            )
+            if '#include "n64_platform.h"' not in playr_text:
+                playr_text = playr_text.replace(
+                    '#include "rt_playr.h"',
+                    '#include "rt_playr.h"\n#include "n64_platform.h"',
+                    1,
+                )
+            playr_text += r"""
+
+#ifdef __N64__
+/* Local split-screen Comm-Bat input adapter. Each pass executes ROTT's
+   original control code against a different local playertype/objtype. */
+void PollControls(void)
+{
+    if (!n64_platform_split_commbat_requested()) {
+        n64_platform_set_local_input_player(0u);
+        ROTT64_PollControlsSingle();
+        return;
+    }
+
+    {
+        objtype *saved_player = player;
+        playertype *saved_state = locplayerstate;
+
+        n64_platform_set_local_input_player(0u);
+        player = PLAYER[0];
+        locplayerstate = &PLAYERSTATE[0];
+        ROTT64_PollControlsSingle();
+
+        n64_platform_set_local_input_player(1u);
+        player = PLAYER[1];
+        locplayerstate = &PLAYERSTATE[1];
+        ROTT64_PollControlsSingle();
+
+        n64_platform_set_local_input_player(0u);
+        player = saved_player;
+        locplayerstate = saved_state;
+    }
+}
+#else
+void PollControls(void)
+{
+    ROTT64_PollControlsSingle();
+}
+#endif
+"""
+            playr_path.write_text(playr_text, encoding="utf-8")
+
+    draw_path = output / "rt_draw.c"
+    if draw_path.exists():
+        draw_text = draw_path.read_text(encoding="utf-8", errors="strict")
+        refresh_pattern = re.compile(r"void\s+ThreeDRefresh\s*\(\s*void\s*\)\s*\{")
+        if refresh_pattern.search(draw_text):
+            draw_text = refresh_pattern.sub(
+                "static void ROTT64_ThreeDRefreshSingle(void)\n{",
+                draw_text,
+                count=1,
+            )
+            if '#include "n64_platform.h"' not in draw_text:
+                draw_text = draw_text.replace(
+                    '#include "rt_draw.h"',
+                    '#include "rt_draw.h"\n#include "n64_platform.h"',
+                    1,
+                )
+            draw_text += r"""
+
+#ifdef __N64__
+void ThreeDRefresh(void)
+{
+    if (!n64_platform_split_commbat_requested() || numplayers < 2 ||
+        PLAYER[0] == NULL || PLAYER[1] == NULL) {
+        ROTT64_ThreeDRefreshSingle();
+        return;
+    }
+
+    {
+        int saved_console = consoleplayer;
+        objtype *saved_player = player;
+        playertype *saved_state = locplayerstate;
+
+        consoleplayer = 0;
+        player = PLAYER[0];
+        locplayerstate = &PLAYERSTATE[0];
+        ROTT64_ThreeDRefreshSingle();
+        n64_platform_capture_split_view(0u, bufferofs, 320u * 200u);
+
+        consoleplayer = 1;
+        player = PLAYER[1];
+        locplayerstate = &PLAYERSTATE[1];
+        ROTT64_ThreeDRefreshSingle();
+        n64_platform_capture_split_view(1u, bufferofs, 320u * 200u);
+
+        consoleplayer = saved_console;
+        player = saved_player;
+        locplayerstate = saved_state;
+    }
+}
+#else
+void ThreeDRefresh(void)
+{
+    ROTT64_ThreeDRefreshSingle();
+}
+#endif
+"""
+            draw_path.write_text(draw_text, encoding="utf-8")
+
     # Taradino normally generates this from rott/version.h.in through CMake.
     # The legacy config parser still requires ROTTVERSION (1.4 -> 14), while
     # the modern title/version paths use CMAKE_PROJECT_VERSION. Reproduce both

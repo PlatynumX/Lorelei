@@ -16,6 +16,8 @@ static rott64_control_mode_t selected_control_mode = ROTT64_CONTROL_MOUSELOOK;
 static int selected_look_sensitivity = 5;
 static int selected_look_deadzone = 18;
 static bool selected_invert_y = false;
+static bool selected_split_commbat = false;
+static unsigned selected_local_input_player = 0u;
 
 typedef struct {
     uint32_t magic;
@@ -209,35 +211,70 @@ static void boot_control_options(void)
 static void boot_data_selector(void)
 {
     unsigned choice = 0u;
+
     for (;;) {
         for (;;) {
-            char message[224];
+            char message[320];
             joypad_buttons_t pressed;
+            bool pad2;
+
+            joypad_poll();
+            pad2 = joypad_is_connected(JOYPAD_PORT_2);
+
             const char *label =
                 choice == 0u ? "SHAREWARE" :
                 choice == 1u ? "FULL DARK WAR" :
                 choice == 2u ? "CUSTOM LEVELS" :
-                choice == 3u ? "VIDEO OPTIONS" : "CONTROLS";
+                choice == 3u ? (pad2 ? "2P SPLIT-SCREEN COMM-BAT" : "2P SPLIT-SCREEN COMM-BAT [CONTROLLER 2 REQUIRED]") :
+                choice == 4u ? "VIDEO OPTIONS" : "CONTROLS";
+
             snprintf(message, sizeof(message),
-                "ROTT64 STARTUP\nChoose: %s\nD-Pad Up/Down: change   A/Start: select", label);
+                "ROTT64 MAIN MENU\n"
+                "Choose: %s\n"
+                "Controller 2: %s\n"
+                "D-Pad Up/Down: change   A/Start: select",
+                label, pad2 ? "CONNECTED" : "NOT CONNECTED");
             boot_display_show(message);
             wait_ms(90);
             joypad_poll();
             pressed = joypad_get_buttons_pressed(JOYPAD_PORT_1);
-            if (pressed.d_up) choice = (choice + 4u) % 5u;
-            if (pressed.d_down) choice = (choice + 1u) % 5u;
-            if (pressed.a || pressed.start) break;
+
+            if (pressed.d_up) {
+                do {
+                    choice = (choice + 5u) % 6u;
+                } while (choice == 3u && !joypad_is_connected(JOYPAD_PORT_2));
+            }
+            if (pressed.d_down) {
+                do {
+                    choice = (choice + 1u) % 6u;
+                } while (choice == 3u && !joypad_is_connected(JOYPAD_PORT_2));
+            }
+
+            if ((pressed.a || pressed.start) &&
+                !(choice == 3u && !joypad_is_connected(JOYPAD_PORT_2))) {
+                break;
+            }
         }
 
-        if (choice == 3u) {
+        if (choice == 4u) {
             boot_video_options();
             continue;
         }
-        if (choice == 4u) {
+        if (choice == 5u) {
             boot_control_options();
             continue;
         }
 
+        if (choice == 3u) {
+            /* Controller 2 is guaranteed to be present here because the menu
+               skips and rejects this item otherwise. This flag is consumed by
+               the local Comm-Bat integration path. */
+            selected_split_commbat = true;
+            selected_data_mode = ROTT64_DATA_FULL;
+            break;
+        }
+
+        selected_split_commbat = false;
         selected_data_mode = (rott64_data_mode_t)choice;
         break;
     }
@@ -254,10 +291,17 @@ static void boot_data_selector(void)
             wait_ms(90);
             joypad_poll();
             pressed = joypad_get_buttons_pressed(JOYPAD_PORT_1);
-            if (pressed.d_left) selected_custom_index = selected_custom_index == 0u ? ROTT64_CUSTOM_CONTENT_COUNT - 1u : selected_custom_index - 1u;
-            if (pressed.d_right) selected_custom_index = (selected_custom_index + 1u) % ROTT64_CUSTOM_CONTENT_COUNT;
-            if (pressed.b) { selected_data_mode = ROTT64_DATA_SHAREWARE; break; }
-            if (pressed.a || pressed.start) break;
+            if (pressed.d_left)
+                selected_custom_index = selected_custom_index == 0u ?
+                    ROTT64_CUSTOM_CONTENT_COUNT - 1u : selected_custom_index - 1u;
+            if (pressed.d_right)
+                selected_custom_index = (selected_custom_index + 1u) % ROTT64_CUSTOM_CONTENT_COUNT;
+            if (pressed.b) {
+                selected_data_mode = ROTT64_DATA_SHAREWARE;
+                break;
+            }
+            if (pressed.a || pressed.start)
+                break;
         }
     }
 }
@@ -349,6 +393,31 @@ rott64_control_mode_t n64_platform_control_mode(void) { return selected_control_
 int n64_platform_look_sensitivity(void) { return selected_look_sensitivity; }
 int n64_platform_look_deadzone(void) { return selected_look_deadzone; }
 bool n64_platform_invert_y(void) { return selected_invert_y; }
+
+bool n64_platform_second_controller_connected(void)
+{
+#ifdef __N64__
+    joypad_poll();
+    return joypad_is_connected(JOYPAD_PORT_2);
+#else
+    return false;
+#endif
+}
+
+bool n64_platform_split_commbat_requested(void)
+{
+    return selected_split_commbat;
+}
+
+void n64_platform_set_local_input_player(unsigned player_index)
+{
+    selected_local_input_player = player_index < 2u ? player_index : 0u;
+}
+
+unsigned n64_platform_local_input_player(void)
+{
+    return selected_local_input_player;
+}
 
 void n64_platform_fatal(const char *message)
 {

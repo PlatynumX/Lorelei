@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 
 typedef enum {
     ROTT64_DATA_SHAREWARE = 0,
@@ -45,5 +46,12 @@ rott64_control_mode_t n64_platform_control_mode(void);
 int n64_platform_look_sensitivity(void);
 int n64_platform_look_deadzone(void);
 bool n64_platform_invert_y(void);
+
+bool n64_platform_second_controller_connected(void);
+bool n64_platform_split_commbat_requested(void);
+
+void n64_platform_set_local_input_player(unsigned player_index);
+unsigned n64_platform_local_input_player(void);
+void n64_platform_capture_split_view(unsigned player_index, const uint8_t *pixels, size_t size);
 
 #endif

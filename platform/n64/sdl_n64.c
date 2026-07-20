@@ -113,16 +113,31 @@ static void poll_n64_controller(void)
     joypad_buttons_t pressed;
     static uint64_t next_auto_fire_rumble_ms;
 
-    n64_platform_poll();
-    input = joypad_get_inputs(JOYPAD_PORT_1);
-    buttons = joypad_get_buttons_held(JOYPAD_PORT_1);
-    pressed = joypad_get_buttons_pressed(JOYPAD_PORT_1);
+    {
+        joypad_port_t active_port =
+            n64_platform_local_input_player() == 1u ? JOYPAD_PORT_2 : JOYPAD_PORT_1;
+        n64_platform_poll();
+        input = joypad_get_inputs(active_port);
+        buttons = joypad_get_buttons_held(active_port);
+        pressed = joypad_get_buttons_pressed(active_port);
+    }
 
-    if (pressed.z) {
+    /* Keep controller 2 hot-polled whenever local Comm-Bat is requested.
+       The actual per-player command routing is performed by the Comm-Bat
+       integration layer rather than merging P2 into P1's SDL key stream. */
+    if (n64_platform_split_commbat_requested() &&
+        joypad_is_connected(JOYPAD_PORT_2)) {
+        (void)joypad_get_inputs(JOYPAD_PORT_2);
+        (void)joypad_get_buttons_held(JOYPAD_PORT_2);
+        (void)joypad_get_buttons_pressed(JOYPAD_PORT_2);
+    }
+
+    if (n64_platform_local_input_player() == 0u && pressed.z) {
         n64_platform_rumble_note_fire();
         n64_platform_rumble_pulse(58u, 210u);
         next_auto_fire_rumble_ms = n64_platform_ticks_ms() + 85u;
-    } else if (buttons.z && n64_platform_ticks_ms() >= next_auto_fire_rumble_ms) {
+    } else if (n64_platform_local_input_player() == 0u &&
+               buttons.z && n64_platform_ticks_ms() >= next_auto_fire_rumble_ms) {
         n64_platform_rumble_note_fire();
         /* Sustained-fire weapons get short repeating recoil rather than one
            permanently-on motor command. */

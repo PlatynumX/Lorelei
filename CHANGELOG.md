@@ -1,3 +1,25 @@
+# ROTT64 Revision 41 — Actual Local Comm-Bat Attempt
+
+- Replaces the R40 controller-only scaffold with engine-level local multiplayer integration.
+- Selecting 2P Comm-Bat now boots Taradino with `numplayers = 2` and real `battle_Normal` rules.
+- ROTT's original `PollControls()` is executed independently for Player 1 and Player 2.
+- Controller Port 1 feeds `PLAYERSTATE[0]`; Controller Port 2 feeds `PLAYERSTATE[1]`.
+- ROTT's original `ThreeDRefresh()` is executed from `PLAYER[0]` and `PLAYER[1]` independently.
+- Both 320x200 software-rendered camera frames are captured and composed as 320x120 top/bottom views.
+- Uses the original PLAYER/PLAYERSTATE/BATTLE systems rather than duplicating one camera.
+- Controller 2 remains mandatory before the Comm-Bat menu entry can be selected.
+- This is the first real hardware implementation attempt; GitHub N64 cross-build/hardware testing will determine remaining Taradino assumptions that require patching.
+
+# ROTT64 Revision 40
+
+- Adds a main-menu entry for **2P Split-Screen Comm-Bat**.
+- The Comm-Bat entry is disabled and automatically skipped when Controller 2 is not connected.
+- The menu reports Controller 2 connected/not-connected status live.
+- Selecting 2P Comm-Bat sets a dedicated N64 local-Comm-Bat mode flag and uses the full Dark War data set.
+- Adds Controller 2 polling plumbing without merging Player 2 input into Player 1.
+- This revision establishes the controller-gated menu and two-player platform boundary; full dual-player state/render integration remains the next implementation stage.
+- Keeps R39 controls/mouselook, R38 video options, sequenced music, SD saves, rumble, full/custom content, and the 78 MiB ROM cap.
+
 # ROTT64 Revision 39
 
 - Adds persistent Controls menu to the startup selector.

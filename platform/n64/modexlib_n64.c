@@ -42,6 +42,16 @@ static bool display_ready;
 extern int iG_X_center;
 extern int iG_Y_center;
 
+
+void n64_platform_capture_split_view(unsigned player_index, const uint8_t *pixels, size_t size)
+{
+    if (player_index >= 2u || pixels == NULL || size < (size_t)(ROTT_WIDTH * ROTT_HEIGHT))
+        return;
+    memcpy(split_view_framebuffer[player_index], pixels,
+           (size_t)(ROTT_WIDTH * ROTT_HEIGHT));
+    split_view_valid[player_index] = true;
+}
+
 static uint8_t apply_brightness(uint8_t value)
 {
     int level = n64_platform_brightness();
@@ -96,7 +106,16 @@ static void present_frame(void)
                 source_y = y - BORDER_Y;
             }
             {
-                const byte *source = indexed_framebuffer + source_y * ROTT_WIDTH;
+                const byte *source;
+                if (n64_platform_split_commbat_requested() &&
+                    split_view_valid[0] && split_view_valid[1]) {
+                    unsigned view = y < (N64_HEIGHT / 2) ? 0u : 1u;
+                    int local_y = y < (N64_HEIGHT / 2) ? y : y - (N64_HEIGHT / 2);
+                    int split_source_y = (local_y * ROTT_HEIGHT) / (N64_HEIGHT / 2);
+                    source = split_view_framebuffer[view] + split_source_y * ROTT_WIDTH;
+                } else {
+                    source = indexed_framebuffer + source_y * ROTT_WIDTH;
+                }
                 for (int x = 0; x < ROTT_WIDTH; ++x) {
                     row[x] = converted[source[x]];
                 }

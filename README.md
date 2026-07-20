@@ -206,3 +206,29 @@ analog stick into SDL relative-mouse motion consumed by Taradino's existing mous
 input path. Sensitivity, deadzone, invert-Y and control mode persist in EEPROM.
 `Classic Digital` retains the previous stick-to-key behavior. The C-buttons remain
 the movement cluster in Analog Mouselook mode.
+
+
+## R40 local Comm-Bat foundation
+
+The ROTT64 main menu now contains **2P Split-Screen Comm-Bat**. The option is
+not selectable unless a second controller is detected in Controller Port 2.
+The menu updates this status live and navigation skips the disabled entry.
+
+R40 also introduces the dedicated local Comm-Bat platform flag and keeps
+Controller 2 independently polled. This is the foundation for routing two local
+player command streams and rendering two independent player views; normal
+single-player, full-version, and custom-content paths are unchanged.
+
+
+## R41 actual local Comm-Bat implementation
+
+R41 moves beyond the R40 scaffold. Local Comm-Bat now enters Taradino's real
+two-player battle state (`numplayers=2`, `battle_Normal`). The original
+`PollControls` and `ThreeDRefresh` routines are wrapped so they execute once per
+local player with the matching `PLAYER[]`, `PLAYERSTATE[]`, controller port, and
+camera context. The N64 presentation layer captures both 320x200 views and
+composites them into a horizontal 320x120 + 320x120 split.
+
+This is intentionally an implementation test against the actual engine rather
+than another menu-only scaffold. The N64 cross-build and first hardware run may
+expose additional assumptions from Taradino's network-era Comm-Bat code.
