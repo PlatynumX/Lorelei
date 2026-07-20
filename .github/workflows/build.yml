@@ -1,4 +1,4 @@
-name: Build ROTT64 R47 MIDI-kill direct boot
+name: Build ROTT64 R48 MIDI-kill direct boot
 
 on:
   push:
@@ -36,7 +36,7 @@ jobs:
             platform/n64/n64_music_map_generated.h \
             --mode full \
             --alias-wad filesystem/rott/HUNTBGIN.WAD
-          echo "R47 extracts MIDI metadata for reports only; runtime music backend is forced silent."
+          echo "R48 keeps MIDI metadata extraction for reports only; runtime music backend is forced silent."
 
       - name: Fetch pinned Taradino source
         run: bash tools/fetch_taradino.sh

@@ -51,7 +51,7 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
     # so replace it with a no-op for the first gameplay target.
     shutil.copy2(platform/"vgatext_n64.c", output/"vgatext.c")
 
-    # Desktop MIDI synthesizer backends remain excluded. R47 deliberately
+    # Desktop MIDI synthesizer backends remain excluded. R48 deliberately
     # installs the silent music backend so level startup can be tested without
     # the native MIDI sequencer touching libdragon audio channels.
     for unused_backend in ("adlmusic.c", "sdlmusic.c"):

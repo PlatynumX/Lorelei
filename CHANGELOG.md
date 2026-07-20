@@ -1,6 +1,12 @@
-# ROTT64 R47 - MIDI-kill direct boot diagnostic
+# R48 build-host music-silent validation fix
 
-- Keeps the R47 version selector bypass/direct boot behavior.
+- Keeps R47 behavior: direct boot with MIDI/music disabled and sound effects left enabled.
+- Fixes host validation and preflight so the silent music backend is expected instead of the native MIDI sequencer.
+- This tests whether the black screen after normal boot is caused by MIDI/song startup.
+
+# ROTT64 R48 - MIDI-kill direct boot diagnostic
+
+- Keeps the R48 version selector bypass/direct boot behavior.
 - Replaces the N64 MIDI sequencer backend with the silent music backend during engine preparation.
 - Sound effects path remains intact; only music/MIDI playback is suppressed.
 - Purpose: test whether the black screen after The Hunt Begins/Dark War selection is caused by MIDI initialization or first song playback.
