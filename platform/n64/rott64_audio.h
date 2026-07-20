@@ -7,7 +7,4 @@
 #define ROTT64_MUSIC_CHANNEL 8
 #define ROTT64_MIXER_CHANNELS 9
 
-/* Service non-blocking music restart logic from the normal audio pump. */
-void rott64_music_pump(void);
-
 #endif
