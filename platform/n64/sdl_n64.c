@@ -93,28 +93,6 @@ static key_binding_t bindings[KEY_BINDING_COUNT] = {
     {SDL_SCANCODE_BACKSPACE, false},
 };
 
-
-static bool physical_button_held(joypad_buttons_t buttons, rott64_pad_button_t button)
-{
-    switch (button) {
-        case ROTT64_PAD_A: return buttons.a;
-        case ROTT64_PAD_B: return buttons.b;
-        case ROTT64_PAD_Z: return buttons.z;
-        case ROTT64_PAD_START: return buttons.start;
-        case ROTT64_PAD_L: return buttons.l;
-        case ROTT64_PAD_R: return buttons.r;
-        case ROTT64_PAD_C_UP: return buttons.c_up;
-        case ROTT64_PAD_C_DOWN: return buttons.c_down;
-        case ROTT64_PAD_C_LEFT: return buttons.c_left;
-        case ROTT64_PAD_C_RIGHT: return buttons.c_right;
-        case ROTT64_PAD_D_UP: return buttons.d_up;
-        case ROTT64_PAD_D_DOWN: return buttons.d_down;
-        case ROTT64_PAD_D_LEFT: return buttons.d_left;
-        case ROTT64_PAD_D_RIGHT: return buttons.d_right;
-        default: return false;
-    }
-}
-
 static void update_binding(unsigned index, bool held)
 {
     if (index >= KEY_BINDING_COUNT || bindings[index].held == held) {
@@ -129,78 +107,43 @@ static void poll_n64_controller(void)
 {
     rott64_mixer_pump();
 #ifdef __N64__
-    const int deadzone = n64_platform_look_deadzone();
+    const int deadzone = 24;
     joypad_inputs_t input;
     joypad_buttons_t buttons;
     joypad_buttons_t pressed;
     static uint64_t next_auto_fire_rumble_ms;
 
-    {
-        joypad_port_t active_port =
-            n64_platform_local_input_player() == 1u ? JOYPAD_PORT_2 : JOYPAD_PORT_1;
-        n64_platform_poll();
-        input = joypad_get_inputs(active_port);
-        buttons = joypad_get_buttons_held(active_port);
-        pressed = joypad_get_buttons_pressed(active_port);
-    }
+    n64_platform_poll();
+    input = joypad_get_inputs(JOYPAD_PORT_1);
+    buttons = joypad_get_buttons_held(JOYPAD_PORT_1);
+    pressed = joypad_get_buttons_pressed(JOYPAD_PORT_1);
 
-    /* Keep controller 2 hot-polled whenever local Comm-Bat is requested.
-       The actual per-player command routing is performed by the Comm-Bat
-       integration layer rather than merging P2 into P1's SDL key stream. */
-    if (n64_platform_split_commbat_requested() &&
-        joypad_is_connected(JOYPAD_PORT_2)) {
-        (void)joypad_get_inputs(JOYPAD_PORT_2);
-        (void)joypad_get_buttons_held(JOYPAD_PORT_2);
-        (void)joypad_get_buttons_pressed(JOYPAD_PORT_2);
-    }
-
-    if (n64_platform_local_input_player() == 0u && pressed.z) {
-        n64_platform_rumble_note_fire();
-        n64_platform_rumble_pulse(58u, 210u);
+    if (pressed.z) {
+        n64_platform_rumble_pulse(55u, 210u);
         next_auto_fire_rumble_ms = n64_platform_ticks_ms() + 85u;
-    } else if (n64_platform_local_input_player() == 0u &&
-               buttons.z && n64_platform_ticks_ms() >= next_auto_fire_rumble_ms) {
-        n64_platform_rumble_note_fire();
+    } else if (buttons.z && n64_platform_ticks_ms() >= next_auto_fire_rumble_ms) {
         /* Sustained-fire weapons get short repeating recoil rather than one
            permanently-on motor command. */
         n64_platform_rumble_pulse(38u, 165u);
         next_auto_fire_rumble_ms = n64_platform_ticks_ms() + 85u;
     }
 
-    {
-        unsigned active_player = n64_platform_local_input_player();
-        unsigned action;
-
-        /* Analog mouselook is profile-specific. All digital actions, including
-           movement, are resolved through that player's persisted button map. */
-        if (n64_platform_control_mode_for_player(active_player) == ROTT64_CONTROL_MOUSELOOK) {
-            int sx = input.stick_x;
-            int sy = input.stick_y;
-            int sensitivity = n64_platform_look_sensitivity_for_player(active_player);
-            if (sx > -deadzone && sx < deadzone) sx = 0;
-            if (sy > -deadzone && sy < deadzone) sy = 0;
-            relative_x += (sx * sensitivity) / 20;
-            relative_y += ((n64_platform_invert_y_for_player(active_player) ? sy : -sy)
-                           * sensitivity) / 20;
-        }
-
-        for (action = 0u; action < ROTT64_ACTION_COUNT; ++action) {
-            bool held = physical_button_held(
-                buttons,
-                n64_platform_binding_for_action(
-                    active_player, (rott64_control_action_t)action));
-            update_binding(action, held);
-        }
-
-        /* Classic mode also keeps the analog stick as digital movement/turning,
-           preserving the pre-R39 behavior in addition to remapped buttons. */
-        if (n64_platform_control_mode_for_player(active_player) == ROTT64_CONTROL_CLASSIC) {
-            if (input.stick_y > deadzone) update_binding(0, true);
-            if (input.stick_y < -deadzone) update_binding(1, true);
-            if (input.stick_x < -deadzone) update_binding(2, true);
-            if (input.stick_x > deadzone) update_binding(3, true);
-        }
-    }
+    /* Analog movement remains available; C-buttons provide the classic
+       N64 FPS digital movement cluster. */
+    update_binding(0, buttons.c_up || input.stick_y > deadzone);
+    update_binding(1, buttons.c_down || input.stick_y < -deadzone);
+    update_binding(2, buttons.c_left || input.stick_x < -deadzone);
+    update_binding(3, buttons.c_right || input.stick_x > deadzone);
+    update_binding(4, buttons.z);          /* fire (Ctrl) */
+    update_binding(5, buttons.d_up);       /* menu confirm / swap weapon (Enter) */
+    update_binding(6, buttons.b);          /* run (Shift) */
+    update_binding(7, buttons.start);      /* pause / menu back (Escape) */
+    update_binding(8, buttons.d_left);     /* weapon slot 1 */
+    update_binding(9, buttons.d_right);    /* weapon slot 2 */
+    update_binding(10, buttons.l);         /* strafe left (ROTTDS shoulder layout) */
+    update_binding(11, buttons.r);         /* strafe right (ROTTDS shoulder layout) */
+    update_binding(12, buttons.a);         /* use / open (Space) */
+    update_binding(13, buttons.d_down);    /* turn 180 (Backspace) */
 #else
     /* Host tests push events explicitly. */
 #endif
@@ -268,9 +211,8 @@ char *SDL_GetPrefPath(const char *org, const char *app)
 {
     (void)org;
     (void)app;
-    /* Writable preference/save root. Taradino keeps its native ROTTGAM?.ROT
-       save files here; the N64 config path still uses compiled defaults. */
-    return copy_path("sd:/");
+    /* Read-only target. No CONFIG.ROT is embedded, so Taradino uses defaults. */
+    return copy_path("rom://rott/");
 }
 
 int SDL_ShowSimpleMessageBox(Uint32 flags, const char *title, const char *message, SDL_Window *window)
