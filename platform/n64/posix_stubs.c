@@ -25,14 +25,10 @@ int access(const char *path, int mode)
         return -1;
     }
 
-    /* DragonFS is read-only.  The flashcart SD filesystem is writable and is
-       used for Taradino's native ROTTGAM?.ROT save files. */
-    if ((mode & W_OK) != 0 && strncmp(path, "sd://", 5) != 0 && strncmp(path, "sd:/", 4) != 0) {
+    /* DragonFS is read-only and does not expose executable files. */
+    if ((mode & W_OK) != 0) {
         errno = EROFS;
         return -1;
-    }
-    if ((mode & W_OK) != 0) {
-        return 0;
     }
     if ((mode & X_OK) != 0) {
         errno = EACCES;

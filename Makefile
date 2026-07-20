@@ -35,12 +35,12 @@ preflight:
 
 reports:
 	@mkdir -p build/reports
-	python3 tools/wad_inventory.py filesystem/rott/HUNTBGIN.WAD --out build/reports
+	python3 tools/wad_inventory.py filesystem/rott/DARKWAR.WAD --out build/reports
 	python3 tools/audit_taradino.py generated/rott --out build/reports
 	@if [ -d vendor/rottds/source ]; then python3 tools/rottds_reference_report.py vendor/taradino/source/rott vendor/rottds/source --out build/reports; fi
 
 clean:
-	rm -rf build build-host rott64.z64 rott64.z64.sha256 rott64-diag.z64 rott64-diag.z64.sha256
+	rm -rf build build-host rott64.z64 rott64.z64.sha256 rott64-diag.z64 rott64-diag.z64.sha256 filesystem/rott/music/*.wav64
 
 distclean: clean
 	rm -rf generated/rott vendor/taradino/source vendor/rottds/source assets/music/*.mid assets/music/*.wav
@@ -61,10 +61,12 @@ BUILD_DIR := build
 include $(N64_INST)/include/n64.mk
 
 ENGINE_SOURCES := $(sort $(filter-out generated/rott/adlmusic.c generated/rott/sdlmusic.c,$(wildcard generated/rott/*.c)))
-PLATFORM_SOURCES := platform/n64/n64_platform.c platform/n64/n64_save.c platform/n64/sdl_n64.c platform/n64/sdl_mixer_stub.c platform/n64/posix_stubs.c
+PLATFORM_SOURCES := platform/n64/n64_platform.c platform/n64/sdl_n64.c platform/n64/sdl_mixer_stub.c platform/n64/posix_stubs.c
 ALL_SOURCES := $(ENGINE_SOURCES) $(PLATFORM_SOURCES)
 OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(ALL_SOURCES))
 DIAG_OBJS := $(BUILD_DIR)/platform/n64/bootdiag.o
+MUSIC_WAVS := $(wildcard assets/music/*.wav)
+MUSIC_WAV64 := $(patsubst assets/music/%.wav,filesystem/rott/music/%.wav64,$(MUSIC_WAVS))
 
 CFLAGS += -std=gnu11 -O2 -G0 -ffast-math -fno-strict-aliasing
 # Taradino's legacy optimized renderer/actor code triggers GCC's
@@ -75,7 +77,7 @@ CFLAGS += -Wno-error=maybe-uninitialized
 CFLAGS += -Igenerated/rott -Iplatform/n64
 CFLAGS += -D__N64__=1
 CFLAGS += -DDATADIR='"rom://rott"'
-CFLAGS += -DPACKAGE_STRING='"ROTT64 Data Selector"'
+CFLAGS += -DPACKAGE_STRING='"ROTT64 Dark War"'
 CFLAGS += -DPACKAGE_TARNAME='"rott64"'
 CFLAGS += -DNO_NETWORK=1
 LDFLAGS += -lm
@@ -90,26 +92,24 @@ rott64-diag.z64: $(BUILD_DIR)/rott64-diag.elf $(BUILD_DIR)/rott64.dfs
 
 $(BUILD_DIR)/rott64-diag.elf: $(DIAG_OBJS)
 
-rott64.z64: N64_ROM_TITLE = "ROTT64"
+rott64.z64: N64_ROM_TITLE = "ROTT64 DARK WAR"
 # Conservative emulator-facing metadata. The previous ROM left region and
 # category blank, which causes some older frontends to treat the image as an
 # invalid/unknown cartridge.
 rott64.z64: N64_ROM_REGION = E
 rott64.z64: N64_ROM_CATEGORY = N
-# Declare the persistence hardware in the Advanced Homebrew Header. Revision 27
-# introduced an EEPROM-backed save container; without this metadata, flashcarts
-# and emulators may launch the ROM without allocating the required save device.
-rott64.z64: N64_ROM_SAVETYPE = eeprom16
-# The game timing remains NTSC-oriented, but allow modern homebrew loaders to
-# boot the image regardless of the console region.
-rott64.z64: N64_ROM_REGIONFREE = true
 # Keep the first runtime test uncompressed. This removes the open IPL3 ELF
 # decompression path as a variable when testing on older Mupen64Plus Android
 # cores. It increases ROM size but does not change game code.
 rott64.z64: N64_ROM_ELFCOMPRESS = 0
 rott64.z64: $(BUILD_DIR)/rott64.elf $(BUILD_DIR)/rott64.dfs
 
-$(BUILD_DIR)/rott64.dfs: $(shell find filesystem -type f 2>/dev/null)
+filesystem/rott/music/%.wav64: assets/music/%.wav
+	@mkdir -p $(dir $@)
+	@echo " [MUSIC] $@"
+	@$(N64_AUDIOCONV) --wav-compress 1 -o filesystem/rott/music $<
+
+$(BUILD_DIR)/rott64.dfs: $(MUSIC_WAV64) $(shell find filesystem -type f 2>/dev/null)
 
 $(BUILD_DIR)/rott64.elf: $(OBJS)
 
