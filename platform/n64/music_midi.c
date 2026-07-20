@@ -30,7 +30,6 @@ music_module_t sdl_music_module = {0};
 music_module_t adl_music_module = {0};
 
 #define ROTT64_MIDI_RATE 22050
-#define ROTT64_MIDI_MAX_VOICES 20
 #define ROTT64_MIDI_TAIL_SAMPLES (ROTT64_MIDI_RATE / 10)
 
 typedef enum {
@@ -62,43 +61,9 @@ typedef struct {
     uint32_t value;
 } seq_event_t;
 
-typedef struct {
-    uint8_t active;
-    uint8_t releasing;
-    uint8_t channel;
-    uint8_t note;
-    uint8_t velocity;
-    uint8_t waveform;
-    uint32_t phase;
-    uint32_t phase_inc;
-    int32_t env;
-} synth_voice_t;
-
-typedef struct {
-    uint8_t program[16];
-    uint8_t volume[16];
-    uint8_t expression[16];
-    uint8_t sustain[16];
-    int16_t pitch[16];
-    synth_voice_t voices[ROTT64_MIDI_MAX_VOICES];
-    uint32_t noise;
-    uint32_t rendered_pos;
-    size_t next_event;
-} synth_state_t;
-
 static seq_event_t *seq_events;
 static size_t seq_event_count;
 static uint32_t seq_total_samples;
-static synth_state_t synth;
-static int current_open;
-static int current_paused;
-static float paused_sample_position;
-static int current_volume = 255;
-
-#ifdef __N64__
-static waveform_t midi_waves[2];
-static int midi_wave_index;
-#endif
 
 static uint16_t be16(const uint8_t *p)
 {
@@ -325,104 +290,291 @@ fail:
     return 0;
 }
 
-static uint32_t note_phase_inc(uint8_t note, int16_t pitch)
+
+#define ROTT64_MIDI_VOICES 8
+#define ROTT64_MIDI_CYCLE_SAMPLES 32
+#define ROTT64_MIDI_CYCLE_LEN 96
+#define ROTT64_MIDI_PERC_LEN 256
+
+typedef struct {
+    uint8_t active;
+    uint8_t sustained;
+    uint8_t channel;
+    uint8_t note;
+    uint8_t velocity;
+    uint8_t wave_index;
+    int mixer_channel;
+} midi_voice_t;
+
+typedef struct {
+    uint8_t program[16];
+    uint8_t volume[16];
+    uint8_t expression[16];
+    uint8_t sustain[16];
+    int16_t pitch[16];
+    midi_voice_t voices[ROTT64_MIDI_VOICES];
+    size_t next_event;
+} sequencer_state_t;
+
+static sequencer_state_t seq_state;
+static int current_open;
+static int current_paused;
+static int current_volume = 255;
+static uint32_t song_position_samples;
+static uint64_t song_anchor_ms;
+static uint32_t paused_position_samples;
+
+#ifdef __N64__
+static waveform_t tone_waves[3];
+static waveform_t percussion_wave;
+#endif
+
+static void sequencer_reset(void)
+{
+    memset(&seq_state, 0, sizeof(seq_state));
+    for (int i = 0; i < 16; ++i) {
+        seq_state.volume[i] = 100;
+        seq_state.expression[i] = 127;
+    }
+    for (int i = 0; i < ROTT64_MIDI_VOICES; ++i)
+        seq_state.voices[i].mixer_channel = ROTT64_MUSIC_CHANNEL_BASE + i;
+}
+
+static float note_hz(uint8_t note, int16_t pitch)
 {
     float semitone = (float)((int)note - 69) + ((float)pitch / 8192.0f) * 2.0f;
-    float hz = 440.0f * powf(2.0f, semitone / 12.0f);
-    double inc = ((double)hz * 4294967296.0) / (double)ROTT64_MIDI_RATE;
-    if (inc < 1.0) inc = 1.0;
-    if (inc > 4294967295.0) inc = 4294967295.0;
-    return (uint32_t)inc;
+    return 440.0f * powf(2.0f, semitone / 12.0f);
 }
 
 static uint8_t program_waveform(uint8_t program)
 {
-    if (program < 8) return 2;       /* pianos: triangle */
-    if (program < 24) return 1;      /* chromatic/organ: square */
-    if (program < 40) return 2;      /* guitars/bass: triangle */
-    if (program < 56) return 0;      /* strings: saw */
-    if (program < 80) return 1;      /* brass/reed: square */
-    if (program < 96) return 2;      /* leads/pads: triangle */
+    if (program < 8) return 2;       /* piano-ish triangle */
+    if (program < 24) return 1;      /* organ/chromatic square */
+    if (program < 40) return 2;      /* guitar/bass triangle */
+    if (program < 56) return 0;      /* strings saw */
+    if (program < 80) return 1;      /* brass/reed square */
+    if (program < 96) return 2;      /* leads/pads triangle */
     return 0;
 }
 
-static void synth_reset(void)
+#ifdef __N64__
+static void tone_wave_read(void *ctx, samplebuffer_t *sbuf,
+                           int wpos, int wlen, bool seeking)
 {
-    memset(&synth, 0, sizeof(synth));
-    for (int i = 0; i < 16; ++i) {
-        synth.volume[i] = 100;
-        synth.expression[i] = 127;
+    intptr_t wave = (intptr_t)ctx;
+    int16_t *out;
+    (void)seeking;
+    if (wlen <= 0) return;
+
+    out = (int16_t *)samplebuffer_append(sbuf, wlen);
+    for (int i = 0; i < wlen; ++i) {
+        unsigned p = (unsigned)(wpos + i) % ROTT64_MIDI_CYCLE_SAMPLES;
+        int32_t sample;
+
+        if (wave == 0) {
+            /* Saw */
+            sample = -24000 + (int32_t)((48000u * p) / ROTT64_MIDI_CYCLE_SAMPLES);
+        } else if (wave == 1) {
+            /* Square */
+            sample = p < (ROTT64_MIDI_CYCLE_SAMPLES / 2) ? 22000 : -22000;
+        } else {
+            /* Triangle */
+            unsigned q = p < 16 ? p : 31u - p;
+            sample = -24000 + (int32_t)((48000u * q) / 15u);
+        }
+        out[i] = (int16_t)sample;
     }
-    synth.noise = 0x13579BDFu;
 }
 
-static synth_voice_t *alloc_voice(void)
+static void percussion_wave_read(void *ctx, samplebuffer_t *sbuf,
+                                 int wpos, int wlen, bool seeking)
 {
-    synth_voice_t *quietest = &synth.voices[0];
-    for (int i = 0; i < ROTT64_MIDI_MAX_VOICES; ++i) {
-        if (!synth.voices[i].active) return &synth.voices[i];
-        if (synth.voices[i].env < quietest->env) quietest = &synth.voices[i];
+    int16_t *out;
+    uint32_t x = 0x9E3779B9u ^ (uint32_t)wpos;
+    (void)ctx;
+    (void)seeking;
+    if (wlen <= 0) return;
+
+    out = (int16_t *)samplebuffer_append(sbuf, wlen);
+    for (int i = 0; i < wlen; ++i) {
+        int pos = wpos + i;
+        int32_t env = ROTT64_MIDI_PERC_LEN - pos;
+        if (env < 0) env = 0;
+        x ^= x << 13;
+        x ^= x >> 17;
+        x ^= x << 5;
+        out[i] = (int16_t)(((int32_t)(int16_t)(x >> 16) * env)
+                         / ROTT64_MIDI_PERC_LEN);
     }
-    return quietest;
+}
+#endif
+
+static float voice_gain(const midi_voice_t *v)
+{
+    uint8_t ch = v->channel & 15u;
+    float gain = ((float)v->velocity / 127.0f)
+               * ((float)seq_state.volume[ch] / 127.0f)
+               * ((float)seq_state.expression[ch] / 127.0f)
+               * ((float)current_volume / 255.0f);
+    /* Leave headroom for multiple simultaneous MIDI voices and SFX. */
+    gain *= 0.28f;
+    if (gain < 0.0f) gain = 0.0f;
+    if (gain > 1.0f) gain = 1.0f;
+    return gain;
+}
+
+static void update_voice_volume(midi_voice_t *v)
+{
+#ifdef __N64__
+    if (v->active) {
+        float gain = voice_gain(v);
+        mixer_ch_set_vol(v->mixer_channel, gain, gain);
+    }
+#else
+    (void)v;
+#endif
+}
+
+static void update_channel_volumes(uint8_t channel)
+{
+    for (int i = 0; i < ROTT64_MIDI_VOICES; ++i)
+        if (seq_state.voices[i].active && seq_state.voices[i].channel == channel)
+            update_voice_volume(&seq_state.voices[i]);
+}
+
+static void update_voice_pitch(midi_voice_t *v)
+{
+#ifdef __N64__
+    if (v->active && v->channel != 9u) {
+        float hz = note_hz(v->note, seq_state.pitch[v->channel & 15u]);
+        float playback_rate = hz * (float)ROTT64_MIDI_CYCLE_SAMPLES;
+        mixer_ch_set_freq(v->mixer_channel, playback_rate);
+    }
+#else
+    (void)v;
+#endif
 }
 
 static void update_channel_pitch(uint8_t channel)
 {
-    for (int i = 0; i < ROTT64_MIDI_MAX_VOICES; ++i) {
-        synth_voice_t *v = &synth.voices[i];
-        if (v->active && v->channel == channel && channel != 9)
-            v->phase_inc = note_phase_inc(v->note, synth.pitch[channel]);
+    for (int i = 0; i < ROTT64_MIDI_VOICES; ++i)
+        if (seq_state.voices[i].active && seq_state.voices[i].channel == channel)
+            update_voice_pitch(&seq_state.voices[i]);
+}
+
+static midi_voice_t *alloc_voice(void)
+{
+    for (int i = 0; i < ROTT64_MIDI_VOICES; ++i) {
+        if (!seq_state.voices[i].active)
+            return &seq_state.voices[i];
+    }
+
+    /* Deterministic voice stealing: recycle voice 0 when polyphony exceeds
+       the dedicated N64 music channel budget. */
+#ifdef __N64__
+    mixer_ch_stop(seq_state.voices[0].mixer_channel);
+#endif
+    seq_state.voices[0].active = 0;
+    return &seq_state.voices[0];
+}
+
+static void stop_voice(midi_voice_t *v)
+{
+#ifdef __N64__
+    if (v->active)
+        mixer_ch_stop(v->mixer_channel);
+#endif
+    v->active = 0;
+    v->sustained = 0;
+}
+
+static void stop_all_voices(void)
+{
+    for (int i = 0; i < ROTT64_MIDI_VOICES; ++i)
+        stop_voice(&seq_state.voices[i]);
+}
+
+static void note_on(uint8_t ch, uint8_t note, uint8_t velocity)
+{
+    midi_voice_t *v = alloc_voice();
+    memset(v, 0, sizeof(*v));
+    v->active = 1;
+    v->channel = ch;
+    v->note = note;
+    v->velocity = velocity;
+    v->mixer_channel = ROTT64_MUSIC_CHANNEL_BASE
+                     + (int)(v - seq_state.voices);
+
+#ifdef __N64__
+    if (ch == 9u) {
+        mixer_ch_play(v->mixer_channel, &percussion_wave);
+        mixer_ch_set_freq(v->mixer_channel, 11025.0f);
+    } else {
+        v->wave_index = program_waveform(seq_state.program[ch]);
+        mixer_ch_play(v->mixer_channel, &tone_waves[v->wave_index]);
+        update_voice_pitch(v);
+    }
+#endif
+    update_voice_volume(v);
+}
+
+static void note_off(uint8_t ch, uint8_t note)
+{
+    for (int i = 0; i < ROTT64_MIDI_VOICES; ++i) {
+        midi_voice_t *v = &seq_state.voices[i];
+        if (!v->active || v->channel != ch || v->note != note)
+            continue;
+        if (seq_state.sustain[ch])
+            v->sustained = 1;
+        else
+            stop_voice(v);
+    }
+}
+
+static void release_sustained(uint8_t ch)
+{
+    for (int i = 0; i < ROTT64_MIDI_VOICES; ++i) {
+        midi_voice_t *v = &seq_state.voices[i];
+        if (v->active && v->channel == ch && v->sustained)
+            stop_voice(v);
     }
 }
 
 static void apply_event(const seq_event_t *ev)
 {
-    uint8_t ch = ev->channel & 15;
+    uint8_t ch = ev->channel & 15u;
+
     switch (ev->type) {
-    case EV_NOTE_ON: {
-        synth_voice_t *v = alloc_voice();
-        memset(v, 0, sizeof(*v));
-        v->active = 1;
-        v->channel = ch;
-        v->note = ev->a;
-        v->velocity = ev->b;
-        v->waveform = (ch == 9) ? 3 : program_waveform(synth.program[ch]);
-        v->phase_inc = note_phase_inc(ev->a, synth.pitch[ch]);
-        v->env = (ch == 9) ? 32767 : 0;
+    case EV_NOTE_ON:
+        note_on(ch, ev->a, ev->b);
         break;
-    }
     case EV_NOTE_OFF:
-        for (int i = 0; i < ROTT64_MIDI_MAX_VOICES; ++i) {
-            synth_voice_t *v = &synth.voices[i];
-            if (v->active && v->channel == ch && v->note == ev->a) {
-                if (synth.sustain[ch]) v->releasing = 2;
-                else v->releasing = 1;
-            }
-        }
+        note_off(ch, ev->a);
         break;
     case EV_PROGRAM:
-        synth.program[ch] = ev->a;
+        seq_state.program[ch] = ev->a;
         break;
     case EV_CONTROL:
-        if (ev->a == 7) synth.volume[ch] = ev->b;
-        else if (ev->a == 11) synth.expression[ch] = ev->b;
-        else if (ev->a == 64) {
-            uint8_t was = synth.sustain[ch];
-            synth.sustain[ch] = ev->b >= 64;
-            if (was && !synth.sustain[ch]) {
-                for (int i = 0; i < ROTT64_MIDI_MAX_VOICES; ++i)
-                    if (synth.voices[i].active && synth.voices[i].channel == ch
-                        && synth.voices[i].releasing == 2)
-                        synth.voices[i].releasing = 1;
-            }
-        } else if (ev->a == 120 || ev->a == 123) {
-            for (int i = 0; i < ROTT64_MIDI_MAX_VOICES; ++i)
-                if (synth.voices[i].active && synth.voices[i].channel == ch)
-                    synth.voices[i].releasing = 1;
+        if (ev->a == 7u) {
+            seq_state.volume[ch] = ev->b;
+            update_channel_volumes(ch);
+        } else if (ev->a == 11u) {
+            seq_state.expression[ch] = ev->b;
+            update_channel_volumes(ch);
+        } else if (ev->a == 64u) {
+            uint8_t was = seq_state.sustain[ch];
+            seq_state.sustain[ch] = ev->b >= 64u;
+            if (was && !seq_state.sustain[ch])
+                release_sustained(ch);
+        } else if (ev->a == 120u || ev->a == 123u) {
+            for (int i = 0; i < ROTT64_MIDI_VOICES; ++i)
+                if (seq_state.voices[i].active &&
+                    seq_state.voices[i].channel == ch)
+                    stop_voice(&seq_state.voices[i]);
         }
         break;
     case EV_PITCH:
-        synth.pitch[ch] = (int16_t)((int)ev->value - 8192);
+        seq_state.pitch[ch] = (int16_t)((int)ev->value - 8192);
         update_channel_pitch(ch);
         break;
     case EV_TEMPO:
@@ -431,112 +583,27 @@ static void apply_event(const seq_event_t *ev)
     }
 }
 
-static void advance_events_to(uint32_t sample)
+static void seek_sequence(uint32_t target_samples)
 {
-    while (synth.next_event < seq_event_count && seq_events[synth.next_event].sample <= sample) {
-        apply_event(&seq_events[synth.next_event]);
-        ++synth.next_event;
-    }
-}
+    stop_all_voices();
+    sequencer_reset();
 
-static int32_t voice_sample(synth_voice_t *v)
-{
-    int32_t raw;
-    uint16_t p;
-    uint8_t ch;
-    int32_t gain;
-    if (!v->active) return 0;
-    ch = v->channel;
-    if (v->waveform == 3) {
-        synth.noise ^= synth.noise << 13;
-        synth.noise ^= synth.noise >> 17;
-        synth.noise ^= synth.noise << 5;
-        raw = (int16_t)(synth.noise >> 16);
-        v->env -= 700;
-    } else {
-        p = (uint16_t)(v->phase >> 16);
-        if (v->waveform == 0) raw = (int16_t)p;
-        else if (v->waveform == 1) raw = (p & 0x8000) ? 24000 : -24000;
-        else {
-            uint16_t q = p & 0x7FFF;
-            raw = (p & 0x8000) ? (32767 - ((int32_t)q << 1))
-                               : (-32767 + ((int32_t)q << 1));
-        }
-        v->phase += v->phase_inc;
-        if (!v->releasing && v->env < 32767) {
-            v->env += 700;
-            if (v->env > 32767) v->env = 32767;
-        } else if (v->releasing == 1) {
-            v->env -= 350;
-        }
+    /* Rebuild controller/program state and currently held notes by replaying
+       events up to the requested point. This is only used for explicit seek
+       or resume, not during the steady-state audio path. */
+    while (seq_state.next_event < seq_event_count &&
+           seq_events[seq_state.next_event].sample <= target_samples) {
+        apply_event(&seq_events[seq_state.next_event]);
+        ++seq_state.next_event;
     }
-    if (v->env <= 0) {
-        v->active = 0;
-        return 0;
-    }
-    gain = (int32_t)v->velocity * synth.volume[ch] * synth.expression[ch];
-    raw = (raw * (v->env >> 7)) >> 8;
-    raw = (raw * gain) / (127 * 127 * 127);
-    return raw;
-}
 
-static int16_t render_one_sample(void)
-{
-    int32_t mixed = 0;
-    for (int i = 0; i < ROTT64_MIDI_MAX_VOICES; ++i)
-        mixed += voice_sample(&synth.voices[i]);
-    if (mixed > 32767) mixed = 32767;
-    if (mixed < -32768) mixed = -32768;
-    return (int16_t)mixed;
+    song_position_samples = target_samples;
 }
-
-static void synth_seek(uint32_t target)
-{
-    synth_reset();
-    /* Reconstruct note/channel state at the requested point. Phase continuity
-     * is approximated by advancing active oscillator phases between events. */
-    uint32_t cursor = 0;
-    while (synth.next_event < seq_event_count && seq_events[synth.next_event].sample <= target) {
-        uint32_t next = seq_events[synth.next_event].sample;
-        uint32_t delta = next - cursor;
-        for (int i = 0; i < ROTT64_MIDI_MAX_VOICES; ++i)
-            if (synth.voices[i].active)
-                synth.voices[i].phase += synth.voices[i].phase_inc * delta;
-        cursor = next;
-        advance_events_to(next);
-    }
-    if (target > cursor) {
-        uint32_t delta = target - cursor;
-        for (int i = 0; i < ROTT64_MIDI_MAX_VOICES; ++i)
-            if (synth.voices[i].active)
-                synth.voices[i].phase += synth.voices[i].phase_inc * delta;
-    }
-    synth.rendered_pos = target;
-}
-
-#ifdef __N64__
-static void midi_wave_read(void *ctx, samplebuffer_t *sbuf, int wpos, int wlen, bool seeking)
-{
-    int16_t *out;
-    (void)ctx;
-    if (wlen <= 0) return;
-    if (seeking || (uint32_t)wpos != synth.rendered_pos)
-        synth_seek((uint32_t)wpos);
-    out = (int16_t *)samplebuffer_append(sbuf, wlen);
-    for (int i = 0; i < wlen; ++i) {
-        advance_events_to(synth.rendered_pos);
-        out[i] = render_one_sample();
-        ++synth.rendered_pos;
-    }
-}
-#endif
 
 static void apply_music_volume(void)
 {
-#ifdef __N64__
-    float volume = (float)current_volume / 255.0f;
-    mixer_ch_set_vol(ROTT64_MUSIC_CHANNEL, volume, volume);
-#endif
+    for (int i = 0; i < ROTT64_MIDI_VOICES; ++i)
+        update_voice_volume(&seq_state.voices[i]);
     float_music_volume = (double)current_volume / 255.0;
 }
 
@@ -544,35 +611,49 @@ int MUSIC_Init(int mode)
 {
     int frequency = 0;
     (void)mode;
+
     if (Mix_QuerySpec(&frequency, NULL, NULL) == 0) {
-        if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 512) != 0)
+        if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT,
+                          MIX_DEFAULT_CHANNELS, 512) != 0)
             return MUSIC_Error;
     }
+
+#ifdef __N64__
+    memset(tone_waves, 0, sizeof(tone_waves));
+    for (int i = 0; i < 3; ++i) {
+        tone_waves[i].name = "ROTT64 MIDI oscillator";
+        tone_waves[i].bits = 16;
+        tone_waves[i].channels = 1;
+        tone_waves[i].frequency = 14080.0f; /* A4: 440Hz * 32 samples */
+        tone_waves[i].len = ROTT64_MIDI_CYCLE_LEN;
+        tone_waves[i].loop_len = ROTT64_MIDI_CYCLE_SAMPLES;
+        tone_waves[i].read = tone_wave_read;
+        tone_waves[i].ctx = (void *)(intptr_t)i;
+    }
+
+    memset(&percussion_wave, 0, sizeof(percussion_wave));
+    percussion_wave.name = "ROTT64 MIDI percussion";
+    percussion_wave.bits = 16;
+    percussion_wave.channels = 1;
+    percussion_wave.frequency = 11025.0f;
+    percussion_wave.len = ROTT64_MIDI_PERC_LEN;
+    percussion_wave.loop_len = 0;
+    percussion_wave.read = percussion_wave_read;
+#endif
+
     current_open = 0;
     current_paused = 0;
-    paused_sample_position = 0.0f;
-#ifdef __N64__
-    memset(midi_waves, 0, sizeof(midi_waves));
-    for (int i = 0; i < 2; ++i) {
-        midi_waves[i].name = "ROTT64 MIDI synth";
-        midi_waves[i].bits = 16;
-        midi_waves[i].channels = 1;
-        midi_waves[i].frequency = ROTT64_MIDI_RATE;
-        midi_waves[i].loop_len = 0;
-        midi_waves[i].read = midi_wave_read;
-        midi_waves[i].ctx = NULL;
-    }
-    midi_wave_index = 0;
-#endif
-    synth_reset();
+    song_position_samples = 0;
+    paused_position_samples = 0;
+    song_anchor_ms = 0;
+    sequencer_reset();
     apply_music_volume();
     return MUSIC_Ok;
 }
 
 int MUSIC_Shutdown(void)
 {
-    (void)MUSIC_StopSong();
-    return MUSIC_Ok;
+    return MUSIC_StopSong();
 }
 
 void MUSIC_SetVolume(int volume)
@@ -585,44 +666,40 @@ void MUSIC_SetVolume(int volume)
 
 int MUSIC_SongPlaying(void)
 {
-    if (!current_open) return __FX_FALSE;
-#ifdef __N64__
-    return (current_paused || mixer_ch_playing(ROTT64_MUSIC_CHANNEL)) ? __FX_TRUE : __FX_FALSE;
-#else
-    return current_paused ? __FX_TRUE : __FX_FALSE;
-#endif
-}
-
-void MUSIC_Continue(void)
-{
-    if (!current_open || !current_paused) return;
-#ifdef __N64__
-    synth_seek((uint32_t)paused_sample_position);
-    mixer_ch_play(ROTT64_MUSIC_CHANNEL, &midi_waves[midi_wave_index]);
-    mixer_ch_set_pos(ROTT64_MUSIC_CHANNEL, paused_sample_position);
-#endif
-    current_paused = 0;
-    apply_music_volume();
+    return current_open ? __FX_TRUE : __FX_FALSE;
 }
 
 void MUSIC_Pause(void)
 {
     if (!current_open || current_paused) return;
 #ifdef __N64__
-    paused_sample_position = mixer_ch_get_pos(ROTT64_MUSIC_CHANNEL);
-    mixer_ch_stop(ROTT64_MUSIC_CHANNEL);
+    uint64_t now = (uint64_t)get_ticks_ms();
+    uint64_t elapsed = now >= song_anchor_ms ? now - song_anchor_ms : 0u;
+    paused_position_samples = song_position_samples
+        + (uint32_t)((elapsed * ROTT64_MIDI_RATE) / 1000u);
 #endif
+    stop_all_voices();
     current_paused = 1;
+}
+
+void MUSIC_Continue(void)
+{
+    if (!current_open || !current_paused) return;
+    seek_sequence(paused_position_samples);
+#ifdef __N64__
+    song_anchor_ms = (uint64_t)get_ticks_ms();
+#endif
+    current_paused = 0;
 }
 
 int MUSIC_StopSong(void)
 {
-#ifdef __N64__
-    if (current_open) mixer_ch_stop(ROTT64_MUSIC_CHANNEL);
-#endif
+    stop_all_voices();
     current_open = 0;
     current_paused = 0;
-    paused_sample_position = 0.0f;
+    song_position_samples = 0;
+    paused_position_samples = 0;
+    song_anchor_ms = 0;
     music_songdata = NULL;
     music_songdatasize = 0u;
     music_loopflag = MUSIC_PlayOnce;
@@ -630,71 +707,109 @@ int MUSIC_StopSong(void)
     seq_events = NULL;
     seq_event_count = 0;
     seq_total_samples = 0;
-    synth_reset();
+    sequencer_reset();
     return MUSIC_Ok;
 }
 
 int MUSIC_PlaySong(unsigned char *song, int size, int loopflag)
 {
     (void)MUSIC_StopSong();
+
     if (!load_sequence(song, size)) {
-        SDL_SetError("ROTT64 MIDI synth could not parse song");
+        SDL_SetError("ROTT64 MIDI sequencer could not parse song");
         return MUSIC_Error;
     }
+
     music_songdata = song;
     music_songdatasize = (size_t)size;
     music_loopflag = loopflag;
-    synth_reset();
+    sequencer_reset();
+    song_position_samples = 0;
+    paused_position_samples = 0;
 #ifdef __N64__
-    /* Alternate waveform identities between songs. Libdragon intentionally
-     * retains a channel's sample cache when the same waveform pointer is
-     * replayed; using two descriptors prevents cached samples from the prior
-     * MIDI song leaking into the beginning of a newly selected song. */
-    midi_wave_index ^= 1;
-    midi_waves[midi_wave_index].len = (int)seq_total_samples;
-    mixer_ch_play(ROTT64_MUSIC_CHANNEL, &midi_waves[midi_wave_index]);
+    song_anchor_ms = (uint64_t)get_ticks_ms();
 #endif
     current_open = 1;
     current_paused = 0;
-    paused_sample_position = 0.0f;
-    apply_music_volume();
+
+    /* Do not synthesize or stream PCM here. The normal audio pump advances
+       MIDI events incrementally after the game has returned to its main loop. */
     return MUSIC_Ok;
 }
 
 void MUSIC_SetSongTime(unsigned long milliseconds)
 {
-    uint32_t position;
+    uint32_t target;
     if (!current_open) return;
-    position = (uint32_t)(((uint64_t)milliseconds * ROTT64_MIDI_RATE) / 1000u);
-    if (position > seq_total_samples) position = seq_total_samples;
+
+    target = (uint32_t)(((uint64_t)milliseconds * ROTT64_MIDI_RATE) / 1000u);
+    if (target > seq_total_samples)
+        target = seq_total_samples;
+
+    seek_sequence(target);
+    if (current_paused) {
+        paused_position_samples = target;
+    } else {
 #ifdef __N64__
-    if (current_paused) paused_sample_position = (float)position;
-    else mixer_ch_set_pos(ROTT64_MUSIC_CHANNEL, (float)position);
+        song_anchor_ms = (uint64_t)get_ticks_ms();
 #endif
+    }
 }
 
 void MUSIC_GetSongPosition(songposition *position)
 {
-    float samples = 0.0f;
+    uint32_t samples = song_position_samples;
     if (!position) return;
+
     memset(position, 0, sizeof(*position));
     if (!current_open) return;
+
 #ifdef __N64__
-    samples = current_paused ? paused_sample_position : mixer_ch_get_pos(ROTT64_MUSIC_CHANNEL);
+    if (current_paused) {
+        samples = paused_position_samples;
+    } else {
+        uint64_t now = (uint64_t)get_ticks_ms();
+        uint64_t elapsed = now >= song_anchor_ms ? now - song_anchor_ms : 0u;
+        samples += (uint32_t)((elapsed * ROTT64_MIDI_RATE) / 1000u);
+    }
 #endif
-    if (samples > 0.0f)
-        position->milliseconds = (unsigned long)((samples * 1000.0f) / ROTT64_MIDI_RATE);
+
+    position->milliseconds =
+        (unsigned long)(((uint64_t)samples * 1000u) / ROTT64_MIDI_RATE);
 }
 
 void rott64_music_pump(void)
 {
 #ifdef __N64__
-    if (!current_open || current_paused || music_loopflag != MUSIC_LoopSong) return;
-    if (!mixer_ch_playing(ROTT64_MUSIC_CHANNEL)) {
-        synth_reset();
-        mixer_ch_play(ROTT64_MUSIC_CHANNEL, &midi_waves[midi_wave_index]);
-        mixer_ch_set_pos(ROTT64_MUSIC_CHANNEL, 0.0f);
-        apply_music_volume();
+    uint64_t now;
+    uint64_t elapsed;
+    uint32_t target;
+
+    if (!current_open || current_paused)
+        return;
+
+    now = (uint64_t)get_ticks_ms();
+    elapsed = now >= song_anchor_ms ? now - song_anchor_ms : 0u;
+    target = song_position_samples
+           + (uint32_t)((elapsed * ROTT64_MIDI_RATE) / 1000u);
+
+    if (target >= seq_total_samples) {
+        if (music_loopflag == MUSIC_LoopSong) {
+            stop_all_voices();
+            sequencer_reset();
+            song_position_samples = 0;
+            song_anchor_ms = now;
+            target = 0;
+        } else {
+            (void)MUSIC_StopSong();
+            return;
+        }
+    }
+
+    while (seq_state.next_event < seq_event_count &&
+           seq_events[seq_state.next_event].sample <= target) {
+        apply_event(&seq_events[seq_state.next_event]);
+        ++seq_state.next_event;
     }
 #endif
 }

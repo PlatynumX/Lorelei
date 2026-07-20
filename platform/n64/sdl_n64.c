@@ -144,16 +144,6 @@ static void poll_n64_controller(void)
         pressed = joypad_get_buttons_pressed(active_port);
     }
 
-    /* Keep controller 2 hot-polled whenever local Comm-Bat is requested.
-       The actual per-player command routing is performed by the Comm-Bat
-       integration layer rather than merging P2 into P1's SDL key stream. */
-    if (n64_platform_split_commbat_requested() &&
-        joypad_is_connected(JOYPAD_PORT_2)) {
-        (void)joypad_get_inputs(JOYPAD_PORT_2);
-        (void)joypad_get_buttons_held(JOYPAD_PORT_2);
-        (void)joypad_get_buttons_pressed(JOYPAD_PORT_2);
-    }
-
     if (n64_platform_local_input_player() == 0u && pressed.z) {
         n64_platform_rumble_note_fire();
         n64_platform_rumble_pulse(58u, 210u);

@@ -21,7 +21,6 @@ typedef struct {
 } rott64_control_profile_t;
 
 static rott64_control_profile_t control_profiles[2];
-static bool selected_split_commbat = false;
 static unsigned selected_local_input_player = 0u;
 
 typedef struct {
@@ -426,51 +425,8 @@ static void boot_control_options(void)
 
 static void boot_data_selector(void)
 {
-    /* R47: the interactive Shareware/Dark War chooser is bypassed because
-       hardware tests still black-screen immediately after confirming a
-       version. Keep both games available without the risky selector handoff:
-       default boots The Hunt Begins; tap B/R/D-Right during this short direct
-       boot window for Dark War. */
-    bool want_full = false;
-    unsigned ticks;
-
-    selected_split_commbat = false;
-    selected_custom_index = 0u;
-
-    for (ticks = 0u; ticks < 24u; ++ticks) {
-        char message[320];
-        joypad_buttons_t pressed;
-        unsigned seconds_left = (24u - ticks + 7u) / 8u;
-
-        snprintf(message, sizeof(message),
-            "ROTT64 DIRECT BOOT R47\n"
-            "Default: THE HUNT BEGINS\n"
-            "Tap B / R / D-Right now for DARK WAR\n"
-            "Mode: %s\n"
-            "Starting in %u...",
-            want_full ? "DARK WAR" : "THE HUNT BEGINS",
-            seconds_left ? seconds_left : 1u);
-        boot_display_show(message);
-        wait_ms(125);
-        joypad_poll();
-        pressed = joypad_get_buttons_pressed(JOYPAD_PORT_1);
-
-        if (pressed.b || pressed.r || pressed.d_right || pressed.c_right) {
-            if (!want_full) {
-                want_full = true;
-                ticks = 0u; /* give visual confirmation time after mode change */
-            }
-        }
-        if (pressed.a || pressed.start) {
-            break;
-        }
-    }
-
-    selected_data_mode = want_full ? ROTT64_DATA_FULL : ROTT64_DATA_SHAREWARE;
-    boot_display_show(want_full ?
-        "Direct boot: DARK WAR\nVersion selector bypassed." :
-        "Direct boot: THE HUNT BEGINS\nVersion selector bypassed.");
-    wait_ms(650);
+    /* R50 dedicated build: no game-version selector. */
+    selected_data_mode = ROTT64_DATA_FULL;
 }
 
 static void boot_display_close(void)
@@ -608,20 +564,7 @@ bool n64_platform_invert_y(void)
     return n64_platform_invert_y_for_player(selected_local_input_player);
 }
 
-bool n64_platform_second_controller_connected(void)
-{
-#ifdef __N64__
-    joypad_poll();
-    return joypad_is_connected(JOYPAD_PORT_2);
-#else
-    return false;
-#endif
-}
 
-bool n64_platform_split_commbat_requested(void)
-{
-    return selected_split_commbat;
-}
 
 void n64_platform_set_local_input_player(unsigned player_index)
 {

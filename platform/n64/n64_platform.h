@@ -89,11 +89,8 @@ int n64_platform_look_deadzone_for_player(unsigned player_index);
 bool n64_platform_invert_y_for_player(unsigned player_index);
 rott64_pad_button_t n64_platform_binding_for_action(unsigned player_index, rott64_control_action_t action);
 
-bool n64_platform_second_controller_connected(void);
-bool n64_platform_split_commbat_requested(void);
 
 void n64_platform_set_local_input_player(unsigned player_index);
 unsigned n64_platform_local_input_player(void);
-void n64_platform_capture_split_view(unsigned player_index, const uint8_t *pixels, size_t size);
 
 #endif
