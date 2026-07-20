@@ -1,4 +1,4 @@
-name: Build ROTT64 R48 MIDI-kill direct boot
+name: Build ROTT64 first-level candidate
 
 on:
   push:
@@ -36,7 +36,7 @@ jobs:
             platform/n64/n64_music_map_generated.h \
             --mode full \
             --alias-wad filesystem/rott/HUNTBGIN.WAD
-          echo "R48 keeps MIDI metadata extraction for reports only; runtime music backend is forced silent."
+          echo "Native ROTT64 sequencer plays the original MIDI lumps directly; no WAV64 render step."
 
       - name: Fetch pinned Taradino source
         run: bash tools/fetch_taradino.sh
