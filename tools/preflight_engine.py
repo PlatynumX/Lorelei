@@ -16,15 +16,14 @@ def main()->int:
         failures.append("N64 data path")
     music=(a.engine/"dukemusc.c").read_text(errors="replace")
     for needle, label in (
-        ("Silent music backend", "N64 music forced silent"),
-        ("MUSIC_PlaySong", "silent music play shim"),
-        ("MUSIC_SetSongTime", "silent music seek shim"),
-        ("MUSIC_GetSongPosition", "silent music position shim"),
+        ("load_sequence", "native Standard MIDI parser"),
+        ("midi_wave_read", "native MIDI synthesizer waveform"),
+        ("MUSIC_SetSongTime", "music seek support"),
+        ("MUSIC_GetSongPosition", "music position support"),
+        ("ROTT64_MUSIC_CHANNEL", "reserved N64 music mixer channel"),
     ):
         if needle not in music:
             failures.append(label)
-    if "load_sequence" in music or "midi_wave_read" in music:
-        failures.append("native MIDI sequencer still active")
 
     fx=(a.engine/"fx_mixer.c").read_text(errors="replace")
     for needle, label in (
@@ -90,6 +89,6 @@ def main()->int:
     if failures: print("failed engine patches: "+", ".join(failures),file=sys.stderr)
     if uncovered: print("uncovered SDL symbols:\n  "+"\n  ".join(uncovered),file=sys.stderr)
     if failures or uncovered: return 1
-    print(f"Preflight passed: {len(list(a.engine.glob('*.c')))} C files, {len(symbols)} SDL/Mix symbols covered; N64 music forced silent")
+    print(f"Preflight passed: {len(list(a.engine.glob('*.c')))} C files, {len(symbols)} SDL/Mix symbols covered")
     return 0
 if __name__=="__main__": raise SystemExit(main())
