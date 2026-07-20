@@ -33,6 +33,8 @@ SDL_Surface *sdl_surface = NULL;
 SDL_Surface *unstretch_sdl_surface = NULL;
 
 static byte indexed_framebuffer[ROTT_WIDTH * ROTT_HEIGHT] __attribute__((aligned(16)));
+static byte split_view_framebuffer[2][ROTT_WIDTH * ROTT_HEIGHT] __attribute__((aligned(16)));
+static bool split_view_valid[2];
 static SDL_Color palette_colors[256];
 static SDL_Palette framebuffer_palette = {256, palette_colors, 0, 1};
 static SDL_PixelFormat framebuffer_format = {0, &framebuffer_palette, 8, 1};

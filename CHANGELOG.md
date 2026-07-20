@@ -1,3 +1,12 @@
+# ROTT64 Revision 42 — Comm-Bat Cross-Build Fix
+
+- Fixes R41 N64 cross-build failure in generated `modexlib.c`.
+- Adds the missing aligned dual split-screen framebuffer storage.
+- Adds the per-view validity flags used by the 320x120 top/bottom compositor.
+- Retains R41's actual local Comm-Bat engine hooks: `numplayers=2`,
+  `battle_Normal`, independent P1/P2 control passes, and dual camera rendering.
+- No intentional single-player behavior changes.
+
 # ROTT64 Revision 41 — Actual Local Comm-Bat Attempt
 
 - Replaces the R40 controller-only scaffold with engine-level local multiplayer integration.
