@@ -426,75 +426,51 @@ static void boot_control_options(void)
 
 static void boot_data_selector(void)
 {
-    unsigned choice = 0u;
+    /* R46: the interactive Shareware/Dark War chooser is bypassed because
+       hardware tests still black-screen immediately after confirming a
+       version. Keep both games available without the risky selector handoff:
+       default boots The Hunt Begins; tap B/R/D-Right during this short direct
+       boot window for Dark War. */
+    bool want_full = false;
+    unsigned ticks;
 
-    for (;;) {
-        for (;;) {
-            char message[320];
-            joypad_buttons_t pressed;
-            bool pad2;
+    selected_split_commbat = false;
+    selected_custom_index = 0u;
 
-            joypad_poll();
-            pad2 = joypad_is_connected(JOYPAD_PORT_2);
+    for (ticks = 0u; ticks < 24u; ++ticks) {
+        char message[320];
+        joypad_buttons_t pressed;
+        unsigned seconds_left = (24u - ticks + 7u) / 8u;
 
-            const char *label =
-                choice == 0u ? "THE HUNT BEGINS (SHAREWARE)" :
-                choice == 1u ? "DARK WAR (FULL VERSION)" :
-                choice == 2u ? (pad2 ? "2P SPLIT-SCREEN COMM-BAT" :
-                    "2P SPLIT-SCREEN COMM-BAT [CONTROLLER 2 REQUIRED]") :
-                choice == 3u ? "VIDEO OPTIONS" : "CONTROLS";
+        snprintf(message, sizeof(message),
+            "ROTT64 DIRECT BOOT R46\n"
+            "Default: THE HUNT BEGINS\n"
+            "Tap B / R / D-Right now for DARK WAR\n"
+            "Mode: %s\n"
+            "Starting in %u...",
+            want_full ? "DARK WAR" : "THE HUNT BEGINS",
+            seconds_left ? seconds_left : 1u);
+        boot_display_show(message);
+        wait_ms(125);
+        joypad_poll();
+        pressed = joypad_get_buttons_pressed(JOYPAD_PORT_1);
 
-            snprintf(message, sizeof(message),
-                "ROTT64 MAIN MENU\n"
-                "Choose: %s\n"
-                "Controller 2: %s\n"
-                "D-Pad Up/Down: change   A/Start: select",
-                label, pad2 ? "CONNECTED" : "NOT CONNECTED");
-
-            boot_display_show(message);
-            wait_ms(90);
-            joypad_poll();
-            pressed = joypad_get_buttons_pressed(JOYPAD_PORT_1);
-
-            if (pressed.d_up) {
-                do {
-                    choice = (choice + 4u) % 5u;
-                } while (choice == 2u && !joypad_is_connected(JOYPAD_PORT_2));
-            }
-
-            if (pressed.d_down) {
-                do {
-                    choice = (choice + 1u) % 5u;
-                } while (choice == 2u && !joypad_is_connected(JOYPAD_PORT_2));
-            }
-
-            if ((pressed.a || pressed.start) &&
-                !(choice == 2u && !joypad_is_connected(JOYPAD_PORT_2))) {
-                break;
+        if (pressed.b || pressed.r || pressed.d_right || pressed.c_right) {
+            if (!want_full) {
+                want_full = true;
+                ticks = 0u; /* give visual confirmation time after mode change */
             }
         }
-
-        if (choice == 3u) {
-            boot_video_options();
-            continue;
-        }
-
-        if (choice == 4u) {
-            boot_control_options();
-            continue;
-        }
-
-        if (choice == 2u) {
-            selected_split_commbat = true;
-            selected_data_mode = ROTT64_DATA_FULL;
+        if (pressed.a || pressed.start) {
             break;
         }
-
-        selected_split_commbat = false;
-        selected_data_mode =
-            choice == 0u ? ROTT64_DATA_SHAREWARE : ROTT64_DATA_FULL;
-        break;
     }
+
+    selected_data_mode = want_full ? ROTT64_DATA_FULL : ROTT64_DATA_SHAREWARE;
+    boot_display_show(want_full ?
+        "Direct boot: DARK WAR\nVersion selector bypassed." :
+        "Direct boot: THE HUNT BEGINS\nVersion selector bypassed.");
+    wait_ms(650);
 }
 
 static void boot_display_close(void)

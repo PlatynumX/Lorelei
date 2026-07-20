@@ -1,3 +1,11 @@
+# ROTT64 Revision 46 — direct boot selector bypass
+
+- Bypasses the interactive Shareware/Dark War version selector because testing still black-screens immediately after confirming a version.
+- Defaults directly to **The Hunt Begins**.
+- Tap **B**, **R**, **D-Right**, or **C-Right** during the short boot countdown to launch **Dark War** instead.
+- Custom levels remain removed; only Hunt Begins and Dark War paths remain.
+- Stable GitHub repo remains `rott64-shareware-n64`.
+
 # ROTT64 Revision 45 — Hunt Begins / Dark War Only
 
 - Removes the Custom Levels option from the ROTT64 startup menu.
