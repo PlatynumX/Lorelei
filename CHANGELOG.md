@@ -1,3 +1,11 @@
+# ROTT64 R41c — synchronized Taradino startup trace
+
+- Host startup fixture now mirrors Taradino 20251222's real source shape.
+- Trace anchors are whitespace-tolerant structural C matches.
+- No comment anchors or fixed indentation assumptions.
+- Full T07-T30 trace restored.
+- 78,000,000-byte ROM hard limit retained.
+
 # ROTT64 R41b — real-source startup trace correction
 
 - Removed the nonexistent `ApogeePath = GetPrefDir();` trace anchor that

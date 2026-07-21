@@ -90,132 +90,54 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
         "fixed N64 resolution",
     )
 
-    # R41 hardware startup tracing. The working R40 build reaches Taradino
-    # after all six platform/data checks, then black-screens. Insert visible
-    # checkpoints before each major startup operation so the last displayed
-    # label identifies the call that fails or never returns. This does not
-    # alter product selection, episode handling, or other registered logic.
-    if "PopulateEpisodeMenu(datadir);" in text:
-        startup_markers = (
-            (
-                "    // Set which release version we're on",
-                '    n64_platform_checkpoint("T08: before product/map detection");\n'
-                "    // Set which release version we're on",
-            ),
-            (
-                "    PopulateEpisodeMenu(datadir);",
-                '    n64_platform_checkpoint("T09: before PopulateEpisodeMenu");\n'
-                "    PopulateEpisodeMenu(datadir);",
-            ),
-            (
-                "    DrawRottTitle();",
-                '    n64_platform_checkpoint("T10: before DrawRottTitle");\n'
-                "    DrawRottTitle();",
-            ),
-            (
-                "    StartupSoftError();",
-                '    n64_platform_checkpoint("T11: before StartupSoftError");\n'
-                "    StartupSoftError();",
-            ),
-            (
-                "    CheckCommandLineParameters();",
-                '    n64_platform_checkpoint("T12: before command-line setup");\n'
-                "    CheckCommandLineParameters();",
-            ),
-            (
-                "    Z_Init(50000, 1000000);",
-                '    n64_platform_checkpoint("T13: before Z_Init");\n'
-                "    Z_Init(50000, 1000000);",
-            ),
-            (
-                "    IN_Startup();",
-                '    n64_platform_checkpoint("T14: before IN_Startup");\n'
-                "    IN_Startup();",
-            ),
-            (
-                "    InitializeGameCommands();",
-                '    n64_platform_checkpoint("T15: before game commands");\n'
-                "    InitializeGameCommands();",
-            ),
-            (
-                "        ReadConfig();",
-                '        n64_platform_checkpoint("T16: before ReadConfig");\n'
-                "        ReadConfig();",
-            ),
-            (
-                "        ReadSETUPFiles();",
-                '        n64_platform_checkpoint("T17: before ReadSETUPFiles");\n'
-                "        ReadSETUPFiles();",
-            ),
-            (
-                "        SetupWads();",
-                '        n64_platform_checkpoint("T18: before SetupWads");\n'
-                "        SetupWads();",
-            ),
-            (
-                "        BuildTables();",
-                '        n64_platform_checkpoint("T19: before BuildTables");\n'
-                "        BuildTables();",
-            ),
-            (
-                "        GetMenuInfo();",
-                '        n64_platform_checkpoint("T20: before GetMenuInfo");\n'
-                "        GetMenuInfo();",
-            ),
-            (
-                "    SetRottScreenRes(320, 200);",
-                '    n64_platform_checkpoint("T21: before screen resolution");\n'
-                "    SetRottScreenRes(320, 200);",
-            ),
-            (
-                "            status2 = SD_SetupFXCard();",
-                '            n64_platform_checkpoint("T22: before FX setup");\n'
-                "            status2 = SD_SetupFXCard();",
-            ),
-            (
-                "                SD_Startup(false);",
-                '                n64_platform_checkpoint("T23: before SD_Startup");\n'
-                "                SD_Startup(false);",
-            ),
-            (
-                "                MU_Startup(false);",
-                '                n64_platform_checkpoint("T24: before MU_Startup");\n'
-                "                MU_Startup(false);",
-            ),
-            (
-                "        Init_Tables();",
-                '        n64_platform_checkpoint("T25: before Init_Tables");\n'
-                "        Init_Tables();",
-            ),
-            (
-                "        InitializeRNG();",
-                '        n64_platform_checkpoint("T26: before RNG");\n'
-                "        InitializeRNG();",
-            ),
-            (
-                "        InitializeMessages();",
-                '        n64_platform_checkpoint("T27: before messages");\n'
-                "        InitializeMessages();",
-            ),
-            (
-                "        LoadColorMap();",
-                '        n64_platform_checkpoint("T28: before color map");\n'
-                "        LoadColorMap();",
-            ),
-            (
-                "    VL_SetVGAPlaneMode();",
-                '    n64_platform_checkpoint("T29: entering VGA plane mode");\n'
-                "    VL_SetVGAPlaneMode();",
-            ),
+    # R41c startup tracing synchronized to Taradino 20251222.
+    # Match actual C statements with flexible indentation/spacing.
+    trace_specs = (
+        ("T08: before GetPrefDir", r"(?m)^(?P<i>[ \t]*)ApogeePath\s*=\s*GetPrefDir\(\)\s*;"),
+        ("T09: before product/map detection", r"(?m)^(?P<i>[ \t]*)gamestate\.Version\s*=\s*ROTTVERSION\s*;"),
+        ("T10: before PopulateEpisodeMenu", r"(?m)^(?P<i>[ \t]*)PopulateEpisodeMenu\s*\(\s*datadir\s*\)\s*;"),
+        ("T11: before DrawRottTitle", r"(?m)^(?P<i>[ \t]*)DrawRottTitle\s*\(\s*\)\s*;"),
+        ("T12: before StartupSoftError", r"(?m)^(?P<i>[ \t]*)StartupSoftError\s*\(\s*\)\s*;"),
+        ("T13: before command-line setup", r"(?m)^(?P<i>[ \t]*)CheckCommandLineParameters\s*\(\s*\)\s*;"),
+        ("T14: before Z_Init", r"(?m)^(?P<i>[ \t]*)Z_Init\s*\(\s*50000\s*,\s*1000000\s*\)\s*;"),
+        ("T15: before IN_Startup", r"(?m)^(?P<i>[ \t]*)IN_Startup\s*\(\s*\)\s*;"),
+        ("T16: before game commands", r"(?m)^(?P<i>[ \t]*)InitializeGameCommands\s*\(\s*\)\s*;"),
+        ("T17: before ReadConfig", r"(?m)^(?P<i>[ \t]*)ReadConfig\s*\(\s*\)\s*;"),
+        ("T18: before ReadSETUPFiles", r"(?m)^(?P<i>[ \t]*)ReadSETUPFiles\s*\(\s*\)\s*;"),
+        ("T19: before SetupWads", r"(?m)^(?P<i>[ \t]*)SetupWads\s*\(\s*\)\s*;"),
+        ("T20: before BuildTables", r"(?m)^(?P<i>[ \t]*)BuildTables\s*\(\s*\)\s*;"),
+        ("T21: before GetMenuInfo", r"(?m)^(?P<i>[ \t]*)GetMenuInfo\s*\(\s*\)\s*;"),
+        ("T22: before screen resolution", r"(?m)^(?P<i>[ \t]*)SetRottScreenRes\s*\(\s*320\s*,\s*200\s*\)\s*;"),
+        ("T23: before FX setup", r"(?m)^(?P<i>[ \t]*)status2\s*=\s*SD_SetupFXCard\s*\(\s*\)\s*;"),
+        ("T24: before SD_Startup", r"(?m)^(?P<i>[ \t]*)SD_Startup\s*\(\s*false\s*\)\s*;"),
+        ("T25: before MU_Startup", r"(?m)^(?P<i>[ \t]*)MU_Startup\s*\(\s*false\s*\)\s*;"),
+        ("T26: before Init_Tables", r"(?m)^(?P<i>[ \t]*)Init_Tables\s*\(\s*\)\s*;"),
+        ("T27: before RNG", r"(?m)^(?P<i>[ \t]*)InitializeRNG\s*\(\s*\)\s*;"),
+        ("T28: before messages", r"(?m)^(?P<i>[ \t]*)InitializeMessages\s*\(\s*\)\s*;"),
+        ("T29: before color map", r"(?m)^(?P<i>[ \t]*)LoadColorMap\s*\(\s*\)\s*;"),
+        ("T30: entering VGA plane mode", r"(?m)^(?P<i>[ \t]*)VL_SetVGAPlaneMode\s*\(\s*\)\s*;"),
+    )
+
+    inserted_trace_labels = []
+    for label, pattern in trace_specs:
+        matches = list(re.finditer(pattern, text))
+        if len(matches) != 1:
+            raise RuntimeError(
+                f"R41c startup trace {label!r}: expected one match, "
+                f"found {len(matches)}"
+            )
+        match = matches[0]
+        indent = match.group("i")
+        statement = match.group(0).lstrip(" \t")
+        replacement = (
+            f'{indent}n64_platform_checkpoint("{label}");\n'
+            f"{indent}{statement}"
         )
-        for old_marker, new_marker in startup_markers:
-            count = text.count(old_marker)
-            if count != 1:
-                raise RuntimeError(
-                    "R41 startup trace marker "
-                    f"{old_marker!r}: expected one match, found {count}"
-                )
-            text = text.replace(old_marker, new_marker, 1)
+        text = text[:match.start()] + replacement + text[match.end():]
+        inserted_trace_labels.append(label)
+
+    if len(inserted_trace_labels) != len(trace_specs):
+        raise RuntimeError("R41c startup trace insertion count mismatch")
 
     main_path.write_text(text,encoding="utf-8")
 

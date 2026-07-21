@@ -56,37 +56,9 @@ def test_prepare_engine() -> None:
         source = upstream / "rott"
         output = base / "prepared"
         source.mkdir(parents=True)
+        fixture = ROOT / "tests/fixtures/taradino-20251222-rt_main-startup.c"
         (source / "rt_main.c").write_text(
-            '#include "SDL.h"\n'
-            'int main(int argc, char *argv[])\n'
-            '\n'
-            '{\n'
-            '    ApogeePath = GetPrefDir();\n'
-            "    // Set which release version we're on\n"
-            '    PopulateEpisodeMenu(datadir);\n'
-            '    DrawRottTitle();\n'
-            '    StartupSoftError();\n'
-            '\tCheckCommandLineParameters ( );\n'
-            '    Z_Init(50000, 1000000);\n'
-            '    IN_Startup();\n'
-            '    InitializeGameCommands();\n'
-            '    if (standalone == false) {\n'
-            '        ReadConfig();\n'
-            '        ReadSETUPFiles();\n'
-            '        SetupWads();\n'
-            '        BuildTables();\n'
-            '        GetMenuInfo();\n'
-            '    }\n'
-            'SetRottScreenRes ( iGLOBAL_SCREENWIDTH , iGLOBAL_SCREENHEIGHT );\n'
-            '            status2 = SD_SetupFXCard();\n'
-            '                SD_Startup(false);\n'
-            '                MU_Startup(false);\n'
-            '        Init_Tables();\n'
-            '        InitializeRNG();\n'
-            '        InitializeMessages();\n'
-            '        LoadColorMap();\n'
-            '    VL_SetVGAPlaneMode();\n'
-            '}\n',
+            fixture.read_text(encoding="utf-8"),
             encoding="utf-8",
         )
         (source / "rt_cfg.c").write_text(
@@ -163,10 +135,10 @@ def test_prepare_engine() -> None:
         assert "NoSound = false;" in main
         assert "SetRottScreenRes(320, 200);" in main
         assert "T07: entered Taradino main" in main
-        assert "T09: before PopulateEpisodeMenu" in main
-        assert "T18: before SetupWads" in main
-        assert "T29: entering VGA plane mode" in main
-        assert main.count("n64_platform_checkpoint(") == 23
+        assert "T10: before PopulateEpisodeMenu" in main
+        assert "T19: before SetupWads" in main
+        assert "T30: entering VGA plane mode" in main
+        assert main.count("n64_platform_checkpoint(") == 24
         cfg = (output / "rt_cfg.c").read_text()
         assert "SetSoundDefaultValues();" in cfg
         assert "SetConfigDefaultValues();" in cfg

@@ -1,16 +1,13 @@
-# R41b hardware startup trace
+# R41c startup trace
 
-R40 passes all six N64 platform and Dark War data checks, then black-screens
-after entering Taradino.
+R40 passes all six platform/data stages then black-screens after Taradino
+handoff.
 
-R41b removes the nonexistent GetPrefDir instrumentation anchor that prevented
-R41 from preparing the real pinned Taradino source.
+R41c synchronizes host validation to the pinned Taradino 20251222 startup
+source shape. Checkpoints T07-T30 are inserted using whitespace-tolerant
+structural matching.
 
-Visible checkpoints now run from T07 through T29 around the actual registered
-startup calls. Record the final T-number and description visible before
-blackness.
+Report the final T-number and description visible before blackness.
 
-This diagnostic revision does not alter registered product selection, episode
-handling, map loading, or other game behavior.
-
-The final ROM remains subject to the 78,000,000-byte hard limit.
+No registered startup behavior is bypassed or forced.
+Final ROM hard limit: 78,000,000 bytes.
