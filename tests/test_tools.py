@@ -63,6 +63,7 @@ def test_prepare_engine() -> None:
             '{\n'
             '\tCheckCommandLineParameters ( );\n'
             'SetRottScreenRes ( iGLOBAL_SCREENWIDTH , iGLOBAL_SCREENHEIGHT );\n'
+            '    PopulateEpisodeMenu ( );\n'
             '}\n',
             encoding="utf-8",
         )
@@ -130,6 +131,8 @@ def test_prepare_engine() -> None:
         assert "n64_platform_init();" in main
         assert "NoSound = false;" in main
         assert "SetRottScreenRes(320, 200);" in main
+        assert "#ifndef __N64__" in main
+        assert "PopulateEpisodeMenu ( );" in main
         cfg = (output / "rt_cfg.c").read_text()
         assert "SetSoundDefaultValues();" in cfg
         assert "SetConfigDefaultValues();" in cfg
@@ -325,4 +328,5 @@ def test_full_version_n64_startup_policy() -> None:
     assert "gamestate.Product = ROTT_REGISTERED" in prepare
     assert "len(product_matches) == 1" in prepare
     assert "registered product-selection code was present but did not match" in prepare
-    assert 'if "PopulateEpisodeMenu(datadir);" in text' in prepare
+    assert "episode_call = re.compile" in prepare
+    assert "standalone call matched" in prepare

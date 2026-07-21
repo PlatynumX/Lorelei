@@ -151,19 +151,29 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
     # packs. The N64 directory compatibility layer intentionally has no
     # opendir/readdir support. Skip that desktop-only scan and use the bundled
     # DARKWAR.RTL campaign directly.
-    if "PopulateEpisodeMenu(datadir);" in text:
-        text = replace_once(
-            text,
-            "    PopulateEpisodeMenu(datadir);",
-            "#ifndef __N64__\n"
-            "    PopulateEpisodeMenu(datadir);\n"
-            "#endif",
-            "disable registered level-pack directory scan on N64",
+    episode_call = re.compile(
+        r"(?m)^(?P<indent>[ \t]*)"
+        r"(?P<call>PopulateEpisodeMenu\s*\([^;]*\)\s*;)"
+    )
+    episode_matches = list(episode_call.finditer(text))
+    if len(episode_matches) == 1:
+        match = episode_matches[0]
+        indent = match.group("indent")
+        call = match.group("call")
+        replacement = (
+            f"{indent}#ifndef __N64__\n"
+            f"{indent}{call}\n"
+            f"{indent}#endif"
+        )
+        text = text[:match.start()] + replacement + text[match.end():]
+    elif len(episode_matches) > 1:
+        raise RuntimeError(
+            "rt_main episode-menu patch expected one call, found "
+            f"{len(episode_matches)}"
         )
     elif "PopulateEpisodeMenu" in text:
         raise RuntimeError(
-            "rt_main episode-menu call was present but did not match the expected "
-            "pinned Taradino layout"
+            "rt_main contains PopulateEpisodeMenu but no standalone call matched"
         )
 
     main_path.write_text(text,encoding="utf-8")
