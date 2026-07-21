@@ -98,6 +98,19 @@ void n64_platform_init(void)
     initialized = true;
 }
 
+
+void n64_platform_checkpoint(const char *message)
+{
+#ifdef __N64__
+    boot_display_show(message ? message : "Taradino checkpoint");
+    wait_ms(1100);
+    boot_display_close();
+#else
+    fprintf(stderr, "ROTT64 checkpoint: %s\n",
+            message ? message : "Taradino checkpoint");
+#endif
+}
+
 void n64_platform_fatal(const char *message)
 {
 #ifdef __N64__

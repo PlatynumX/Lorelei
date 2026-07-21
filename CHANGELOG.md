@@ -1,3 +1,10 @@
+# ROTT64 R41 — registered startup trace
+
+- Preserves the R40 full Dark War configuration.
+- Adds visible Taradino checkpoints T07 through T30.
+- Does not bypass or force registered startup behavior.
+- Retains the hard final ROM limit of 78,000,000 bytes.
+
 # ROTT64 R40 — complete Dark War full-version cleanup
 
 - Fixed the actual hardware startup code in n64_platform.c.

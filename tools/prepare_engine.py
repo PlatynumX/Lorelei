@@ -69,7 +69,8 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
         '    static char *rott64_argv[] = { rott64_program_name, NULL };\n'
         '    int argc = 1;\n'
         '    char **argv = rott64_argv;\n'
-        '    n64_platform_init();',
+        '    n64_platform_init();\n'
+        '    n64_platform_checkpoint("T07: entered Taradino main");',
         "rt_main entry",
     )
     text = replace_regex_once(
@@ -88,6 +89,139 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
         "    SetRottScreenRes(320, 200);",
         "fixed N64 resolution",
     )
+
+    # R41 hardware startup tracing. The working R40 build reaches Taradino
+    # after all six platform/data checks, then black-screens. Insert visible
+    # checkpoints before each major startup operation so the last displayed
+    # label identifies the call that fails or never returns. This does not
+    # alter product selection, episode handling, or other registered logic.
+    if "PopulateEpisodeMenu(datadir);" in text:
+        startup_markers = (
+            (
+                "    ApogeePath = GetPrefDir();",
+                '    n64_platform_checkpoint("T08: before GetPrefDir");\n'
+                "    ApogeePath = GetPrefDir();",
+            ),
+            (
+                "    // Set which release version we're on",
+                '    n64_platform_checkpoint("T09: before product/map detection");\n'
+                "    // Set which release version we're on",
+            ),
+            (
+                "    PopulateEpisodeMenu(datadir);",
+                '    n64_platform_checkpoint("T10: before PopulateEpisodeMenu");\n'
+                "    PopulateEpisodeMenu(datadir);",
+            ),
+            (
+                "    DrawRottTitle();",
+                '    n64_platform_checkpoint("T11: before DrawRottTitle");\n'
+                "    DrawRottTitle();",
+            ),
+            (
+                "    StartupSoftError();",
+                '    n64_platform_checkpoint("T12: before StartupSoftError");\n'
+                "    StartupSoftError();",
+            ),
+            (
+                "    CheckCommandLineParameters();",
+                '    n64_platform_checkpoint("T13: before command-line setup");\n'
+                "    CheckCommandLineParameters();",
+            ),
+            (
+                "    Z_Init(50000, 1000000);",
+                '    n64_platform_checkpoint("T14: before Z_Init");\n'
+                "    Z_Init(50000, 1000000);",
+            ),
+            (
+                "    IN_Startup();",
+                '    n64_platform_checkpoint("T15: before IN_Startup");\n'
+                "    IN_Startup();",
+            ),
+            (
+                "    InitializeGameCommands();",
+                '    n64_platform_checkpoint("T16: before game commands");\n'
+                "    InitializeGameCommands();",
+            ),
+            (
+                "        ReadConfig();",
+                '        n64_platform_checkpoint("T17: before ReadConfig");\n'
+                "        ReadConfig();",
+            ),
+            (
+                "        ReadSETUPFiles();",
+                '        n64_platform_checkpoint("T18: before ReadSETUPFiles");\n'
+                "        ReadSETUPFiles();",
+            ),
+            (
+                "        SetupWads();",
+                '        n64_platform_checkpoint("T19: before SetupWads");\n'
+                "        SetupWads();",
+            ),
+            (
+                "        BuildTables();",
+                '        n64_platform_checkpoint("T20: before BuildTables");\n'
+                "        BuildTables();",
+            ),
+            (
+                "        GetMenuInfo();",
+                '        n64_platform_checkpoint("T21: before GetMenuInfo");\n'
+                "        GetMenuInfo();",
+            ),
+            (
+                "    SetRottScreenRes(320, 200);",
+                '    n64_platform_checkpoint("T22: before screen resolution");\n'
+                "    SetRottScreenRes(320, 200);",
+            ),
+            (
+                "            status2 = SD_SetupFXCard();",
+                '            n64_platform_checkpoint("T23: before FX setup");\n'
+                "            status2 = SD_SetupFXCard();",
+            ),
+            (
+                "                SD_Startup(false);",
+                '                n64_platform_checkpoint("T24: before SD_Startup");\n'
+                "                SD_Startup(false);",
+            ),
+            (
+                "                MU_Startup(false);",
+                '                n64_platform_checkpoint("T25: before MU_Startup");\n'
+                "                MU_Startup(false);",
+            ),
+            (
+                "        Init_Tables();",
+                '        n64_platform_checkpoint("T26: before Init_Tables");\n'
+                "        Init_Tables();",
+            ),
+            (
+                "        InitializeRNG();",
+                '        n64_platform_checkpoint("T27: before RNG");\n'
+                "        InitializeRNG();",
+            ),
+            (
+                "        InitializeMessages();",
+                '        n64_platform_checkpoint("T28: before messages");\n'
+                "        InitializeMessages();",
+            ),
+            (
+                "        LoadColorMap();",
+                '        n64_platform_checkpoint("T29: before color map");\n'
+                "        LoadColorMap();",
+            ),
+            (
+                "    VL_SetVGAPlaneMode();",
+                '    n64_platform_checkpoint("T30: entering VGA plane mode");\n'
+                "    VL_SetVGAPlaneMode();",
+            ),
+        )
+        for old_marker, new_marker in startup_markers:
+            count = text.count(old_marker)
+            if count != 1:
+                raise RuntimeError(
+                    "R41 startup trace marker "
+                    f"{old_marker!r}: expected one match, found {count}"
+                )
+            text = text.replace(old_marker, new_marker, 1)
+
     main_path.write_text(text,encoding="utf-8")
 
     cfg_path=output/"rt_cfg.c"
