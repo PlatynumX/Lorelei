@@ -323,5 +323,6 @@ def test_n64_mixer_normalizes_over_unity_stereo_power():
 def test_full_version_n64_startup_policy() -> None:
     prepare = (ROOT / "tools/prepare_engine.py").read_text(encoding="utf-8")
     assert "gamestate.Product = ROTT_REGISTERED" in prepare
-    assert "disable registered level-pack directory scan on N64" in prepare
-    assert "PopulateEpisodeMenu(datadir)" in prepare
+    assert "len(product_matches) == 1" in prepare
+    assert "registered product-selection code was present but did not match" in prepare
+    assert 'if "PopulateEpisodeMenu(datadir);" in text' in prepare

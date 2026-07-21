@@ -112,11 +112,8 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
         re.S,
     )
     product_matches = list(product_block.finditer(text))
-    if len(product_matches) != 1:
-        raise RuntimeError(
-            f"rt_main full product selection: expected one match, found {len(product_matches)}"
-        )
-    text = product_block.sub(
+    if len(product_matches) == 1:
+        text = product_block.sub(
         "#ifdef __N64__\n"
         "    BATTMAPS = FindFileByName(STANDARDBATTLELEVELS);\n"
         "    gamestate.Product = ROTT_REGISTERED;\n"
@@ -137,22 +134,37 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
         "    }\n"
         "#endif\n"
         "#endif",
-        text,
-        count=1,
-    )
+            text,
+            count=1,
+        )
+    elif (
+        "SITELICENSEBATTLELEVELS" in text
+        or "SUPERROTTBATTLELEVELS" in text
+        or "ROTT_SITELICENSE" in text
+    ):
+        raise RuntimeError(
+            "rt_main registered product-selection code was present but did not match "
+            "the expected pinned Taradino layout"
+        )
 
     # Current registered Taradino scans the data directory for optional level
     # packs. The N64 directory compatibility layer intentionally has no
     # opendir/readdir support. Skip that desktop-only scan and use the bundled
     # DARKWAR.RTL campaign directly.
-    text = replace_once(
-        text,
-        "    PopulateEpisodeMenu(datadir);",
-        "#ifndef __N64__\n"
-        "    PopulateEpisodeMenu(datadir);\n"
-        "#endif",
-        "disable registered level-pack directory scan on N64",
-    )
+    if "PopulateEpisodeMenu(datadir);" in text:
+        text = replace_once(
+            text,
+            "    PopulateEpisodeMenu(datadir);",
+            "#ifndef __N64__\n"
+            "    PopulateEpisodeMenu(datadir);\n"
+            "#endif",
+            "disable registered level-pack directory scan on N64",
+        )
+    elif "PopulateEpisodeMenu" in text:
+        raise RuntimeError(
+            "rt_main episode-menu call was present but did not match the expected "
+            "pinned Taradino layout"
+        )
 
     main_path.write_text(text,encoding="utf-8")
 
