@@ -158,6 +158,41 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
     )
     net_path.write_text(net_text, encoding="utf-8")
 
+    # Registered Dark War compiles T_SnakePath(), which is omitted by the
+    # shareware preprocessor path. On the N64 ABI, Taradino's fixed type is
+    # long int, so the legacy %x debug formats are invalid under libdragon's
+    # strict -Werror=format policy. Match the argument width explicitly.
+    actor_path = output / "rt_actor.c"
+    if actor_path.exists():
+        actor_text = actor_path.read_text(encoding="utf-8", errors="strict")
+        old = (
+            'SoftError("\\n follower %d temp1 set to %4x, temp2 set to %4x",'
+        )
+        new = (
+            'SoftError("\\n follower %d temp1 set to %4lx, temp2 set to %4lx",'
+        )
+        count = actor_text.count(old)
+        if count == 1:
+            actor_text = actor_text.replace(old, new, 1)
+            old_args = "count, temp->x, temp->y);"
+            new_args = (
+                "count, (unsigned long)temp->x, "
+                "(unsigned long)temp->y);"
+            )
+            arg_count = actor_text.count(old_args)
+            if arg_count != 1:
+                raise RuntimeError(
+                    "rt_actor fixed-width debug arguments: expected one "
+                    f"match, found {arg_count}"
+                )
+            actor_text = actor_text.replace(old_args, new_args, 1)
+        elif count != 0:
+            raise RuntimeError(
+                "rt_actor fixed-width debug format: expected at most one "
+                f"match, found {count}"
+            )
+        actor_path.write_text(actor_text, encoding="utf-8")
+
     # The original text editors use strcpy() to shift the remainder of a
     # string left after Backspace/Delete. Those source and destination ranges
     # overlap, which is undefined for strcpy() and is rejected by GCC's

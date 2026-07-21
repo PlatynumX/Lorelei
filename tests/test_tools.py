@@ -104,6 +104,15 @@ def test_prepare_engine() -> None:
             '                         player->y, player->angle, oldpolltime); }\n',
             encoding="utf-8",
         )
+        (source / "rt_actor.c").write_text(
+            'typedef long fixed;\n'
+            'typedef struct { fixed x, y; } actor_t;\n'
+            'void a(actor_t *temp, int count) {\n'
+            '    SoftError("\\n follower %d temp1 set to %4x, temp2 set to %4x",\n'
+            '              count, temp->x, temp->y);\n'
+            '}\n',
+            encoding="utf-8",
+        )
         (source / "rt_str.c").write_text(
             '#include <string.h>\n'
             'void normal(char *s, int cursor) {\n'
@@ -166,6 +175,10 @@ def test_prepare_engine() -> None:
         assert 'x=%4lx y=%4lx a=%4x time=%5d\\n' in net
         assert "(unsigned long)player->x" in net
         assert "(unsigned long)player->y" in net
+        actor = (output / "rt_actor.c").read_text()
+        assert "temp1 set to %4lx, temp2 set to %4lx" in actor
+        assert "(unsigned long)temp->x" in actor
+        assert "(unsigned long)temp->y" in actor
         rt_str = (output / "rt_str.c").read_text()
         assert rt_str.count("memmove(s + cursor - 1, s + cursor, strlen(s + cursor) + 1);") == 2
         assert rt_str.count("memmove(s + cursor, s + cursor + 1, strlen(s + cursor + 1) + 1);") == 2

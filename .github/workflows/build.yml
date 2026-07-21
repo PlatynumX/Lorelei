@@ -130,7 +130,7 @@ jobs:
         if: always() && steps.n64_build.outputs.rom_built == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-darkwar-clean-registered-r38
+          name: rott64-darkwar-clean-registered-r39
           path: |
             rott64.z64
             rott64.z64.sha256
@@ -140,7 +140,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-darkwar-r38-build-diagnostics
+          name: rott64-darkwar-r39-build-diagnostics
           path: |
             ci-reports/
             build/reports/

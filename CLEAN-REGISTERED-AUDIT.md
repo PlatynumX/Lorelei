@@ -11,3 +11,10 @@ Functional changes from the hardware-tested R25 baseline:
 - Changed ROM/package labels.
 
 No registered product-selection, episode-menu, or startup rewrites were added.
+
+## R39 compiler correction
+
+The registered-only `T_SnakePath()` debug message passed `fixed`/`long int`
+coordinates to `%x`. R39 changes those two fields to `%lx` and casts the
+arguments to `unsigned long`. This is a compiler/ABI correction only and does
+not change registered startup behavior.
