@@ -94,6 +94,17 @@ def test_prepare_engine() -> None:
             'int b(char *parm, int length) { while ((!isalpha(*parm)) && (length > 0)) { parm++; length--; } return 0; }\n',
             encoding="utf-8",
         )
+        (source / "rt_sound.c").write_text(
+            '#include <stdio.h>\n'
+            'void SD_Startup(int bombonerror)\n'
+            '{\n'
+            '    int status = 0;\n'
+            '    SD_SetSoundMode(1);\n'
+            '    status = FX_Init(1, 8, 2, 11025);\n'
+            '    SD_SetMusicMode(1);\n'
+            '}\n',
+            encoding="utf-8",
+        )
         (source / "rt_net.c").write_text(
             'void n(void) { SoftError("x=%4x y=%4x a=%4x time=%5d\\n", player->x,\n'
             '                         player->y, player->angle, oldpolltime); }\n',
@@ -181,6 +192,12 @@ def test_prepare_engine() -> None:
         assert "temp1 set to %4lx, temp2 set to %4lx" in actor
         assert "(unsigned long)temp->x" in actor
         assert "(unsigned long)temp->y" in actor
+        sound = (output / "rt_sound.c").read_text()
+        assert "S00: entered SD_Startup" in sound
+        assert "S01: before SD_SetSoundMode" in sound
+        assert "S02: before FX_Init" in sound
+        assert "S03: before SD_SetMusicMode" in sound
+        assert "S99: leaving SD_Startup" in sound
         rt_str = (output / "rt_str.c").read_text()
         assert rt_str.count("memmove(s + cursor - 1, s + cursor, strlen(s + cursor) + 1);") == 2
         assert rt_str.count("memmove(s + cursor, s + cursor + 1, strlen(s + cursor + 1) + 1);") == 2

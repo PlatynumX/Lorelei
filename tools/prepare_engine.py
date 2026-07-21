@@ -166,6 +166,145 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
 
     main_path.write_text(text,encoding="utf-8")
 
+    # R42: trace inside SD_Startup() itself. R41d hardware reached T24 and
+    # black-screened before T25, proving the failure occurs within
+    # SD_Startup(false). Locate the actual definition dynamically.
+    sd_defs = []
+    sd_def_pattern = re.compile(
+        r"(?m)^[ \t]*(?:void|int|boolean)[ \t]+SD_Startup[ \t]*"
+        r"\([^;{}]*\)[ \t\r\n]*\{"
+    )
+
+    for sd_path in output.glob("*.c"):
+        sd_text = sd_path.read_text(encoding="utf-8", errors="strict")
+        for match in sd_def_pattern.finditer(sd_text):
+            sd_defs.append((sd_path, sd_text, match))
+
+    if len(sd_defs) != 1:
+        raise RuntimeError(
+            "R42 SD_Startup trace: expected one function definition, "
+            f"found {len(sd_defs)}"
+        )
+
+    sd_path, sd_text, sd_match = sd_defs[0]
+    sd_brace_start = sd_text.rfind("{", sd_match.start(), sd_match.end())
+    if sd_brace_start < 0:
+        raise RuntimeError("R42 SD_Startup trace: opening brace missing")
+
+    sd_depth = 0
+    sd_brace_end = None
+    for sd_pos in range(sd_brace_start, len(sd_text)):
+        sd_ch = sd_text[sd_pos]
+        if sd_ch == "{":
+            sd_depth += 1
+        elif sd_ch == "}":
+            sd_depth -= 1
+            if sd_depth == 0:
+                sd_brace_end = sd_pos + 1
+                break
+    if sd_brace_end is None:
+        raise RuntimeError("R42 SD_Startup trace: closing brace missing")
+
+    sd_func = sd_text[sd_match.start():sd_brace_end]
+
+    local_brace = sd_func.find("{")
+    sd_func = (
+        sd_func[:local_brace + 1]
+        + '\n n64_platform_checkpoint("S00: entered SD_Startup");'
+        + sd_func[local_brace + 1:]
+    )
+
+    call_line = re.compile(
+        r"(?m)^(?P<i>[ \t]*)(?P<line>"
+        r"(?:(?:[A-Za-z_][A-Za-z0-9_]*[ \t]*=[ \t]*)?)"
+        r"(?P<fn>[A-Za-z_][A-Za-z0-9_]*)[ \t]*"
+        r"\([^;\n]*\)[ \t]*;[ \t]*)$"
+    )
+    excluded = {
+        "if", "for", "while", "switch", "return", "sizeof",
+        "n64_platform_checkpoint",
+    }
+
+    trace_map = []
+    checkpoint_no = 1
+    cursor = 0
+    rebuilt = []
+    for call_match in call_line.finditer(sd_func):
+        fn = call_match.group("fn")
+        if fn in excluded:
+            continue
+        rebuilt.append(sd_func[cursor:call_match.start()])
+        indent = call_match.group("i")
+        statement = call_match.group("line").lstrip(" \t")
+        label = f"S{checkpoint_no:02d}: before {fn}"
+        rebuilt.append(
+            f'{indent}n64_platform_checkpoint("{label}");\n'
+            f"{indent}{statement}"
+        )
+        trace_map.append(f"{label} :: {statement.strip()}")
+        cursor = call_match.end()
+        checkpoint_no += 1
+
+    rebuilt.append(sd_func[cursor:])
+    sd_func = "".join(rebuilt)
+
+    final_close = sd_func.rfind("}")
+    sd_func = (
+        sd_func[:final_close]
+        + '\n n64_platform_checkpoint("S99: leaving SD_Startup");\n'
+        + sd_func[final_close:]
+    )
+
+    if "n64_platform_checkpoint(const char *message)" not in sd_text:
+        sd_text = (
+            '#ifdef __N64__\n'
+            'extern void n64_platform_checkpoint(const char *message);\n'
+            '#endif\n'
+            + sd_text
+        )
+        rematch = sd_def_pattern.search(sd_text)
+        if not rematch:
+            raise RuntimeError(
+                "R42 SD_Startup trace: definition lost after declaration"
+            )
+        prefix_start = rematch.start()
+        brace_start2 = sd_text.rfind("{", rematch.start(), rematch.end())
+        depth2 = 0
+        brace_end2 = None
+        for pos2 in range(brace_start2, len(sd_text)):
+            ch2 = sd_text[pos2]
+            if ch2 == "{":
+                depth2 += 1
+            elif ch2 == "}":
+                depth2 -= 1
+                if depth2 == 0:
+                    brace_end2 = pos2 + 1
+                    break
+        if brace_end2 is None:
+            raise RuntimeError(
+                "R42 SD_Startup trace: rematched closing brace missing"
+            )
+        sd_text = sd_text[:prefix_start] + sd_func + sd_text[brace_end2:]
+    else:
+        sd_text = (
+            sd_text[:sd_match.start()]
+            + sd_func
+            + sd_text[sd_brace_end:]
+        )
+
+    sd_path.write_text(sd_text, encoding="utf-8")
+
+    report_dir = output.parent / "reports"
+    report_dir.mkdir(parents=True, exist_ok=True)
+    (report_dir / "r42-sd-startup-trace-map.txt").write_text(
+        f"source={sd_path.name}\n"
+        f"call_checkpoints={len(trace_map)}\n"
+        + "\n".join(trace_map)
+        + "\nS99: leaving SD_Startup\n",
+        encoding="utf-8",
+    )
+
+
     cfg_path=output/"rt_cfg.c"
     text=cfg_path.read_text(encoding="utf-8",errors="strict")
     # Do not probe or parse desktop config/save files from the read-only ROM.
