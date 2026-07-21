@@ -318,3 +318,10 @@ def test_n64_mixer_normalizes_over_unity_stereo_power():
     assert "float power = left * left + right * right;" in mixer
     assert "if (power > 1.0f)" in mixer
     assert "1.0f / sqrtf(power)" in mixer
+
+
+def test_full_version_n64_startup_policy() -> None:
+    prepare = (ROOT / "tools/prepare_engine.py").read_text(encoding="utf-8")
+    assert "gamestate.Product = ROTT_REGISTERED" in prepare
+    assert "disable registered level-pack directory scan on N64" in prepare
+    assert "PopulateEpisodeMenu(datadir)" in prepare

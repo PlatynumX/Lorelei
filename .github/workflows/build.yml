@@ -145,15 +145,15 @@ jobs:
       - name: Name final Dark War ROM
         if: always() && steps.n64_build.outputs.rom_built == 'true'
         run: |
-          cp rott64.z64 rott64-darkwar-r34.z64
-          cp rott64.z64.sha256 rott64-darkwar-r34.z64.sha256
+          cp rott64.z64 rott64-darkwar-r35.z64
+          cp rott64.z64.sha256 rott64-darkwar-r35.z64.sha256
 
       - name: Verify final ROM size
         if: always() && steps.n64_build.outputs.rom_built == 'true'
         shell: bash
         run: |
-          test -f rott64-darkwar-r34.z64
-          bytes=$(stat -c%s rott64-darkwar-r34.z64)
+          test -f rott64-darkwar-r35.z64
+          bytes=$(stat -c%s rott64-darkwar-r35.z64)
           echo "Final ROM size: $bytes bytes"
           test "$bytes" -le 78000000
 
@@ -161,8 +161,8 @@ jobs:
         if: always() && steps.n64_build.outputs.rom_built == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-darkwar-r34
-          path: rott64-darkwar-r34.z64
+          name: rott64-darkwar-r35
+          path: rott64-darkwar-r35.z64
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
@@ -176,8 +176,8 @@ jobs:
             ci-reports/
             build/reports/
             generated/rott/.rott64-prepared
-            rott64-darkwar-r34.z64
-            rott64-darkwar-r34.z64.sha256
+            rott64-darkwar-r35.z64
+            rott64-darkwar-r35.z64.sha256
             rott64-diag.z64
             rott64-diag.z64.sha256
           if-no-files-found: warn

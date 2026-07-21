@@ -88,6 +88,72 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
         "    SetRottScreenRes(320, 200);",
         "fixed N64 resolution",
     )
+    # Full-version N64 startup corrections.
+    #
+    # Registered Taradino probes Site License and SuperROTT battle packs before
+    # DARKWAR.RTC. On N64 we ship one fixed registered data set, so resolve it
+    # directly instead of running the desktop product-discovery chain.
+    product_block = re.compile(
+        r"#if \(SHAREWARE == 1\)\s*"
+        r"BATTMAPS = FindFileByName\(STANDARDBATTLELEVELS\);\s*"
+        r"gamestate\.Product = ROTT_SHAREWARE;\s*"
+        r"#else\s*"
+        r"BATTMAPS = FindFileByName\(SITELICENSEBATTLELEVELS\);\s*"
+        r"gamestate\.Product = ROTT_SITELICENSE;\s*"
+        r"if \(!BATTMAPS\)\s*\{\s*"
+        r"BATTMAPS = FindFileByName\(SUPERROTTBATTLELEVELS\);\s*"
+        r"gamestate\.Product = ROTT_SUPERCD;\s*"
+        r"\}\s*"
+        r"if \(!BATTMAPS\)\s*\{\s*"
+        r"BATTMAPS = FindFileByName\(STANDARDBATTLELEVELS\);\s*"
+        r"gamestate\.Product = ROTT_REGISTERED;\s*"
+        r"\}\s*"
+        r"#endif",
+        re.S,
+    )
+    product_matches = list(product_block.finditer(text))
+    if len(product_matches) != 1:
+        raise RuntimeError(
+            f"rt_main full product selection: expected one match, found {len(product_matches)}"
+        )
+    text = product_block.sub(
+        "#ifdef __N64__\n"
+        "    BATTMAPS = FindFileByName(STANDARDBATTLELEVELS);\n"
+        "    gamestate.Product = ROTT_REGISTERED;\n"
+        "#else\n"
+        "#if (SHAREWARE == 1)\n"
+        "    BATTMAPS = FindFileByName(STANDARDBATTLELEVELS);\n"
+        "    gamestate.Product = ROTT_SHAREWARE;\n"
+        "#else\n"
+        "    BATTMAPS = FindFileByName(SITELICENSEBATTLELEVELS);\n"
+        "    gamestate.Product = ROTT_SITELICENSE;\n"
+        "    if (!BATTMAPS) {\n"
+        "        BATTMAPS = FindFileByName(SUPERROTTBATTLELEVELS);\n"
+        "        gamestate.Product = ROTT_SUPERCD;\n"
+        "    }\n"
+        "    if (!BATTMAPS) {\n"
+        "        BATTMAPS = FindFileByName(STANDARDBATTLELEVELS);\n"
+        "        gamestate.Product = ROTT_REGISTERED;\n"
+        "    }\n"
+        "#endif\n"
+        "#endif",
+        text,
+        count=1,
+    )
+
+    # Current registered Taradino scans the data directory for optional level
+    # packs. The N64 directory compatibility layer intentionally has no
+    # opendir/readdir support. Skip that desktop-only scan and use the bundled
+    # DARKWAR.RTL campaign directly.
+    text = replace_once(
+        text,
+        "    PopulateEpisodeMenu(datadir);",
+        "#ifndef __N64__\n"
+        "    PopulateEpisodeMenu(datadir);\n"
+        "#endif",
+        "disable registered level-pack directory scan on N64",
+    )
+
     main_path.write_text(text,encoding="utf-8")
 
     cfg_path=output/"rt_cfg.c"
