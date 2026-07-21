@@ -32,7 +32,7 @@ static void boot_display_show(const char *stage)
         graphics_make_color(255, 255, 255, 255),
         graphics_make_color(0, 0, 0, 0)
     );
-    graphics_draw_text(surface, 16, 24, "ROTT64 SHAREWARE");
+    graphics_draw_text(surface, 16, 24, "ROTT64 DARK WAR");
     graphics_draw_text(surface, 16, 64, stage ? stage : "Starting...");
     display_show(surface);
 }
@@ -51,17 +51,17 @@ void n64_platform_init(void)
 #ifdef __N64__
     FILE *wad;
 
-    boot_display_show("Stage 1/4: entered N64 main()");
+    boot_display_show("Stage 1/6: entered N64 main()");
     for (volatile uint32_t i = 0; i < 20000000u; ++i) __asm__ volatile("nop");
 
     timer_init();
-    boot_display_show("Stage 2/4: timer initialized");
+    boot_display_show("Stage 2/6: timer initialized");
     wait_ms(750);
 
     joypad_init();
     if (dfs_init(DFS_DEFAULT_LOCATION) != DFS_ESUCCESS)
         n64_platform_fatal("Stage 3 failed: DragonFS mount error");
-    boot_display_show("Stage 3/4: DragonFS mounted");
+    boot_display_show("Stage 3/6: DragonFS mounted");
     wait_ms(750);
 
     if (!is_memory_expanded()) {
@@ -72,12 +72,26 @@ void n64_platform_init(void)
         n64_platform_fatal(message);
     }
 
-    wad = fopen("rom://rott/HUNTBGIN.WAD", "rb");
+    wad = fopen("rom://rott/DARKWAR.WAD", "rb");
     if (wad == NULL)
-        n64_platform_fatal("Stage 4 failed: HUNTBGIN.WAD not found\nExpected rom://rott/HUNTBGIN.WAD");
+        n64_platform_fatal("Stage 4 failed: DARKWAR.WAD not found\nExpected rom://rott/DARKWAR.WAD");
+    fclose(wad);
+    boot_display_show("Stage 4/6: DARKWAR.WAD found");
+    wait_ms(500);
+
+    wad = fopen("rom://rott/DARKWAR.RTL", "rb");
+    if (wad == NULL)
+        n64_platform_fatal("Stage 5 failed: DARKWAR.RTL not found\nExpected rom://rott/DARKWAR.RTL");
+    fclose(wad);
+    boot_display_show("Stage 5/6: DARKWAR.RTL found");
+    wait_ms(500);
+
+    wad = fopen("rom://rott/DARKWAR.RTC", "rb");
+    if (wad == NULL)
+        n64_platform_fatal("Stage 6 failed: DARKWAR.RTC not found\nExpected rom://rott/DARKWAR.RTC");
     fclose(wad);
 
-    boot_display_show("Stage 4/4: shareware WAD found\nStarting Taradino...");
+    boot_display_show("Stage 6/6: Dark War data found\nStarting Taradino...");
     wait_ms(1500);
     boot_display_close();
 #endif

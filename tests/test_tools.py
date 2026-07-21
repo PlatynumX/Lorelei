@@ -44,7 +44,7 @@ def test_inventory() -> None:
             + struct.pack("<II8s", 12, len(payload), b"PALTEST\0")
         )
         run("python3", "tools/wad_inventory.py", str(wad), "--out", str(output))
-        report = json.loads((output / "huntbgin-wad-inventory.json").read_text())
+        report = json.loads((output / "test-wad-inventory.json").read_text())
         assert report["metadata"]["lump_count"] == 1
         assert report["lumps"][0]["size_hint"].startswith("possible 256")
 
@@ -250,9 +250,13 @@ def test_n64_runtime_boot_policy() -> None:
     assert "N64_ROM_CATEGORY = N" in makefile
     assert "N64_ROM_ELFCOMPRESS = 0" in makefile
     platform = (ROOT / "platform/n64/n64_platform.c").read_text(encoding="utf-8")
-    assert 'fopen("rom://rott/HUNTBGIN.WAD", "rb")' in platform
-    assert "Stage 1/4: entered N64 main()" in platform
-    assert "Stage 4/4: shareware WAD found" in platform
+    assert 'fopen("rom://rott/DARKWAR.WAD", "rb")' in platform
+    assert 'fopen("rom://rott/DARKWAR.RTL", "rb")' in platform
+    assert 'fopen("rom://rott/DARKWAR.RTC", "rb")' in platform
+    assert "Stage 1/6: entered N64 main()" in platform
+    assert "Stage 6/6: Dark War data found" in platform
+    assert "HUNTBGIN.WAD" not in platform
+    assert "ROTT64 SHAREWARE" not in platform
     # Current libdragon rejects FILTERS_DISABLED at 320px in 16bpp on NTSC hardware.
     assert "FILTERS_DISABLED" not in platform
     bootdiag = (ROOT / "platform/n64/bootdiag.c").read_text(encoding="utf-8")

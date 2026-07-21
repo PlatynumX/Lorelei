@@ -82,13 +82,13 @@ def parse(path: Path) -> tuple[dict, list[Lump]]:
     return metadata, lumps
 
 
-def write_reports(out: Path, metadata: dict, lumps: list[Lump]) -> None:
+def write_reports(out: Path, metadata: dict, lumps: list[Lump], wad_name: str, wad_stem: str) -> None:
     out.mkdir(parents=True, exist_ok=True)
     payload = {"metadata": metadata, "lumps": [asdict(lump) for lump in lumps]}
-    (out / "huntbgin-wad-inventory.json").write_text(
+    (out / f"{wad_stem}-wad-inventory.json").write_text(
         json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
-    with (out / "huntbgin-wad-inventory.csv").open("w", newline="", encoding="utf-8") as handle:
+    with (out / f"{wad_stem}-wad-inventory.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(asdict(lumps[0]).keys()) if lumps else ["index"])
         writer.writeheader()
         for lump in lumps:
@@ -96,7 +96,7 @@ def write_reports(out: Path, metadata: dict, lumps: list[Lump]) -> None:
 
     likely_assets = [lump for lump in lumps if lump.size_hint]
     lines = [
-        "# HUNTBGIN.WAD inventory",
+        f"# {wad_name} inventory",
         "",
         f"- File size: **{metadata['file_size']} bytes**",
         f"- Lumps: **{metadata['lump_count']}**",
@@ -121,7 +121,7 @@ def write_reports(out: Path, metadata: dict, lumps: list[Lump]) -> None:
             "",
         ]
     )
-    (out / "huntbgin-wad-inventory.md").write_text("\n".join(lines), encoding="utf-8")
+    (out / f"{wad_stem}-wad-inventory.md").write_text("\n".join(lines), encoding="utf-8")
 
 
 def main() -> int:
@@ -130,7 +130,9 @@ def main() -> int:
     parser.add_argument("--out", type=Path, default=Path("build/reports"))
     args = parser.parse_args()
     metadata, lumps = parse(args.wad)
-    write_reports(args.out, metadata, lumps)
+    wad_name = args.wad.name
+    wad_stem = args.wad.stem.lower()
+    write_reports(args.out, metadata, lumps, wad_name, wad_stem)
     print(f"Inventoried {metadata['lump_count']} lumps from {args.wad}")
     return 0
 

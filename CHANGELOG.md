@@ -1,3 +1,14 @@
+# ROTT64 R40 — complete Dark War full-version cleanup
+
+- Fixed the actual hardware startup code in n64_platform.c.
+- Startup verifies DARKWAR.WAD, DARKWAR.RTL, and DARKWAR.RTC.
+- Updated host tests to enforce Dark War startup behavior.
+- Full music preflight requires at least 34 mapped tracks.
+- Converted build.sh to full registered data and music behavior.
+- Enforced a final ROM maximum of 78,000,000 bytes.
+- Made WAD errors and report filenames input-generic.
+- Updated active full-version documentation and regenerated the manifest.
+
 # Revision 25 - N64 Rumble Pak support
 
 - Added non-blocking Rumble Pak support through libdragon's joypad subsystem.

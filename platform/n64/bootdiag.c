@@ -1,7 +1,7 @@
 /*
  * ROTT64 staged N64 boot diagnostic.
  * Does not link Taradino. Tests display, timer, memory, controller, DragonFS,
- * and opening the embedded shareware WAD.
+ * and opening the embedded Dark War files.
  */
 #include <libdragon.h>
 #include <stdio.h>
@@ -75,7 +75,7 @@ int main(void)
     }
     show_stage(
         "STAGE 5 PASS: DragonFS mounted",
-        "Next: opening rom://rott/DARKWAR.WAD",
+        "Next: opening Dark War data files.",
         graphics_make_color(0, 64, 64, 255)
     );
     wait_ms(2000);
@@ -90,9 +90,43 @@ int main(void)
         for (;;) wait_ms(1000);
     }
     fclose(wad);
+    show_stage(
+        "STAGE 6 PASS: DARKWAR.WAD opened",
+        "Next: rom://rott/DARKWAR.RTL",
+        graphics_make_color(0, 64, 64, 255)
+    );
+    wait_ms(1500);
+
+    wad = fopen("rom://rott/DARKWAR.RTL", "rb");
+    if (wad == NULL) {
+        show_stage(
+            "STAGE 7 FAIL: DARKWAR.RTL not found",
+            "Expected: rom://rott/DARKWAR.RTL",
+            graphics_make_color(96, 0, 0, 255)
+        );
+        for (;;) wait_ms(1000);
+    }
+    fclose(wad);
+    show_stage(
+        "STAGE 7 PASS: DARKWAR.RTL opened",
+        "Next: rom://rott/DARKWAR.RTC",
+        graphics_make_color(0, 64, 64, 255)
+    );
+    wait_ms(1500);
+
+    wad = fopen("rom://rott/DARKWAR.RTC", "rb");
+    if (wad == NULL) {
+        show_stage(
+            "STAGE 8 FAIL: DARKWAR.RTC not found",
+            "Expected: rom://rott/DARKWAR.RTC",
+            graphics_make_color(96, 0, 0, 255)
+        );
+        for (;;) wait_ms(1000);
+    }
+    fclose(wad);
 
     show_stage(
-        "STAGE 6 PASS: WAD opened successfully",
+        "STAGE 8 PASS: all Dark War files opened",
         "BOOT DIAGNOSTIC COMPLETE.\nThis ROM will remain on this screen.",
         graphics_make_color(0, 80, 24, 255)
     );

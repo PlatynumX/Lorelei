@@ -1,6 +1,6 @@
 ## Runtime revision 13
 
-The first completed ROM exited back to the Android emulator list. Direct source inspection found the DragonFS root was wrong: `rom:/rott` instead of `rom://rott`. Revision 13 corrects all paths, verifies `HUNTBGIN.WAD` with a direct boot-time open, displays four early checkpoints, sets region/category metadata, and disables ELF compression for the next compatibility build.
+The first completed ROM exited back to the Android emulator list. Direct source inspection found the DragonFS root was wrong: `rom:/rott` instead of `rom://rott`. Revision 13 corrects all paths, verifies `DARKWAR.WAD` with a direct boot-time open, displays four early checkpoints, sets region/category metadata, and disables ELF compression for the next compatibility build.
 
 # First-level readiness assessment
 
@@ -25,7 +25,7 @@ vector, force silent mode, and request 320x200 output.
 
 The gameplay, renderer, map loading, actors, weapons, menus, WAD handling, RTL
 handling, and shareware restrictions remain Taradino code. The N64 layer avoids
-reimplementing them. The official shareware WAD/RTL/RTC files are embedded and
+reimplementing them. The official Dark War WAD/RTL/RTC files are embedded and
 looked up with the correct case-sensitive DragonFS paths.
 
 ROTTDS demonstrated that the ROTT engine can be adapted to a memory-constrained

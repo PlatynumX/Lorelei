@@ -29,8 +29,8 @@ def main()->int:
     else:
         music_map=music_map_path.read_text(errors="replace")
         match=re.search(r"rott64_music_map_count\s*=\s*(\d+)u", music_map)
-        if not match or int(match.group(1)) < 18:
-            failures.append("shareware music map (18 tracks)")
+        if not match or int(match.group(1)) < 34:
+            failures.append("full Dark War music map (34 tracks)")
 
     fx=(a.engine/"fx_mixer.c").read_text(errors="replace")
     for needle, label in (

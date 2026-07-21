@@ -36,7 +36,7 @@ bool rott_wad_inspect(const char *path, rott_wad_report_t *report)
     memset(report, 0, sizeof(*report));
     file = fopen(path, "rb");
     if (file == NULL) {
-        set_error(report, "HUNTBGIN.WAD is missing");
+        set_error(report, "WAD file is missing");
         return false;
     }
 

@@ -116,7 +116,7 @@ jobs:
             echo "diag_built=false" >> "$GITHUB_OUTPUT"
           fi
 
-          if python3 -c 'from pathlib import Path; p=Path("rott64.z64"); d=p.read_bytes() if p.is_file() else b""; ok=1024*1024<=len(d)<=78000000 and d[:4]==bytes.fromhex("80371240"); print(f"Validated {p} ({len(d)} bytes)") if ok else None; raise SystemExit(0 if ok else 1)'; then
+          if python3 -c 'from pathlib import Path; p=Path("rott64.z64"); d=p.read_bytes() if p.is_file() else b""; ok=1024*1024<=len(d)<=78_000_000 and d[:4]==bytes.fromhex("80371240"); print(f"Validated {p} ({len(d)} bytes)") if ok else None; raise SystemExit(0 if ok else 1)'; then
             sha256sum rott64.z64 | tee rott64.z64.sha256
             echo "rom_built=true" >> "$GITHUB_OUTPUT"
             exit 0
@@ -126,11 +126,30 @@ jobs:
           [ "$status" -ne 0 ] || status=1
           exit "$status"
 
+      - name: Verify final Dark War ROM size and format
+        if: always() && steps.n64_build.outputs.rom_built == 'true'
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("rott64.z64")
+          data = p.read_bytes()
+          if len(data) < 1024 * 1024:
+              raise SystemExit("Final ROM is implausibly small")
+          if len(data) > 78_000_000:
+              raise SystemExit(
+                  f"Final ROM exceeds 78,000,000-byte limit: {len(data)}"
+              )
+          if data[:4] != bytes.fromhex("80371240"):
+              raise SystemExit("Final ROM is not big-endian .z64")
+          print(f"Final Dark War ROM: {len(data)} bytes")
+          PY
+
       - name: Upload Dark War ROM
         if: always() && steps.n64_build.outputs.rom_built == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-darkwar-clean-registered-r39
+          name: rott64-darkwar-clean-registered-r40
           path: |
             rott64.z64
             rott64.z64.sha256
@@ -140,7 +159,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-darkwar-r39-build-diagnostics
+          name: rott64-darkwar-r40-build-diagnostics
           path: |
             ci-reports/
             build/reports/

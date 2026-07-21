@@ -14,7 +14,7 @@
 
 > **Revision 3 build fix:** the Taradino source preparer now patches startup calls with whitespace-tolerant regular expressions. This addresses the GitHub Actions failure `force silent mode: expected one match, found 0`.
 
-# ROTT64 shareware — first-level candidate
+# ROTT64 Dark War registered — first-level candidate
 
 This repository is a serious first attempt to run **Rise of the Triad: The HUNT
 Begins** on Nintendo 64 with libdragon.

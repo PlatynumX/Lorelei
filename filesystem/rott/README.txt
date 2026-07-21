@@ -1,4 +1,10 @@
-The GitHub workflow replaces this directory with the installed Rise of the
-Triad: The HUNT Begins v1.3 shareware data before building the ROM.
+ROTT64 Dark War registered data
 
-Run tools/fetch_shareware.sh manually to prepare it locally.
+Required embedded files:
+
+  DARKWAR.WAD
+  DARKWAR.RTL
+  DARKWAR.RTC
+
+The full-version workflow and N64 startup diagnostics verify all three files.
+The Shareware HUNTBGIN data is not used by this branch.
