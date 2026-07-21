@@ -163,10 +163,10 @@ def test_prepare_engine() -> None:
         assert "NoSound = false;" in main
         assert "SetRottScreenRes(320, 200);" in main
         assert "T07: entered Taradino main" in main
-        assert "T10: before PopulateEpisodeMenu" in main
-        assert "T19: before SetupWads" in main
-        assert "T30: entering VGA plane mode" in main
-        assert main.count("n64_platform_checkpoint(") == 24
+        assert "T09: before PopulateEpisodeMenu" in main
+        assert "T18: before SetupWads" in main
+        assert "T29: entering VGA plane mode" in main
+        assert main.count("n64_platform_checkpoint(") == 23
         cfg = (output / "rt_cfg.c").read_text()
         assert "SetSoundDefaultValues();" in cfg
         assert "SetConfigDefaultValues();" in cfg

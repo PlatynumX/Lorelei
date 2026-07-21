@@ -98,118 +98,113 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
     if "PopulateEpisodeMenu(datadir);" in text:
         startup_markers = (
             (
-                "    ApogeePath = GetPrefDir();",
-                '    n64_platform_checkpoint("T08: before GetPrefDir");\n'
-                "    ApogeePath = GetPrefDir();",
-            ),
-            (
                 "    // Set which release version we're on",
-                '    n64_platform_checkpoint("T09: before product/map detection");\n'
+                '    n64_platform_checkpoint("T08: before product/map detection");\n'
                 "    // Set which release version we're on",
             ),
             (
                 "    PopulateEpisodeMenu(datadir);",
-                '    n64_platform_checkpoint("T10: before PopulateEpisodeMenu");\n'
+                '    n64_platform_checkpoint("T09: before PopulateEpisodeMenu");\n'
                 "    PopulateEpisodeMenu(datadir);",
             ),
             (
                 "    DrawRottTitle();",
-                '    n64_platform_checkpoint("T11: before DrawRottTitle");\n'
+                '    n64_platform_checkpoint("T10: before DrawRottTitle");\n'
                 "    DrawRottTitle();",
             ),
             (
                 "    StartupSoftError();",
-                '    n64_platform_checkpoint("T12: before StartupSoftError");\n'
+                '    n64_platform_checkpoint("T11: before StartupSoftError");\n'
                 "    StartupSoftError();",
             ),
             (
                 "    CheckCommandLineParameters();",
-                '    n64_platform_checkpoint("T13: before command-line setup");\n'
+                '    n64_platform_checkpoint("T12: before command-line setup");\n'
                 "    CheckCommandLineParameters();",
             ),
             (
                 "    Z_Init(50000, 1000000);",
-                '    n64_platform_checkpoint("T14: before Z_Init");\n'
+                '    n64_platform_checkpoint("T13: before Z_Init");\n'
                 "    Z_Init(50000, 1000000);",
             ),
             (
                 "    IN_Startup();",
-                '    n64_platform_checkpoint("T15: before IN_Startup");\n'
+                '    n64_platform_checkpoint("T14: before IN_Startup");\n'
                 "    IN_Startup();",
             ),
             (
                 "    InitializeGameCommands();",
-                '    n64_platform_checkpoint("T16: before game commands");\n'
+                '    n64_platform_checkpoint("T15: before game commands");\n'
                 "    InitializeGameCommands();",
             ),
             (
                 "        ReadConfig();",
-                '        n64_platform_checkpoint("T17: before ReadConfig");\n'
+                '        n64_platform_checkpoint("T16: before ReadConfig");\n'
                 "        ReadConfig();",
             ),
             (
                 "        ReadSETUPFiles();",
-                '        n64_platform_checkpoint("T18: before ReadSETUPFiles");\n'
+                '        n64_platform_checkpoint("T17: before ReadSETUPFiles");\n'
                 "        ReadSETUPFiles();",
             ),
             (
                 "        SetupWads();",
-                '        n64_platform_checkpoint("T19: before SetupWads");\n'
+                '        n64_platform_checkpoint("T18: before SetupWads");\n'
                 "        SetupWads();",
             ),
             (
                 "        BuildTables();",
-                '        n64_platform_checkpoint("T20: before BuildTables");\n'
+                '        n64_platform_checkpoint("T19: before BuildTables");\n'
                 "        BuildTables();",
             ),
             (
                 "        GetMenuInfo();",
-                '        n64_platform_checkpoint("T21: before GetMenuInfo");\n'
+                '        n64_platform_checkpoint("T20: before GetMenuInfo");\n'
                 "        GetMenuInfo();",
             ),
             (
                 "    SetRottScreenRes(320, 200);",
-                '    n64_platform_checkpoint("T22: before screen resolution");\n'
+                '    n64_platform_checkpoint("T21: before screen resolution");\n'
                 "    SetRottScreenRes(320, 200);",
             ),
             (
                 "            status2 = SD_SetupFXCard();",
-                '            n64_platform_checkpoint("T23: before FX setup");\n'
+                '            n64_platform_checkpoint("T22: before FX setup");\n'
                 "            status2 = SD_SetupFXCard();",
             ),
             (
                 "                SD_Startup(false);",
-                '                n64_platform_checkpoint("T24: before SD_Startup");\n'
+                '                n64_platform_checkpoint("T23: before SD_Startup");\n'
                 "                SD_Startup(false);",
             ),
             (
                 "                MU_Startup(false);",
-                '                n64_platform_checkpoint("T25: before MU_Startup");\n'
+                '                n64_platform_checkpoint("T24: before MU_Startup");\n'
                 "                MU_Startup(false);",
             ),
             (
                 "        Init_Tables();",
-                '        n64_platform_checkpoint("T26: before Init_Tables");\n'
+                '        n64_platform_checkpoint("T25: before Init_Tables");\n'
                 "        Init_Tables();",
             ),
             (
                 "        InitializeRNG();",
-                '        n64_platform_checkpoint("T27: before RNG");\n'
+                '        n64_platform_checkpoint("T26: before RNG");\n'
                 "        InitializeRNG();",
             ),
             (
                 "        InitializeMessages();",
-                '        n64_platform_checkpoint("T28: before messages");\n'
+                '        n64_platform_checkpoint("T27: before messages");\n'
                 "        InitializeMessages();",
             ),
             (
                 "        LoadColorMap();",
-                '        n64_platform_checkpoint("T29: before color map");\n'
+                '        n64_platform_checkpoint("T28: before color map");\n'
                 "        LoadColorMap();",
             ),
             (
                 "    VL_SetVGAPlaneMode();",
-                '    n64_platform_checkpoint("T30: entering VGA plane mode");\n'
+                '    n64_platform_checkpoint("T29: entering VGA plane mode");\n'
                 "    VL_SetVGAPlaneMode();",
             ),
         )

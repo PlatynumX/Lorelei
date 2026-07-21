@@ -1,3 +1,12 @@
+# ROTT64 R41b — real-source startup trace correction
+
+- Removed the nonexistent `ApogeePath = GetPrefDir();` trace anchor that
+  caused R41 preparation to abort against the pinned Taradino source.
+- Retains strict tracing on the real startup calls.
+- Checkpoints now run T07 through T29.
+- Preserves R40 full Dark War behavior.
+- Retains the 78,000,000-byte final ROM hard limit.
+
 # ROTT64 R41 — registered startup trace
 
 - Preserves the R40 full Dark War configuration.
