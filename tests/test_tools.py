@@ -139,6 +139,8 @@ def test_prepare_engine() -> None:
         assert "T19: before SetupWads" in main
         assert "T30: entering VGA plane mode" in main
         assert main.count("n64_platform_checkpoint(") == 24
+        assert main.count("T28: before messages") == 1
+        assert main.count("InitializeMessages();") == 3
         cfg = (output / "rt_cfg.c").read_text()
         assert "SetSoundDefaultValues();" in cfg
         assert "SetConfigDefaultValues();" in cfg

@@ -90,8 +90,36 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
         "fixed N64 resolution",
     )
 
-    # R41c startup tracing synchronized to Taradino 20251222.
-    # Match actual C statements with flexible indentation/spacing.
+    # R41d startup tracing synchronized to Taradino 20251222.
+    # First isolate the main() function, then match startup calls only there.
+    # main() signature formatting is deliberately whitespace-tolerant.
+    main_match = re.search(
+        r"(?ms)^[ \t]*int[ \t]+main[ \t]*\([^)]*\)[ \t\r\n]*\{",
+        text,
+    )
+    if not main_match:
+        raise RuntimeError("R41d startup trace: could not locate main()")
+
+    brace_start = text.rfind("{", main_match.start(), main_match.end())
+    if brace_start == -1:
+        raise RuntimeError("R41d startup trace: main() opening brace missing")
+
+    depth = 0
+    brace_end = None
+    for pos in range(brace_start, len(text)):
+        ch = text[pos]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                brace_end = pos + 1
+                break
+    if brace_end is None:
+        raise RuntimeError("R41d startup trace: main() closing brace missing")
+
+    main_text = text[main_match.start():brace_end]
+
     trace_specs = (
         ("T08: before GetPrefDir", r"(?m)^(?P<i>[ \t]*)ApogeePath\s*=\s*GetPrefDir\(\)\s*;"),
         ("T09: before product/map detection", r"(?m)^(?P<i>[ \t]*)gamestate\.Version\s*=\s*ROTTVERSION\s*;"),
@@ -118,13 +146,12 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
         ("T30: entering VGA plane mode", r"(?m)^(?P<i>[ \t]*)VL_SetVGAPlaneMode\s*\(\s*\)\s*;"),
     )
 
-    inserted_trace_labels = []
     for label, pattern in trace_specs:
-        matches = list(re.finditer(pattern, text))
+        matches = list(re.finditer(pattern, main_text))
         if len(matches) != 1:
             raise RuntimeError(
-                f"R41c startup trace {label!r}: expected one match, "
-                f"found {len(matches)}"
+                f"R41d startup trace {label!r}: expected one match "
+                f"inside main(), found {len(matches)}"
             )
         match = matches[0]
         indent = match.group("i")
@@ -133,11 +160,9 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
             f'{indent}n64_platform_checkpoint("{label}");\n'
             f"{indent}{statement}"
         )
-        text = text[:match.start()] + replacement + text[match.end():]
-        inserted_trace_labels.append(label)
+        main_text = main_text[:match.start()] + replacement + main_text[match.end():]
 
-    if len(inserted_trace_labels) != len(trace_specs):
-        raise RuntimeError("R41c startup trace insertion count mismatch")
+    text = text[:main_match.start()] + main_text + text[brace_end:]
 
     main_path.write_text(text,encoding="utf-8")
 

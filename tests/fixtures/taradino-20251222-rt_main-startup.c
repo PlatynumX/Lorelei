@@ -1,6 +1,6 @@
 #include "SDL.h"
 
-int main(int argc, char *argv[])
+int main ( int argc, char *argv[] )
 {
  _argc = argc;
  _argv = argv;
@@ -81,4 +81,14 @@ int main(int argc, char *argv[])
  if (standalone == true)
  ServerLoop();
  VL_SetVGAPlaneMode();
+}
+
+void duplicate_message_init_a(void)
+{
+ InitializeMessages();
+}
+
+void duplicate_message_init_b(void)
+{
+ InitializeMessages();
 }

@@ -1,11 +1,9 @@
-# R41c startup trace
+# R41d main-scoped startup trace
 
-R40 passes all six platform/data stages then black-screens after Taradino
-handoff.
+R41c failed because InitializeMessages() appears three times in rt_main.c.
 
-R41c synchronizes host validation to the pinned Taradino 20251222 startup
-source shape. Checkpoints T07-T30 are inserted using whitespace-tolerant
-structural matching.
+R41d locates main() using whitespace-tolerant C signature matching, isolates
+that function body, and inserts T08-T30 only inside main().
 
 Report the final T-number and description visible before blackness.
 
