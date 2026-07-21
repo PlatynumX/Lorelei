@@ -61,8 +61,8 @@ jobs:
           mkdir -p build/reports
           set -o pipefail
           make prepare 2>&1 | tee build/reports/prepare-engine.log
-          if [ -f generated/reports/r42-sd-startup-trace-map.txt ]; then
-            cp generated/reports/r42-sd-startup-trace-map.txt build/reports/
+          if [ -f generated/reports/r42b-sd-startup-trace-map.txt ]; then
+            cp generated/reports/r42b-sd-startup-trace-map.txt build/reports/
           fi
 
       - name: Verify clean registered preparation

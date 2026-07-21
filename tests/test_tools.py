@@ -95,13 +95,37 @@ def test_prepare_engine() -> None:
             encoding="utf-8",
         )
         (source / "rt_sound.c").write_text(
-            '#include <stdio.h>\n'
-            'void SD_Startup(int bombonerror)\n'
+            'int SD_Startup(int bombonerror)\n'
             '{\n'
-            '    int status = 0;\n'
-            '    SD_SetSoundMode(1);\n'
-            '    status = FX_Init(1, 8, 2, 11025);\n'
-            '    SD_SetMusicMode(1);\n'
+            '    int status;\n'
+            '    int i;\n'
+            '    if (SD_Started == true) { SD_Shutdown(); }\n'
+            '    if (FXMode < 0 || FXMode > 1) { FXMode = 1; }\n'
+            '    if (FXMode == 0) { return (0); }\n'
+            '    soundstart = W_GetNumForName("digistrt") + 1;\n'
+            '    soundtype = fx_digital;\n'
+            '    if (SoundsRemapped == false)\n'
+            '    {\n'
+            '        for (i = 0; i < SD_LASTSOUND; i++)\n'
+            '        {\n'
+            '            int snd;\n'
+            '            snd = sounds[i].snds[fx_digital];\n'
+            '            if (snd >= 0)\n'
+            '            {\n'
+            '                sounds[i].snds[fx_digital] =\n'
+            '                    W_GetNumForName(W_GetNameForNum(snd + soundstart));\n'
+            '            }\n'
+            '        }\n'
+            '        SoundsRemapped = true;\n'
+            '    }\n'
+            '    soundstart = 0;\n'
+            '    remotestart = W_GetNumForName("remostrt") + 1;\n'
+            '    status = FX_Init();\n'
+            '    if (status != FX_Ok) { return (status); }\n'
+            '    FX_SetCallBack(SD_MakeCacheable);\n'
+            '    SD_Started = true;\n'
+            '    FX_SetVolume(FXvolume);\n'
+            '    return (0);\n'
             '}\n',
             encoding="utf-8",
         )
@@ -194,10 +218,12 @@ def test_prepare_engine() -> None:
         assert "(unsigned long)temp->y" in actor
         sound = (output / "rt_sound.c").read_text()
         assert "S00: entered SD_Startup" in sound
-        assert "S01: before SD_SetSoundMode" in sound
-        assert "S02: before FX_Init" in sound
-        assert "S03: before SD_SetMusicMode" in sound
+        assert "S03: before digital sound remap" in sound
+        assert "S04: remap loop completed" in sound
         assert "S99: leaving SD_Startup" in sound
+        assert "sounds[i].snds[fx_digital] =\n" in sound
+        assert "W_GetNumForName(W_GetNameForNum(snd + soundstart));" in sound
+        assert "=\n                    n64_platform_checkpoint" not in sound
         rt_str = (output / "rt_str.c").read_text()
         assert rt_str.count("memmove(s + cursor - 1, s + cursor, strlen(s + cursor) + 1);") == 2
         assert rt_str.count("memmove(s + cursor, s + cursor + 1, strlen(s + cursor + 1) + 1);") == 2

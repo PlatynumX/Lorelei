@@ -166,9 +166,10 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
 
     main_path.write_text(text,encoding="utf-8")
 
-    # R42: trace inside SD_Startup() itself. R41d hardware reached T24 and
-    # black-screened before T25, proving the failure occurs within
-    # SD_Startup(false). Locate the actual definition dynamically.
+    # R42b: safe SD_Startup phase tracing.
+    # R42's generic call-line tracer split a multiline assignment in
+    # SD_Startup and caused the prior "void value not ignored" compile error.
+    # This version instruments only complete statements/blocks.
     sd_defs = []
     sd_def_pattern = re.compile(
         r"(?m)^[ \t]*(?:void|int|boolean)[ \t]+SD_Startup[ \t]*"
@@ -182,125 +183,160 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
 
     if len(sd_defs) != 1:
         raise RuntimeError(
-            "R42 SD_Startup trace: expected one function definition, "
+            "R42b SD_Startup trace: expected one function definition, "
             f"found {len(sd_defs)}"
         )
 
     sd_path, sd_text, sd_match = sd_defs[0]
-    sd_brace_start = sd_text.rfind("{", sd_match.start(), sd_match.end())
-    if sd_brace_start < 0:
-        raise RuntimeError("R42 SD_Startup trace: opening brace missing")
-
-    sd_depth = 0
-    sd_brace_end = None
-    for sd_pos in range(sd_brace_start, len(sd_text)):
-        sd_ch = sd_text[sd_pos]
-        if sd_ch == "{":
-            sd_depth += 1
-        elif sd_ch == "}":
-            sd_depth -= 1
-            if sd_depth == 0:
-                sd_brace_end = sd_pos + 1
+    sd_open = sd_text.rfind("{", sd_match.start(), sd_match.end())
+    depth = 0
+    sd_close = None
+    for pos in range(sd_open, len(sd_text)):
+        if sd_text[pos] == "{":
+            depth += 1
+        elif sd_text[pos] == "}":
+            depth -= 1
+            if depth == 0:
+                sd_close = pos + 1
                 break
-    if sd_brace_end is None:
-        raise RuntimeError("R42 SD_Startup trace: closing brace missing")
+    if sd_close is None:
+        raise RuntimeError("R42b SD_Startup trace: closing brace missing")
 
-    sd_func = sd_text[sd_match.start():sd_brace_end]
+    sd_func = sd_text[sd_match.start():sd_close]
 
-    local_brace = sd_func.find("{")
-    sd_func = (
-        sd_func[:local_brace + 1]
-        + '\n n64_platform_checkpoint("S00: entered SD_Startup");'
-        + sd_func[local_brace + 1:]
-    )
-
-    call_line = re.compile(
-        r"(?m)^(?P<i>[ \t]*)(?P<line>"
-        r"(?:(?:[A-Za-z_][A-Za-z0-9_]*[ \t]*=[ \t]*)?)"
-        r"(?P<fn>[A-Za-z_][A-Za-z0-9_]*)[ \t]*"
-        r"\([^;\n]*\)[ \t]*;[ \t]*)$"
-    )
-    excluded = {
-        "if", "for", "while", "switch", "return", "sizeof",
-        "n64_platform_checkpoint",
-    }
-
-    trace_map = []
-    checkpoint_no = 1
-    cursor = 0
-    rebuilt = []
-    for call_match in call_line.finditer(sd_func):
-        fn = call_match.group("fn")
-        if fn in excluded:
-            continue
-        rebuilt.append(sd_func[cursor:call_match.start()])
-        indent = call_match.group("i")
-        statement = call_match.group("line").lstrip(" \t")
-        label = f"S{checkpoint_no:02d}: before {fn}"
-        rebuilt.append(
-            f'{indent}n64_platform_checkpoint("{label}");\n'
-            f"{indent}{statement}"
+    def trace_before_once(source, pattern, label, description):
+        matches = list(re.finditer(pattern, source))
+        if len(matches) != 1:
+            raise RuntimeError(
+                f"R42b {description}: expected one match, found "
+                f"{len(matches)}"
+            )
+        m = matches[0]
+        indent = re.match(r"[ \t]*", m.group(0)).group(0)
+        return (
+            source[:m.start()]
+            + f'{indent}n64_platform_checkpoint("{label}");\n'
+            + source[m.start():]
         )
-        trace_map.append(f"{label} :: {statement.strip()}")
-        cursor = call_match.end()
-        checkpoint_no += 1
 
-    rebuilt.append(sd_func[cursor:])
-    sd_func = "".join(rebuilt)
-
-    final_close = sd_func.rfind("}")
+    local_open = sd_func.find("{")
     sd_func = (
-        sd_func[:final_close]
-        + '\n n64_platform_checkpoint("S99: leaving SD_Startup");\n'
-        + sd_func[final_close:]
+        sd_func[:local_open + 1]
+        + '\n n64_platform_checkpoint("S00: entered SD_Startup");'
+        + sd_func[local_open + 1:]
     )
+
+    phase_specs = (
+        (
+            r"(?m)^[ \t]*if[ \t]*\([ \t]*SD_Started[ \t]*==[ \t]*true[ \t]*\)",
+            "S01: before prior-sound shutdown check",
+            "SD_Started shutdown check",
+        ),
+        (
+            r'(?m)^[ \t]*soundstart[ \t]*=[ \t]*W_GetNumForName\("digistrt"\)[ \t]*\+[ \t]*1[ \t]*;',
+            "S02: before DIGISTRT lookup",
+            "DIGISTRT lookup",
+        ),
+        (
+            r"(?m)^[ \t]*if[ \t]*\([ \t]*SoundsRemapped[ \t]*==[ \t]*false[ \t]*\)",
+            "S03: before digital sound remap",
+            "sound remap block",
+        ),
+        (
+            r"(?m)^[ \t]*SoundsRemapped[ \t]*=[ \t]*true[ \t]*;",
+            "S04: remap loop completed",
+            "SoundsRemapped assignment",
+        ),
+        (
+            r'(?m)^[ \t]*remotestart[ \t]*=[ \t]*W_GetNumForName\("remostrt"\)[ \t]*\+[ \t]*1[ \t]*;',
+            "S05: before REMOSTRT lookup",
+            "REMOSTRT lookup",
+        ),
+        (
+            r"(?m)^[ \t]*status[ \t]*=[ \t]*FX_Init[ \t]*\([ \t]*\)[ \t]*;",
+            "S06: before FX_Init",
+            "FX_Init",
+        ),
+        (
+            r"(?m)^[ \t]*if[ \t]*\([ \t]*status[ \t]*!=[ \t]*FX_Ok[ \t]*\)",
+            "S07: FX_Init returned",
+            "FX_Init result check",
+        ),
+        (
+            r"(?m)^[ \t]*FX_SetCallBack[ \t]*\([ \t]*SD_MakeCacheable[ \t]*\)[ \t]*;",
+            "S08: before FX callback",
+            "FX callback",
+        ),
+        (
+            r"(?m)^[ \t]*SD_Started[ \t]*=[ \t]*true[ \t]*;",
+            "S09: before marking sound started",
+            "SD_Started assignment",
+        ),
+        (
+            r"(?m)^[ \t]*FX_SetVolume[ \t]*\([ \t]*FXvolume[ \t]*\)[ \t]*;",
+            "S10: before FX volume",
+            "FX volume",
+        ),
+        (
+            r"(?m)^[ \t]*return[ \t]*\([ \t]*0[ \t]*\)[ \t]*;",
+            "S99: leaving SD_Startup",
+            "successful return",
+        ),
+    )
+
+    for pattern, label, description in phase_specs:
+        sd_func = trace_before_once(sd_func, pattern, label, description)
 
     if "n64_platform_checkpoint(const char *message)" not in sd_text:
-        sd_text = (
+        prefix = (
             '#ifdef __N64__\n'
             'extern void n64_platform_checkpoint(const char *message);\n'
             '#endif\n'
-            + sd_text
         )
+        sd_text = prefix + sd_text
         rematch = sd_def_pattern.search(sd_text)
         if not rematch:
-            raise RuntimeError(
-                "R42 SD_Startup trace: definition lost after declaration"
-            )
-        prefix_start = rematch.start()
-        brace_start2 = sd_text.rfind("{", rematch.start(), rematch.end())
-        depth2 = 0
-        brace_end2 = None
-        for pos2 in range(brace_start2, len(sd_text)):
-            ch2 = sd_text[pos2]
-            if ch2 == "{":
-                depth2 += 1
-            elif ch2 == "}":
-                depth2 -= 1
-                if depth2 == 0:
-                    brace_end2 = pos2 + 1
+            raise RuntimeError("R42b SD_Startup definition lost after prefix")
+        ropen = sd_text.rfind("{", rematch.start(), rematch.end())
+        rdepth = 0
+        rclose = None
+        for pos in range(ropen, len(sd_text)):
+            if sd_text[pos] == "{":
+                rdepth += 1
+            elif sd_text[pos] == "}":
+                rdepth -= 1
+                if rdepth == 0:
+                    rclose = pos + 1
                     break
-        if brace_end2 is None:
-            raise RuntimeError(
-                "R42 SD_Startup trace: rematched closing brace missing"
-            )
-        sd_text = sd_text[:prefix_start] + sd_func + sd_text[brace_end2:]
+        if rclose is None:
+            raise RuntimeError("R42b SD_Startup rematch closing brace missing")
+        sd_text = sd_text[:rematch.start()] + sd_func + sd_text[rclose:]
     else:
-        sd_text = (
-            sd_text[:sd_match.start()]
-            + sd_func
-            + sd_text[sd_brace_end:]
-        )
+        sd_text = sd_text[:sd_match.start()] + sd_func + sd_text[sd_close:]
 
     sd_path.write_text(sd_text, encoding="utf-8")
 
     report_dir = output.parent / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)
-    (report_dir / "r42-sd-startup-trace-map.txt").write_text(
-        f"source={sd_path.name}\n"
-        f"call_checkpoints={len(trace_map)}\n"
-        + "\n".join(trace_map)
-        + "\nS99: leaving SD_Startup\n",
+    (report_dir / "r42b-sd-startup-trace-map.txt").write_text(
+        "\n".join(
+            [
+                f"source={sd_path.name}",
+                "S00: entered SD_Startup",
+                "S01: before prior-sound shutdown check",
+                "S02: before DIGISTRT lookup",
+                "S03: before digital sound remap",
+                "S04: remap loop completed",
+                "S05: before REMOSTRT lookup",
+                "S06: before FX_Init",
+                "S07: FX_Init returned",
+                "S08: before FX callback",
+                "S09: before marking sound started",
+                "S10: before FX volume",
+                "S99: leaving SD_Startup",
+            ]
+        )
+        + "\n",
         encoding="utf-8",
     )
 
