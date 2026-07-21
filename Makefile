@@ -77,7 +77,7 @@ CFLAGS += -Wno-error=maybe-uninitialized
 CFLAGS += -Igenerated/rott -Iplatform/n64
 CFLAGS += -D__N64__=1
 CFLAGS += -DDATADIR='"rom://rott"'
-CFLAGS += -DPACKAGE_STRING='"ROTT64 Dark War First-Level Candidate"'
+CFLAGS += -DPACKAGE_STRING='"ROTT64 Dark War Registered"'
 CFLAGS += -DPACKAGE_TARNAME='"rott64"'
 CFLAGS += -DNO_NETWORK=1
 LDFLAGS += -lm

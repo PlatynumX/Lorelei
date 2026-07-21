@@ -1,16 +1,3 @@
-# ROTT64 Revision 26 — Full Dark War from Hardware-Tested R25 Rumble Baseline
-
-- Starts from the exact hardware-tested R25 first-rumble source archive.
-- Removes `-DSHAREWARE=1` so Taradino builds the full version.
-- Bundles `filesystem/rott/DARKWAR.WAD`.
-- Changes the startup WAD probe from `HUNTBGIN.WAD` to `DARKWAR.WAD`.
-- Uses the existing R25 Timidity/WAV/WAV64 music pipeline with
-  `tools/extract_music.py --mode full` against `DARKWAR.WAD`.
-- Preserves the proven internal libdragon targets `rott64.z64` and
-  `build/rott64.elf`.
-- Only the final artifact is renamed to `rott64-darkwar-r26.z64`.
-- No later save/video/remapping/split-screen/native-MIDI experiments are included.
-
 # Revision 25 - N64 Rumble Pak support
 
 - Added non-blocking Rumble Pak support through libdragon's joypad subsystem.

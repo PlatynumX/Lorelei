@@ -75,16 +75,16 @@ int main(void)
     }
     show_stage(
         "STAGE 5 PASS: DragonFS mounted",
-        "Next: opening rom://rott/HUNTBGIN.WAD",
+        "Next: opening rom://rott/DARKWAR.WAD",
         graphics_make_color(0, 64, 64, 255)
     );
     wait_ms(2000);
 
-    wad = fopen("rom://rott/HUNTBGIN.WAD", "rb");
+    wad = fopen("rom://rott/DARKWAR.WAD", "rb");
     if (wad == NULL) {
         show_stage(
-            "STAGE 6 FAIL: HUNTBGIN.WAD not found",
-            "Expected: rom://rott/HUNTBGIN.WAD",
+            "STAGE 6 FAIL: DARKWAR.WAD not found",
+            "Expected: rom://rott/DARKWAR.WAD",
             graphics_make_color(96, 0, 0, 255)
         );
         for (;;) wait_ms(1000);

@@ -32,7 +32,7 @@ static void boot_display_show(const char *stage)
         graphics_make_color(255, 255, 255, 255),
         graphics_make_color(0, 0, 0, 0)
     );
-    graphics_draw_text(surface, 16, 24, "ROTT64 DARK WAR");
+    graphics_draw_text(surface, 16, 24, "ROTT64 SHAREWARE");
     graphics_draw_text(surface, 16, 64, stage ? stage : "Starting...");
     display_show(surface);
 }
@@ -50,8 +50,6 @@ void n64_platform_init(void)
     if (initialized) return;
 #ifdef __N64__
     FILE *wad;
-    FILE *rtl;
-    FILE *rtc;
 
     boot_display_show("Stage 1/4: entered N64 main()");
     for (volatile uint32_t i = 0; i < 20000000u; ++i) __asm__ volatile("nop");
@@ -74,22 +72,12 @@ void n64_platform_init(void)
         n64_platform_fatal(message);
     }
 
-    wad = fopen("rom://rott/DARKWAR.WAD", "rb");
+    wad = fopen("rom://rott/HUNTBGIN.WAD", "rb");
     if (wad == NULL)
-        n64_platform_fatal("Stage 4 failed: DARKWAR.WAD not found\nExpected rom://rott/DARKWAR.WAD");
+        n64_platform_fatal("Stage 4 failed: HUNTBGIN.WAD not found\nExpected rom://rott/HUNTBGIN.WAD");
     fclose(wad);
 
-    rtl = fopen("rom://rott/DARKWAR.RTL", "rb");
-    if (rtl == NULL)
-        n64_platform_fatal("Stage 4 failed: DARKWAR.RTL not found\nExpected rom://rott/DARKWAR.RTL");
-    fclose(rtl);
-
-    rtc = fopen("rom://rott/DARKWAR.RTC", "rb");
-    if (rtc == NULL)
-        n64_platform_fatal("Stage 4 failed: DARKWAR.RTC not found\nExpected rom://rott/DARKWAR.RTC");
-    fclose(rtc);
-
-    boot_display_show("Stage 4/4: Dark War data set found\nStarting Taradino...");
+    boot_display_show("Stage 4/4: shareware WAD found\nStarting Taradino...");
     wait_ms(1500);
     boot_display_close();
 #endif

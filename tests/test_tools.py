@@ -63,7 +63,6 @@ def test_prepare_engine() -> None:
             '{\n'
             '\tCheckCommandLineParameters ( );\n'
             'SetRottScreenRes ( iGLOBAL_SCREENWIDTH , iGLOBAL_SCREENHEIGHT );\n'
-            '    PopulateEpisodeMenu ( );\n'
             '}\n',
             encoding="utf-8",
         )
@@ -131,8 +130,6 @@ def test_prepare_engine() -> None:
         assert "n64_platform_init();" in main
         assert "NoSound = false;" in main
         assert "SetRottScreenRes(320, 200);" in main
-        assert "#ifndef __N64__" in main
-        assert "PopulateEpisodeMenu ( );" in main
         cfg = (output / "rt_cfg.c").read_text()
         assert "SetSoundDefaultValues();" in cfg
         assert "SetConfigDefaultValues();" in cfg
@@ -240,11 +237,9 @@ def test_n64_runtime_boot_policy() -> None:
     assert "N64_ROM_CATEGORY = N" in makefile
     assert "N64_ROM_ELFCOMPRESS = 0" in makefile
     platform = (ROOT / "platform/n64/n64_platform.c").read_text(encoding="utf-8")
-    assert 'fopen("rom://rott/DARKWAR.WAD", "rb")' in platform
-    assert 'fopen("rom://rott/DARKWAR.RTL", "rb")' in platform
-    assert 'fopen("rom://rott/DARKWAR.RTC", "rb")' in platform
+    assert 'fopen("rom://rott/HUNTBGIN.WAD", "rb")' in platform
     assert "Stage 1/4: entered N64 main()" in platform
-    assert "Stage 4/4: Dark War data set found" in platform
+    assert "Stage 4/4: shareware WAD found" in platform
     # Current libdragon rejects FILTERS_DISABLED at 320px in 16bpp on NTSC hardware.
     assert "FILTERS_DISABLED" not in platform
     bootdiag = (ROOT / "platform/n64/bootdiag.c").read_text(encoding="utf-8")
@@ -321,12 +316,3 @@ def test_n64_mixer_normalizes_over_unity_stereo_power():
     assert "float power = left * left + right * right;" in mixer
     assert "if (power > 1.0f)" in mixer
     assert "1.0f / sqrtf(power)" in mixer
-
-
-def test_full_version_n64_startup_policy() -> None:
-    prepare = (ROOT / "tools/prepare_engine.py").read_text(encoding="utf-8")
-    assert "gamestate.Product = ROTT_REGISTERED" in prepare
-    assert "len(product_matches) == 1" in prepare
-    assert "registered product-selection code was present but did not match" in prepare
-    assert "episode_call = re.compile" in prepare
-    assert "standalone call matched" in prepare
