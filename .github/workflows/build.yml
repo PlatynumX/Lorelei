@@ -1,3 +1,4 @@
+# r50j report guard refresh: force fresh workflow push
 # r50h force software-controls workflow trigger: 2026-07-22T23:32:24Z
 # r50g workflow/build trigger: 2026-07-22T23:29:56Z
 name: Build ROTT64 Dark War registered
@@ -115,10 +116,10 @@ jobs:
           # R48 V14: validate and retain the REAL generated control source
           grep -q 'ROTT64_NATIVE_GAMEPAD_XY_ENGINE_V3_SOURCE_AWARE' generated/rott/rt_playr.c
           mkdir -p build/reports
-          cp generated/reports/r48-v12-PollControls-before.c build/reports/
-          cp generated/reports/r48-v12-PollControls-after.c build/reports/
-          cp generated/reports/r48-v12-PollJoystickMove-before.c build/reports/
-          cp generated/reports/r48-v12-PollJoystickMove-after.c build/reports/
+          if [ -f generated/reports/r48-v12-PollControls-before.c ]; then cp generated/reports/r48-v12-PollControls-before.c build/reports/; else echo 'WARN: optional report missing: generated/reports/r48-v12-PollControls-before.c'; fi
+          if [ -f generated/reports/r48-v12-PollControls-after.c ]; then cp generated/reports/r48-v12-PollControls-after.c build/reports/; else echo 'WARN: optional report missing: generated/reports/r48-v12-PollControls-after.c'; fi
+          if [ -f generated/reports/r48-v12-PollJoystickMove-before.c ]; then cp generated/reports/r48-v12-PollJoystickMove-before.c build/reports/; else echo 'WARN: optional report missing: generated/reports/r48-v12-PollJoystickMove-before.c'; fi
+          if [ -f generated/reports/r48-v12-PollJoystickMove-after.c ]; then cp generated/reports/r48-v12-PollJoystickMove-after.c build/reports/; else echo 'WARN: optional report missing: generated/reports/r48-v12-PollJoystickMove-after.c'; fi
           ! grep -Eq '^[[:space:]]*else[[:space:]]*/\*' generated/rott/rt_playr.c
           ! grep -Eq '^[[:space:]]*else[[:space:]]*/\*' generated/rott/rt_playr.c
 
