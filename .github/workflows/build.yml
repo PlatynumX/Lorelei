@@ -1,13 +1,13 @@
 # r50h force software-controls workflow trigger: 2026-07-22T23:32:24Z
 # r50g workflow/build trigger: 2026-07-22T23:29:56Z
 name: Build ROTT64 Dark War registered
+# r50i force software-controls Actions trigger: 2026-07-22T23:35:30Z
 
 on:
   push:
     branches:
-      - full-version
+      - software-controls
   workflow_dispatch:
-
 permissions:
   contents: read
 
