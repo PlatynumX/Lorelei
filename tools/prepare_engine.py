@@ -551,6 +551,107 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
         menu_text = menu_text.replace(old, new)
     menu_path.write_text(menu_text, encoding="utf-8")
 
+    # R45b: Taradino save-header reader ownership fix.
+    #
+    # The pinned 20251222 source owns save-menu state and header parsing in
+    # rt_menu.c, not rt_game.c.  Do not assume a source filename or return
+    # type. Locate the real function definitions structurally across all
+    # fetched engine .c files.
+    def find_named_function(name):
+        pattern = re.compile(
+            rf"(?m)^[ \t]*(?!#)(?P<head>[^;\n{{}}]*\b{re.escape(name)}"
+            rf"[ \t]*\([^;{{}}]*\)[ \t\r\n]*)\{{"
+        )
+        found = []
+        for candidate in sorted(output.glob("*.c")):
+            candidate_text = candidate.read_text(
+                encoding="utf-8", errors="strict"
+            )
+            for match in pattern.finditer(candidate_text):
+                open_brace = candidate_text.find(
+                    "{", match.start(), match.end()
+                )
+                depth = 0
+                close_brace = None
+                for pos in range(open_brace, len(candidate_text)):
+                    ch = candidate_text[pos]
+                    if ch == "{":
+                        depth += 1
+                    elif ch == "}":
+                        depth -= 1
+                        if depth == 0:
+                            close_brace = pos + 1
+                            break
+                if close_brace is None:
+                    raise RuntimeError(
+                        f"R45b {name}: closing brace missing in "
+                        f"{candidate.name}"
+                    )
+                found.append(
+                    (candidate, candidate_text, match.start(), close_brace)
+                )
+        if len(found) != 1:
+            owners = ", ".join(item[0].name for item in found) or "none"
+            raise RuntimeError(
+                f"R45b {name}: expected one definition, found "
+                f"{len(found)} ({owners})"
+            )
+        return found[0]
+
+    read_macros = (
+        '#ifdef __N64__\n'
+        '#include "rott64_flash_save.h"\n'
+        '#define SafeOpenRead rott64_save_open_read\n'
+        '#define SafeRead rott64_save_read\n'
+        '#define filelength rott64_save_filelength\n'
+        '#define LoadFile rott64_save_load_file\n'
+        '#define close rott64_save_close\n'
+        '#endif\n'
+    )
+    read_undefs = (
+        '\n#ifdef __N64__\n'
+        '#undef SafeOpenRead\n'
+        '#undef SafeRead\n'
+        '#undef filelength\n'
+        '#undef LoadFile\n'
+        '#undef close\n'
+        '#endif\n'
+    )
+
+    save_reader_report = []
+    for function_name in ("LoadTag", "GetSaveHeader"):
+        owner, owner_text, function_start, function_end = \
+            find_named_function(function_name)
+
+        function_text = owner_text[function_start:function_end]
+        save_reader_report.append(
+            f"{function_name}={owner.name}"
+        )
+
+        # Route only the save-reader function itself through the native
+        # FlashRAM read API. This preserves Taradino's parsing logic and does
+        # not globally redefine LoadFile for unrelated menu assets.
+        patched_function = (
+            read_macros
+            + function_text
+            + read_undefs
+        )
+        owner_text = (
+            owner_text[:function_start]
+            + patched_function
+            + owner_text[function_end:]
+        )
+        owner.write_text(owner_text, encoding="utf-8")
+
+    # Re-scan after mutation and record exactly where the pinned source put
+    # these functions.  This report travels with GitHub build diagnostics.
+    report_dir = output.parent / "reports"
+    report_dir.mkdir(parents=True, exist_ok=True)
+    (report_dir / "r45b-save-reader-owners.txt").write_text(
+        "\n".join(save_reader_report) + "\n",
+        encoding="utf-8",
+    )
+
     # Apply the same signed-char ctype fix to the command-line helpers.
     # isalpha(), like the other ctype macros, only accepts EOF or values that
     # are representable as unsigned char. libdragon's strict MIPS build also
@@ -704,57 +805,6 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
     game_text = game_text.replace(
         'if (num > 15 || num < 0) Error("Illegal Load game value=%d\\n", num);',
         'if (num != 0) return false;')
-    game_path.write_text(game_text, encoding="utf-8")
-
-    # R45: GetSaveHeader is later in rt_game.c than R44's original macro
-    # scope.  Route it explicitly through the native FlashRAM file backend.
-    game_text = game_path.read_text(encoding="utf-8", errors="strict")
-    header_def = re.search(
-        r"(?m)^[ \t]*(?:boolean|int)[ \t]+GetSaveHeader[ \t]*"
-        r"\([^;{}]*\)[ \t\r\n]*\{",
-        game_text,
-    )
-    if header_def is None:
-        raise RuntimeError("R45 GetSaveHeader definition not found")
-    header_open = game_text.rfind("{", header_def.start(), header_def.end())
-    depth = 0
-    header_close = None
-    for pos in range(header_open, len(game_text)):
-        if game_text[pos] == "{":
-            depth += 1
-        elif game_text[pos] == "}":
-            depth -= 1
-            if depth == 0:
-                header_close = pos + 1
-                break
-    if header_close is None:
-        raise RuntimeError("R45 GetSaveHeader closing brace missing")
-
-    header_macros = (
-        '#ifdef __N64__\n'
-        '#define SafeOpenRead rott64_save_open_read\n'
-        '#define SafeRead rott64_save_read\n'
-        '#define filelength rott64_save_filelength\n'
-        '#define LoadFile rott64_save_load_file\n'
-        '#define close rott64_save_close\n'
-        '#endif\n'
-    )
-    header_undefs = (
-        '\n#ifdef __N64__\n'
-        '#undef SafeOpenRead\n'
-        '#undef SafeRead\n'
-        '#undef filelength\n'
-        '#undef LoadFile\n'
-        '#undef close\n'
-        '#endif\n'
-    )
-    game_text = (
-        game_text[:header_def.start()]
-        + header_macros
-        + game_text[header_def.start():header_close]
-        + header_undefs
-        + game_text[header_close:]
-    )
     game_path.write_text(game_text, encoding="utf-8")
 
     menu_path = output / "rt_menu.c"

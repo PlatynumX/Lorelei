@@ -61,6 +61,9 @@ jobs:
           mkdir -p build/reports
           set -o pipefail
           make prepare 2>&1 | tee build/reports/prepare-engine.log
+          if [ -f generated/reports/r45b-save-reader-owners.txt ]; then
+            cp generated/reports/r45b-save-reader-owners.txt build/reports/
+          fi
           if [ -f generated/reports/r43-sd-startup-trace-map.txt ]; then
             cp generated/reports/r43-sd-startup-trace-map.txt build/reports/
           fi
@@ -166,7 +169,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-darkwar-r45-build-reports
+          name: rott64-darkwar-r45b-build-reports
           path: |
             ci-reports/
             build/reports/

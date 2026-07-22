@@ -87,15 +87,16 @@ def test_prepare_engine() -> None:
             'void b(char *source, int length) { while (*source && !isspace(*source) && length) source++; }\n'
             'void c(char *wordtext, int pos) { while (wordtext[pos] && isspace(wordtext[pos])) pos++; }\n'
             'void ScanForSavedGames(void) { int which; char *path; char *file; file = M_FileCaseExists(path); }\n'
-            'void DeleteSave(char *filename) { unlink(filename); }\n',
+            'void DeleteSave(char *filename) { unlink(filename); }\n'
+            'static int LoadTag(char *filename, char *tag) { void *b = 0; int n = LoadFile(filename, &b); return n > 0 && tag != 0; }\n'
+            'void GetSaveHeader(char *filename) { char tag[8]; (void)LoadTag(filename, tag); }\n',
             encoding="utf-8",
         )
         (source / "rt_game.c").write_text(
             'long CalculateSaveGameCheckSum(char *filename) { int handle = SafeOpenRead(filename); int n = filelength(handle); char b[4]; SafeRead(handle,b,n); close(handle); return 0; }\n'
             'int SaveTheGame(int num, void *game) { if (num > 15 || num < 0) Error("Illegal Saved game value=%d\\n", num); int h=SafeOpenWrite("rottgam0.rot"); SafeWrite(h,game,4); close(h); h=SafeOpenAppend("rottgam0.rot"); SafeWrite(h,game,4); close(h); return 1; }\n'
             'int LoadTheGame(int num, void *game) { if (num > 15 || num < 0) Error("Illegal Load game value=%d\\n", num); void *b; LoadFile("rottgam0.rot",&b); return 1; }\n'
-            'int GetLevel(int episode, int mapon) { return episode + mapon; }\n'
-            'int GetSaveHeader(char *filename) { void *b = 0; int n = LoadFile(filename, &b); return n > 0; }\n',
+            'int GetLevel(int episode, int mapon) { return episode + mapon; }\n',
             encoding="utf-8",
         )
         (source / "rt_util.c").write_text(
@@ -219,8 +220,13 @@ def test_prepare_engine() -> None:
         assert '#include "rott64_flash_save.h"' in game
         assert "#define SafeOpenWrite rott64_save_open_write" in game
         assert "if (num != 0) return false;" in game
-        assert game.count("#define LoadFile rott64_save_load_file") >= 2
-        assert "GetSaveHeader" in game
+        menu = (output / "rt_menu.c").read_text()
+        assert "GetSaveHeader" in menu
+        assert "LoadTag" in menu
+        assert menu.count("#define LoadFile rott64_save_load_file") >= 2
+        owner_report = (output.parent / "reports" / "r45b-save-reader-owners.txt").read_text()
+        assert "LoadTag=rt_menu.c" in owner_report
+        assert "GetSaveHeader=rt_menu.c" in owner_report
         menu = (output / "rt_menu.c").read_text()
         assert menu.count("isspace((unsigned char)*source)") == 2
         assert "isspace((unsigned char)wordtext[pos])" in menu
@@ -408,7 +414,9 @@ def test_r45_controller_contract() -> None:
     assert "buttons.d_left" not in gameplay
     assert "buttonscan[18] = SDL_SCANCODE_BACKSPACE" in prep
     assert "buttonscan[24] = SDL_SCANCODE_M" in prep
-    assert "R45 GetSaveHeader definition not found" in prep
+    assert "expected one definition, found" in prep
+    assert 'for function_name in ("LoadTag", "GetSaveHeader")' in prep
+    assert "r45b-save-reader-owners.txt" in prep
     assert "if (b != NULL) *b = NULL;" in save
 
 if __name__ == "__main__":
