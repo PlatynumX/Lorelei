@@ -355,6 +355,94 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
 
     sd_path.write_text(sd_text, encoding="utf-8")
 
+    # R43: Dark War registered WAD compatibility.
+    #
+    # The bundled registered DARKWAR.WAD has DIGISTRT but no REMOSTRT marker.
+    # Upstream Taradino performs W_GetNumForName("remostrt") unconditionally,
+    # which enters the fatal missing-lump path at hardware checkpoint S05.
+    #
+    # Keep Shareware semantics unchanged. On N64 registered builds, disable
+    # the absent contiguous remote-sound block and let SoundNumber() use the
+    # already-remapped registered sounds[] entry instead.
+    sd_text = sd_path.read_text(encoding="utf-8", errors="strict")
+
+    remote_lookup_pattern = re.compile(
+        r'(?m)^(?P<i>[ \t]*)remotestart[ \t]*=[ \t]*'
+        r'W_GetNumForName[ \t]*\([ \t]*"remostrt"[ \t]*\)'
+        r'[ \t]*\+[ \t]*1[ \t]*;'
+    )
+    remote_matches = list(remote_lookup_pattern.finditer(sd_text))
+    if len(remote_matches) != 1:
+        raise RuntimeError(
+            "R43 REMOSTRT lookup: expected one match, found "
+            f"{len(remote_matches)}"
+        )
+    rm = remote_matches[0]
+    indent = rm.group("i")
+    replacement = (
+        f"{indent}#if defined(__N64__) && (SHAREWARE == 0)\n"
+        f"{indent}remotestart = -1;\n"
+        f"{indent}#else\n"
+        f"{indent}remotestart = W_GetNumForName(\"remostrt\") + 1;\n"
+        f"{indent}#endif"
+    )
+    sd_text = sd_text[:rm.start()] + replacement + sd_text[rm.end():]
+
+    # Find SoundNumber() structurally and modify only its remote-message branch.
+    sound_number_pattern = re.compile(
+        r"(?m)^[ \t]*int[ \t]+SoundNumber[ \t]*\([^;{}]*\)"
+        r"[ \t\r\n]*\{"
+    )
+    sn_matches = list(sound_number_pattern.finditer(sd_text))
+    if len(sn_matches) != 1:
+        raise RuntimeError(
+            "R43 SoundNumber definition: expected one match, found "
+            f"{len(sn_matches)}"
+        )
+
+    snm = sn_matches[0]
+    sn_open = sd_text.rfind("{", snm.start(), snm.end())
+    depth = 0
+    sn_close = None
+    for pos in range(sn_open, len(sd_text)):
+        if sd_text[pos] == "{":
+            depth += 1
+        elif sd_text[pos] == "}":
+            depth -= 1
+            if depth == 0:
+                sn_close = pos + 1
+                break
+    if sn_close is None:
+        raise RuntimeError("R43 SoundNumber closing brace missing")
+
+    sn_func = sd_text[snm.start():sn_close]
+
+    # Upstream remote branch may span several lines; add remotestart validity
+    # to the branch condition without replacing its existing range checks.
+    remote_if_pattern = re.compile(
+        r"(?ms)(?P<head>^[ \t]*if[ \t]*\()"
+        r"(?P<cond>.*?SD_REMOTEM1SND.*?SD_REMOTEM10SND.*?)"
+        r"(?P<tail>\)[ \t\r\n]*\{)"
+    )
+    rif_matches = list(remote_if_pattern.finditer(sn_func))
+    if len(rif_matches) != 1:
+        raise RuntimeError(
+            "R43 SoundNumber remote branch: expected one match, found "
+            f"{len(rif_matches)}"
+        )
+    rif = rif_matches[0]
+    old_cond = rif.group("cond").rstrip()
+    new_cond = old_cond + " &&\n        (remotestart >= 0)"
+    sn_func = (
+        sn_func[:rif.start("cond")]
+        + new_cond
+        + sn_func[rif.end("cond"):]
+    )
+
+    sd_text = sd_text[:snm.start()] + sn_func + sd_text[sn_close:]
+    sd_path.write_text(sd_text, encoding="utf-8")
+
+
     report_dir = output.parent / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)
     (report_dir / "r42b-sd-startup-trace-map.txt").write_text(

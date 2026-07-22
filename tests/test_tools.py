@@ -126,6 +126,14 @@ def test_prepare_engine() -> None:
             '    SD_Started = true;\n'
             '    FX_SetVolume(FXvolume);\n'
             '    return (0);\n'
+            'int SoundNumber(int x)\n'
+            '{\n'
+            '    if ((x >= SD_REMOTEM1SND) && (x <= SD_REMOTEM10SND))\n'
+            '    {\n'
+            '        return remotestart + x - SD_REMOTEM1SND;\n'
+            '    }\n'
+            '    return sounds[x].snds[soundtype] + soundstart;\n'
+            '}\n'
             '}\n',
             encoding="utf-8",
         )
@@ -225,6 +233,10 @@ def test_prepare_engine() -> None:
         assert "sounds[i].snds[fx_digital] =\n" in sound
         assert "W_GetNumForName(W_GetNameForNum(snd + soundstart));" in sound
         assert "=\n                    n64_platform_checkpoint" not in sound
+        assert "remotestart = -1;" in sound
+        assert 'W_GetNumForName("remostrt") + 1;' in sound
+        assert "(remotestart >= 0)" in sound
+        assert "return sounds[x].snds[soundtype] + soundstart;" in sound
         rt_str = (output / "rt_str.c").read_text()
         assert rt_str.count("memmove(s + cursor - 1, s + cursor, strlen(s + cursor) + 1);") == 2
         assert rt_str.count("memmove(s + cursor, s + cursor + 1, strlen(s + cursor + 1) + 1);") == 2
