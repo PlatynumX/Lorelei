@@ -8,10 +8,14 @@
 
 #ifdef __N64__
 #include <libdragon.h>
+
+/* Taradino menu state, defined in rt_menu.c. */
+extern int inmenu;
+extern int ingame;
 #endif
 
 #define EVENT_QUEUE_CAPACITY 64u
-#define KEY_BINDING_COUNT 14u
+#define KEY_BINDING_COUNT 15u
 
 struct SDL_Joystick { int unused; };
 
@@ -77,20 +81,21 @@ typedef struct {
 } key_binding_t;
 
 static key_binding_t bindings[KEY_BINDING_COUNT] = {
-    {SDL_SCANCODE_UP, false},
-    {SDL_SCANCODE_DOWN, false},
-    {SDL_SCANCODE_LEFT, false},
-    {SDL_SCANCODE_RIGHT, false},
-    {SDL_SCANCODE_LCTRL, false},
-    {SDL_SCANCODE_RETURN, false},
-    {SDL_SCANCODE_LSHIFT, false},
-    {SDL_SCANCODE_ESCAPE, false},
-    {SDL_SCANCODE_1, false},
-    {SDL_SCANCODE_2, false},
-    {SDL_SCANCODE_COMMA, false},
-    {SDL_SCANCODE_PERIOD, false},
-    {SDL_SCANCODE_SPACE, false},
-    {SDL_SCANCODE_BACKSPACE, false},
+    {SDL_SCANCODE_UP, false},          /* menu up */
+    {SDL_SCANCODE_DOWN, false},        /* menu down */
+    {SDL_SCANCODE_LEFT, false},        /* menu left */
+    {SDL_SCANCODE_RIGHT, false},       /* menu right */
+    {SDL_SCANCODE_LCTRL, false},       /* fire */
+    {SDL_SCANCODE_RETURN, false},      /* confirm / swap */
+    {SDL_SCANCODE_LSHIFT, false},      /* run */
+    {SDL_SCANCODE_ESCAPE, false},      /* back / pause */
+    {SDL_SCANCODE_TAB, false},         /* drop */
+    {SDL_SCANCODE_COMMA, false},       /* strafe left */
+    {SDL_SCANCODE_PERIOD, false},      /* strafe right */
+    {SDL_SCANCODE_SPACE, false},       /* use */
+    {SDL_SCANCODE_BACKSPACE, false},   /* volte-face */
+    {SDL_SCANCODE_M, false},           /* map */
+    {SDL_SCANCODE_CAPSLOCK, false},    /* autorun */
 };
 
 static void update_binding(unsigned index, bool held)
@@ -103,47 +108,108 @@ static void update_binding(unsigned index, bool held)
 }
 #endif
 
+#ifdef __N64__
+static int n64_mouse_axis(int value)
+{
+    const int deadzone = 8;
+    const int max_axis = 85;
+    const int max_delta = 9;
+    int magnitude = value < 0 ? -value : value;
+    int scaled;
+    int delta;
+
+    if (magnitude <= deadzone) return 0;
+    if (magnitude > max_axis) magnitude = max_axis;
+
+    scaled = magnitude - deadzone;
+    delta = (scaled * scaled * max_delta) /
+            ((max_axis - deadzone) * (max_axis - deadzone));
+    if (delta < 1) delta = 1;
+    return value < 0 ? -delta : delta;
+}
+#endif
+
 static void poll_n64_controller(void)
 {
     rott64_mixer_pump();
 #ifdef __N64__
-    const int deadzone = 24;
     joypad_inputs_t input;
     joypad_buttons_t buttons;
     joypad_buttons_t pressed;
     static uint64_t next_auto_fire_rumble_ms;
+    static uint64_t next_mouse_sample_ms;
+    static bool look_up_held;
+    static bool look_down_held;
+    const uint64_t now = n64_platform_ticks_ms();
+    const bool menu_mode = (inmenu != 0) || (ingame == 0);
 
     n64_platform_poll();
     input = joypad_get_inputs(JOYPAD_PORT_1);
     buttons = joypad_get_buttons_held(JOYPAD_PORT_1);
     pressed = joypad_get_buttons_pressed(JOYPAD_PORT_1);
 
-    if (pressed.z) {
-        n64_platform_rumble_pulse(55u, 210u);
-        next_auto_fire_rumble_ms = n64_platform_ticks_ms() + 85u;
-    } else if (buttons.z && n64_platform_ticks_ms() >= next_auto_fire_rumble_ms) {
-        /* Sustained-fire weapons get short repeating recoil rather than one
-           permanently-on motor command. */
-        n64_platform_rumble_pulse(38u, 165u);
-        next_auto_fire_rumble_ms = n64_platform_ticks_ms() + 85u;
+    if (!menu_mode) {
+        if (pressed.z) {
+            n64_platform_rumble_pulse(55u, 210u);
+            next_auto_fire_rumble_ms = now + 85u;
+        } else if (buttons.z && now >= next_auto_fire_rumble_ms) {
+            n64_platform_rumble_pulse(38u, 165u);
+            next_auto_fire_rumble_ms = now + 85u;
+        }
     }
 
-    /* Analog movement remains available; C-buttons provide the classic
-       N64 FPS digital movement cluster. */
-    update_binding(0, buttons.c_up || input.stick_y > deadzone);
-    update_binding(1, buttons.c_down || input.stick_y < -deadzone);
-    update_binding(2, buttons.c_left || input.stick_x < -deadzone);
-    update_binding(3, buttons.c_right || input.stick_x > deadzone);
-    update_binding(4, buttons.z);          /* fire (Ctrl) */
-    update_binding(5, buttons.d_up);       /* menu confirm / swap weapon (Enter) */
-    update_binding(6, buttons.b);          /* run (Shift) */
-    update_binding(7, buttons.start);      /* pause / menu back (Escape) */
-    update_binding(8, buttons.d_left);     /* weapon slot 1 */
-    update_binding(9, buttons.d_right);    /* weapon slot 2 */
-    update_binding(10, buttons.l);         /* strafe left (ROTTDS shoulder layout) */
-    update_binding(11, buttons.r);         /* strafe right (ROTTDS shoulder layout) */
-    update_binding(12, buttons.a);         /* use / open (Space) */
-    update_binding(13, buttons.d_down);    /* turn 180 (Backspace) */
+    /* Menus: D-pad navigation, A/Z confirm, B/Start back. */
+    update_binding(0, menu_mode && buttons.d_up);
+    update_binding(1, menu_mode && buttons.d_down);
+    update_binding(2, menu_mode && buttons.d_left);
+    update_binding(3, menu_mode && buttons.d_right);
+    update_binding(5, (menu_mode && (buttons.a || buttons.z)) ||
+                       (!menu_mode && buttons.c_up));
+    update_binding(7, (menu_mode && (buttons.b || buttons.start)) ||
+                       (!menu_mode && buttons.start));
+
+    /* Gameplay:
+       analog mouse, Z fire, A use, B run,
+       C-left/right strafe, C-up swap, C-down drop,
+       D-up/down look, D-left intentionally unassigned, D-right autorun,
+       L map, R volte-face. */
+    update_binding(4, !menu_mode && buttons.z);
+    update_binding(6, !menu_mode && buttons.b);
+    update_binding(8, !menu_mode && buttons.c_down);
+    update_binding(9, !menu_mode && buttons.c_left);
+    update_binding(10, !menu_mode && buttons.c_right);
+    update_binding(11, !menu_mode && buttons.a);
+    update_binding(12, !menu_mode && buttons.r);
+    update_binding(13, !menu_mode && buttons.l);
+    update_binding(14, !menu_mode && buttons.d_right);
+
+    if (!menu_mode) {
+        if (look_up_held != buttons.d_up) {
+            look_up_held = buttons.d_up;
+            emit_key(SDL_SCANCODE_I, look_up_held);
+        }
+        if (look_down_held != buttons.d_down) {
+            look_down_held = buttons.d_down;
+            emit_key(SDL_SCANCODE_K, look_down_held);
+        }
+
+        if (now >= next_mouse_sample_ms) {
+            relative_x += n64_mouse_axis(input.stick_x);
+            relative_y -= n64_mouse_axis(input.stick_y);
+            next_mouse_sample_ms = now + 8u;
+        }
+    } else {
+        if (look_up_held) {
+            look_up_held = false;
+            emit_key(SDL_SCANCODE_I, false);
+        }
+        if (look_down_held) {
+            look_down_held = false;
+            emit_key(SDL_SCANCODE_K, false);
+        }
+        relative_x = 0;
+        relative_y = 0;
+    }
 #else
     /* Host tests push events explicitly. */
 #endif

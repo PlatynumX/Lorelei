@@ -94,7 +94,8 @@ def test_prepare_engine() -> None:
             'long CalculateSaveGameCheckSum(char *filename) { int handle = SafeOpenRead(filename); int n = filelength(handle); char b[4]; SafeRead(handle,b,n); close(handle); return 0; }\n'
             'int SaveTheGame(int num, void *game) { if (num > 15 || num < 0) Error("Illegal Saved game value=%d\\n", num); int h=SafeOpenWrite("rottgam0.rot"); SafeWrite(h,game,4); close(h); h=SafeOpenAppend("rottgam0.rot"); SafeWrite(h,game,4); close(h); return 1; }\n'
             'int LoadTheGame(int num, void *game) { if (num > 15 || num < 0) Error("Illegal Load game value=%d\\n", num); void *b; LoadFile("rottgam0.rot",&b); return 1; }\n'
-            'int GetLevel(int episode, int mapon) { return episode + mapon; }\n',
+            'int GetLevel(int episode, int mapon) { return episode + mapon; }\n'
+            'int GetSaveHeader(char *filename) { void *b = 0; int n = LoadFile(filename, &b); return n > 0; }\n',
             encoding="utf-8",
         )
         (source / "rt_util.c").write_text(
@@ -218,6 +219,8 @@ def test_prepare_engine() -> None:
         assert '#include "rott64_flash_save.h"' in game
         assert "#define SafeOpenWrite rott64_save_open_write" in game
         assert "if (num != 0) return false;" in game
+        assert game.count("#define LoadFile rott64_save_load_file") >= 2
+        assert "GetSaveHeader" in game
         menu = (output / "rt_menu.c").read_text()
         assert menu.count("isspace((unsigned char)*source)") == 2
         assert "isspace((unsigned char)wordtext[pos])" in menu
@@ -385,10 +388,34 @@ def test_shareware_omits_foreign_config() -> None:
         assert not (output / "huntbgin").exists()
 
 
+
+def test_r45_controller_contract() -> None:
+    sdl = (ROOT / "platform/n64/sdl_n64.c").read_text()
+    prep = (ROOT / "tools/prepare_engine.py").read_text()
+    save = (ROOT / "platform/n64/rott64_flash_save.c").read_text()
+
+    assert "const bool menu_mode = (inmenu != 0) || (ingame == 0);" in sdl
+    assert "relative_x += n64_mouse_axis(input.stick_x);" in sdl
+    assert "relative_y -= n64_mouse_axis(input.stick_y);" in sdl
+    assert "menu_mode && (buttons.a || buttons.z)" in sdl
+    assert "menu_mode && (buttons.b || buttons.start)" in sdl
+    assert "!menu_mode && buttons.c_left" in sdl
+    assert "!menu_mode && buttons.c_right" in sdl
+    assert "!menu_mode && buttons.r" in sdl
+    assert "!menu_mode && buttons.l" in sdl
+    assert "!menu_mode && buttons.d_right" in sdl
+    gameplay = sdl.split("/* Gameplay:", 1)[1]
+    assert "buttons.d_left" not in gameplay
+    assert "buttonscan[18] = SDL_SCANCODE_BACKSPACE" in prep
+    assert "buttonscan[24] = SDL_SCANCODE_M" in prep
+    assert "R45 GetSaveHeader definition not found" in prep
+    assert "if (b != NULL) *b = NULL;" in save
+
 if __name__ == "__main__":
     test_audit()
     test_inventory()
     test_prepare_engine()
+    test_r45_controller_contract()
     test_n64_posix_link_shims()
     test_n64_warning_policy()
     test_n64_runtime_boot_policy()

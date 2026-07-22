@@ -149,7 +149,9 @@ int rott64_save_load_file(const char*p,void**b){
     void*q;
     /* Menu/header and game-load callers must never see an incomplete staging
        buffer. Only a CRC-validated committed FlashRAM image is loadable. */
+    if (b != NULL) *b = NULL;
     if(!b||!native(p)||!load_committed()){errno=ENOENT;return-1;}
+    if(raw_size==0||raw_size>RAW_MAX){errno=EIO;return-1;}
     q=malloc(raw_size);if(!q){errno=ENOMEM;return-1;}
     memcpy(q,raw,raw_size);*b=q;return(int)raw_size;
 }

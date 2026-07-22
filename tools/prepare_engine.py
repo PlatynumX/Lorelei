@@ -493,6 +493,49 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
             text=inject_function_return(text,function)
     cfg_path.write_text(text,encoding="utf-8")
 
+    # R45: force gameplay action scancodes to match the N64 controller shim.
+    cfg_text = cfg_path.read_text(encoding="utf-8", errors="strict")
+    defaults_match = re.search(
+        r"(?m)^[ \t]*void[ \t]+SetConfigDefaultValues[ \t]*"
+        r"\([^)]*\)[ \t\r\n]*\{",
+        cfg_text,
+    )
+    if defaults_match is None:
+        raise RuntimeError("R45 SetConfigDefaultValues definition not found")
+    defaults_open = cfg_text.find("{", defaults_match.start(), defaults_match.end())
+    depth = 0
+    defaults_close = None
+    for pos in range(defaults_open, len(cfg_text)):
+        if cfg_text[pos] == "{":
+            depth += 1
+        elif cfg_text[pos] == "}":
+            depth -= 1
+            if depth == 0:
+                defaults_close = pos
+                break
+    if defaults_close is None:
+        raise RuntimeError("R45 SetConfigDefaultValues closing brace missing")
+
+    n64_bindings = (
+        '\n#ifdef __N64__\n'
+        '    buttonscan[0] = SDL_SCANCODE_LCTRL;      /* Fire */\n'
+        '    buttonscan[2] = SDL_SCANCODE_LSHIFT;     /* Run */\n'
+        '    buttonscan[3] = SDL_SCANCODE_SPACE;      /* Use */\n'
+        '    buttonscan[4] = SDL_SCANCODE_I;          /* LookUp */\n'
+        '    buttonscan[5] = SDL_SCANCODE_K;          /* LookDn */\n'
+        '    buttonscan[6] = SDL_SCANCODE_RETURN;     /* Swap */\n'
+        '    buttonscan[7] = SDL_SCANCODE_TAB;        /* Drop */\n'
+        '    buttonscan[14] = SDL_SCANCODE_CAPSLOCK;  /* AutoRun */\n'
+        '    buttonscan[16] = SDL_SCANCODE_COMMA;     /* StrafeLeft */\n'
+        '    buttonscan[17] = SDL_SCANCODE_PERIOD;    /* StrafeRight */\n'
+        '    buttonscan[18] = SDL_SCANCODE_BACKSPACE; /* VolteFace */\n'
+        '    buttonscan[24] = SDL_SCANCODE_M;         /* Map */\n'
+        '#endif\n'
+    )
+    cfg_text = cfg_text[:defaults_close] + n64_bindings + cfg_text[defaults_close:]
+    cfg_path.write_text(cfg_text, encoding="utf-8")
+
+
     # Fix legacy ctype usage for targets where plain char is signed. The ctype
     # macros are only defined for EOF or values representable as unsigned char;
     # passing a negative char also trips libdragon's -Werror=char-subscripts.
@@ -661,6 +704,57 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
     game_text = game_text.replace(
         'if (num > 15 || num < 0) Error("Illegal Load game value=%d\\n", num);',
         'if (num != 0) return false;')
+    game_path.write_text(game_text, encoding="utf-8")
+
+    # R45: GetSaveHeader is later in rt_game.c than R44's original macro
+    # scope.  Route it explicitly through the native FlashRAM file backend.
+    game_text = game_path.read_text(encoding="utf-8", errors="strict")
+    header_def = re.search(
+        r"(?m)^[ \t]*(?:boolean|int)[ \t]+GetSaveHeader[ \t]*"
+        r"\([^;{}]*\)[ \t\r\n]*\{",
+        game_text,
+    )
+    if header_def is None:
+        raise RuntimeError("R45 GetSaveHeader definition not found")
+    header_open = game_text.rfind("{", header_def.start(), header_def.end())
+    depth = 0
+    header_close = None
+    for pos in range(header_open, len(game_text)):
+        if game_text[pos] == "{":
+            depth += 1
+        elif game_text[pos] == "}":
+            depth -= 1
+            if depth == 0:
+                header_close = pos + 1
+                break
+    if header_close is None:
+        raise RuntimeError("R45 GetSaveHeader closing brace missing")
+
+    header_macros = (
+        '#ifdef __N64__\n'
+        '#define SafeOpenRead rott64_save_open_read\n'
+        '#define SafeRead rott64_save_read\n'
+        '#define filelength rott64_save_filelength\n'
+        '#define LoadFile rott64_save_load_file\n'
+        '#define close rott64_save_close\n'
+        '#endif\n'
+    )
+    header_undefs = (
+        '\n#ifdef __N64__\n'
+        '#undef SafeOpenRead\n'
+        '#undef SafeRead\n'
+        '#undef filelength\n'
+        '#undef LoadFile\n'
+        '#undef close\n'
+        '#endif\n'
+    )
+    game_text = (
+        game_text[:header_def.start()]
+        + header_macros
+        + game_text[header_def.start():header_close]
+        + header_undefs
+        + game_text[header_close:]
+    )
     game_path.write_text(game_text, encoding="utf-8")
 
     menu_path = output / "rt_menu.c"
