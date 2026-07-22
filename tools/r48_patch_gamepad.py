@@ -1,272 +1,112 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-
-import re
-import sys
+import re, sys
 from pathlib import Path
+MARK="ROTT64_NATIVE_GAMEPAD_XY_ENGINE_V3_SOURCE_AWARE"
+def fail(s): raise SystemExit("r48_patch_gamepad.py: "+s)
 
-MARK = "ROTT64_NATIVE_GAMEPAD_XY_ENGINE_V2"
+def span(t,n):
+    p=re.compile(rf"(?m)^[ \t]*(?:static[ \t]+)?[^;\n]*\b{re.escape(n)}[ \t]*\([^;]*?\)[ \t\r\n]*\{{")
+    h=list(p.finditer(t))
+    if len(h)!=1: fail(f"expected one {n}, found {len(h)}")
+    m=h[0]; op=t.find("{",m.start(),m.end()); d=0; state="c"; q=""; i=op
+    while i<len(t):
+        c=t[i]; x=t[i+1] if i+1<len(t) else ""
+        if state=="c":
+            if c=="/" and x=="*": state="b"; i+=2; continue
+            if c=="/" and x=="/": state="l"; i+=2; continue
+            if c in "'\"": state="s"; q=c; i+=1; continue
+            if c=="{": d+=1
+            elif c=="}":
+                d-=1
+                if d==0: return m.start(),op,i
+            i+=1; continue
+        if state=="b":
+            if c=="*" and x=="/": state="c"; i+=2
+            else: i+=1
+        elif state=="l":
+            if c=="\n": state="c"
+            i+=1
+        else:
+            if c=="\\": i+=2; continue
+            if c==q: state="c"
+            i+=1
+    fail("unterminated "+n)
 
+def main():
+    if len(sys.argv)!=2: fail("usage: patcher <generated-rott-root>")
+    root=Path(sys.argv[1]).resolve()
+    fs=[p for p in root.rglob("rt_playr.c") if p.is_file()]
+    if len(fs)!=1: fail(f"expected one rt_playr.c, found {len(fs)}")
+    path=fs[0]; text=path.read_text()
+    if MARK in text: fail("already V3 patched")
 
-def fail(msg: str) -> None:
-    raise SystemExit("r48_patch_gamepad.py: " + msg)
+    _,jo,jc=span(text,"PollJoystickMove")
+    _,co,cc=span(text,"PollControls")
+    oldjoy=text[jo:jc+1]; oldctl=text[co:cc+1]
+    reports=root.parent/"reports"; reports.mkdir(parents=True,exist_ok=True)
+    (reports/"r48-v12-PollJoystickMove-before.c").write_text(oldjoy+"\n")
+    (reports/"r48-v12-PollControls-before.c").write_text(oldctl+"\n")
 
+    for x in ("INL_GetJoyDelta","joyx","joyy","JX","JY","buttonpoll[bt_run]"):
+        if x not in oldjoy: fail("actual PollJoystickMove missing "+x)
+    for x in ("PollKeyboardButtons","PollMouseButtons","PollJoystickButtons","PollJoystickMove","PollMouseMove","PollKeyboardMove","PollMove"):
+        if x not in oldctl: fail("actual PollControls missing "+x)
 
-def function_span(text: str, name: str) -> tuple[int, int, int]:
-    pat = re.compile(
-        rf"(?m)^[ \t]*(?:static[ \t]+)?[^;\n]*\b{re.escape(name)}"
-        rf"[ \t]*\([^;]*?\)[ \t\r\n]*\{{"
-    )
-    hits = list(pat.finditer(text))
-    if len(hits) != 1:
-        fail(f"expected one {name}() definition, found {len(hits)}")
+    jcalls=list(re.finditer(r"\bPollJoystickMove[ \t]*\(\s*\)[ \t]*;",oldctl))
+    mcalls=list(re.finditer(r"\bPollMouseMove[ \t]*\(\s*\)[ \t]*;",oldctl))
+    kcalls=list(re.finditer(r"\bPollKeyboardMove[ \t]*\(\s*\)[ \t]*;",oldctl))
+    if (len(jcalls),len(mcalls),len(kcalls))!=(1,1,1):
+        fail(f"actual call counts unexpected: joy={len(jcalls)} mouse={len(mcalls)} key={len(kcalls)}")
 
-    start = hits[0].start()
-    op = text.find("{", hits[0].start(), hits[0].end())
-    if op < 0:
-        fail(f"opening brace not found for {name}()")
-
-    depth = 0
-    state = "code"
-    quote = ""
-    i = op
-
-    while i < len(text):
-        c = text[i]
-        n = text[i + 1] if i + 1 < len(text) else ""
-
-        if state == "code":
-            if c == "/" and n == "*":
-                state = "block"
-                i += 2
-                continue
-            if c == "/" and n == "/":
-                state = "line"
-                i += 2
-                continue
-            if c in ("'", '"'):
-                state = "str"
-                quote = c
-                i += 1
-                continue
-            if c == "{":
-                depth += 1
-            elif c == "}":
-                depth -= 1
-                if depth == 0:
-                    return start, op, i
-            i += 1
-            continue
-
-        if state == "block":
-            if c == "*" and n == "/":
-                state = "code"
-                i += 2
-            else:
-                i += 1
-            continue
-
-        if state == "line":
-            if c == "\n":
-                state = "code"
-            i += 1
-            continue
-
-        if state == "str":
-            if c == "\\":
-                i += 2
-                continue
-            if c == quote:
-                state = "code"
-            i += 1
-
-    fail(f"closing brace not found for {name}()")
-
-
-def only_rt_playr(root: Path) -> Path:
-    files = [p for p in root.rglob("rt_playr.c") if p.is_file()]
-    if len(files) != 1:
-        fail(f"expected exactly one rt_playr.c, found {len(files)}")
-    return files[0]
-
-
-def patch(text: str) -> str:
-    if MARK in text:
-        fail("generated rt_playr.c is already native-XY patched")
-
-    _, pj_open, pj_close = function_span(text, "PollJoystickMove")
-    old_joy = text[pj_open:pj_close + 1]
-
-    for token in (
-        "joyx",
-        "joyy",
-        "JX",
-        "JY",
-        "INL_GetJoyDelta",
-        "buttonpoll[bt_run]",
-    ):
-        if token not in old_joy:
-            fail("PollJoystickMove() missing expected token: " + token)
-
-    new_joy = r'''{
+    newjoy='''{
    int joyx;
    int joyy;
-
    rott64_n64_gamepad_axes(&joyx, &joyy);
-
-   /*
-    * Full X deflection is approximately normal keyboard turn speed.
-    * Divide first to avoid overflow and retain linear partial-stick response.
-    */
    JX = (-joyx) * (KEYBOARDNORMALTURNAMOUNT / 127);
-
-   /*
-    * Full Y deflection is normal keyboard walk speed.
-    * Platform code already inverted N64 Y so negative is forward.
-    */
    JY = joyy * (BASEMOVE / 127);
-
    if (JX != 0)
       turnheldtime += tics;
    else
       turnheldtime = 0;
-
    if (buttonpoll[bt_run])
       {
       JX <<= 1;
       JY <<= 1;
       }
    }'''
+    text=text[:jo]+newjoy+text[jc+1:]
+    js,_,_=span(text,"PollJoystickMove")
+    text=text[:js]+f"/* {MARK}_DECL */\nextern void rott64_n64_gamepad_axes(int *turn_x, int *move_y);\n\n"+text[js:]
 
-    text = text[:pj_open] + new_joy + text[pj_close + 1:]
+    _,co,cc=span(text,"PollControls"); ctl=text[co:cc+1]
 
-    pj_start, _, _ = function_span(text, "PollJoystickMove")
-    decl = (
-        f"/* {MARK}_DECL */\n"
-        "extern void rott64_n64_gamepad_axes(int *turn_x, int *move_y);\n\n"
-    )
-    text = text[:pj_start] + decl + text[pj_start:]
+    # Critical rule: replace CALL TOKENS ONLY. Never consume if/else syntax.
+    ctl,nj=re.subn(r"\bPollJoystickMove[ \t]*\(\s*\)[ \t]*;",f"/* {MARK}_OLD_JOY_DISABLED */ (void)0;",ctl,count=1)
+    ctl,nm=re.subn(r"\bPollMouseMove[ \t]*\(\s*\)[ \t]*;",f"/* {MARK}_MOUSE_DISABLED */ (void)0;",ctl,count=1)
+    if nj!=1 or nm!=1: fail("movement call-only replacement failed")
 
-    _, pc_open, pc_close = function_span(text, "PollControls")
-    controls = text[pc_open:pc_close + 1]
+    km=re.search(r"(?m)^(?P<i>[ \t]*)PollKeyboardMove[ \t]*\(\s*\)[ \t]*;",ctl)
+    if not km: fail("no standalone PollKeyboardMove boundary")
+    ind=km.group("i")
+    ctl=ctl[:km.start()]+ind+f"/* {MARK}_MOVE_ALWAYS */\n"+ind+"PollJoystickMove();\n"+ctl[km.start():]
 
-    for token in (
-        "PollKeyboardButtons",
-        "PollMouseButtons",
-        "PollJoystickButtons",
-        "PollKeyboardMove",
-        "PollMouseMove",
-        "PollJoystickMove",
-        "PollMove",
-    ):
-        if token not in controls:
-            fail("PollControls() missing expected token: " + token)
+    if ctl.count("PollJoystickMove();")!=1: fail("expected one active joystick movement call")
+    if "PollMouseMove();" in ctl: fail("mouse movement still active")
+    if re.search(r"(?m)^[ \t]*else[ \t]+/\*",ctl): fail("detached else detected")
 
-    joy_move = re.compile(
-        r"(?P<i>^[ \t]*)if[ \t]*\([ \t]*joystickenabled[ \t]*\)"
-        r"[ \t\r\n]+(?P<ci>[ \t]*)PollJoystickMove[ \t]*\(\s*\)[ \t]*;",
-        re.MULTILINE,
-    )
-    joy_hits = list(joy_move.finditer(controls))
-    if len(joy_hits) != 1:
-        fail(
-            "expected exactly one conditional PollJoystickMove() call; "
-            f"found {len(joy_hits)}"
-        )
+    text=text[:co]+ctl+text[cc+1:]
+    _,co2,cc2=span(text,"PollControls")
+    _,jo2,jc2=span(text,"PollJoystickMove")
+    finalctl=text[co2:cc2+1]; finaljoy=text[jo2:jc2+1]
+    (reports/"r48-v12-PollControls-after.c").write_text(finalctl+"\n")
+    (reports/"r48-v12-PollJoystickMove-after.c").write_text(finaljoy+"\n")
 
-    m = joy_hits[0]
-    indent = m.group("i")
-    controls = (
-        controls[:m.start()]
-        + f"{indent}/* {MARK}_MOVE_ALWAYS */\n"
-        + f"{indent}PollJoystickMove();"
-        + controls[m.end():]
-    )
+    for x in ("INL_GetJoyDelta","joypadenabled","threshold"):
+        if x in finaljoy: fail("desktop joystick token survived: "+x)
 
-    # Replace only gameplay mouse MOVEMENT with a no-op while keeping the
-    # surrounding if/else structure valid.
-    mouse_move = re.compile(
-        r"(?P<head>^[ \t]*(?:else[ \t]+)?if[ \t]*"
-        r"\([^\n;{}]*mouseenabled[^\n;{}]*\)"
-        r"[ \t\r\n]+(?P<ci>[ \t]*))"
-        r"PollMouseMove[ \t]*\(\s*\)[ \t]*;",
-        re.MULTILINE,
-    )
-    mouse_hits = list(mouse_move.finditer(controls))
-    if len(mouse_hits) != 1:
-        fail(
-            "expected exactly one conditional PollMouseMove() call; "
-            f"found {len(mouse_hits)}"
-        )
-
-    m = mouse_hits[0]
-    controls = (
-        controls[:m.start()]
-        + m.group("head")
-        + f"/* {MARK}_NO_MOUSE_MOVE */ (void)0;"
-        + controls[m.end():]
-    )
-
-    for token in (
-        "PollMouseButtons",
-        "PollKeyboardButtons",
-        "PollJoystickButtons",
-        "PollKeyboardMove",
-        "PollMove",
-    ):
-        if token not in controls:
-            fail("controller regression: token disappeared from PollControls: " + token)
-
-    text = text[:pc_open] + controls + text[pc_close + 1:]
-
-    for token in (
-        MARK + "_DECL",
-        "extern void rott64_n64_gamepad_axes(int *turn_x, int *move_y);",
-        "rott64_n64_gamepad_axes(&joyx, &joyy);",
-        "KEYBOARDNORMALTURNAMOUNT / 127",
-        "BASEMOVE / 127",
-        MARK + "_MOVE_ALWAYS",
-        MARK + "_NO_MOUSE_MOVE",
-        "PollMouseButtons",
-        "PollKeyboardButtons",
-        "PollKeyboardMove",
-    ):
-        if token not in text:
-            fail("final engine source missing: " + token)
-
-    _, final_open, final_close = function_span(text, "PollJoystickMove")
-    final_joy = text[final_open:final_close + 1]
-
-    for forbidden in ("INL_GetJoyDelta", "joypadenabled", "threshold"):
-        if forbidden in final_joy:
-            fail("desktop joystick behavior survived in PollJoystickMove: " + forbidden)
-
-    for forbidden in ("horizon", "yzangle", "bt_lookup", "bt_lookdown"):
-        if forbidden in final_joy:
-            fail("vertical-look token entered native joystick movement: " + forbidden)
-
-    return text
-
-
-def main() -> None:
-    if len(sys.argv) != 2:
-        fail("usage: r48_patch_gamepad.py <generated-rott-root>")
-
-    root = Path(sys.argv[1]).resolve()
-    if not root.is_dir():
-        fail(f"generated engine root does not exist: {root}")
-
-    path = only_rt_playr(root)
-    original = path.read_text(encoding="utf-8", errors="strict")
-    patched = patch(original)
-    path.write_text(patched, encoding="utf-8", newline="\n")
-
-    print("Native N64 XY movement installed:", path)
-    print("X: analog turn")
-    print("Y: analog forward/back")
-    print("Desktop joystick calibration: bypassed")
-    print("Mouse movement: suppressed; button polling preserved")
-
-
-if __name__ == "__main__":
-    main()
+    path.write_text(text)
+    print("PASS: inspected actual generated PollControls/PollJoystickMove")
+    print("PASS: surrounding if/else syntax was never replaced")
+    print("PASS: source snapshots saved before and after")
+if __name__=="__main__": main()
