@@ -100,14 +100,15 @@ static void present_frame(void)
 SDL_Window *VL_GetVideoWindow(void) { return NULL; }
 SDL_Surface *VL_GetVideoSurface(void) { return sdl_surface; }
 
-/* ROTT64_HW2_LIVE_WALLS_PLATFORM_BEGIN
+
+/* ROTT64_HW2B_EXACT_SPANS_PLATFORM_BEGIN
  *
- * Real Taradino wall-span RDP diagnostic.
- * Intro/menu frames have no fresh DrawWalls() sequence and pass through
- * untouched. Gameplay frames overlay the real per-column wall extents.
+ * R48 draws the exact dc_yl/dc_yh ranges used by every real wall-column draw.
+ * A screen column can have two disjoint wall pieces; they stay disjoint here.
  *
- * R47 intentionally leaves the CPU wall pixels underneath this overlay.
- * Once the geometry is confirmed on hardware, R48 can remove that fallback.
+ * CPU walls remain enabled for this diagnostic. The RDP overlay still occurs
+ * during final presentation, so it can paint over software sprites/weapon.
+ * That known compositing-order problem is separate from span geometry.
  */
 #define ROTT64_HW2_MAX_WALLS 640
 
@@ -116,8 +117,11 @@ extern volatile int rott64_hw2_wall_count;
 extern volatile int rott64_hw2_viewwidth;
 extern volatile int rott64_hw2_viewheight;
 extern volatile int rott64_hw2_screenheight;
+extern volatile unsigned char rott64_hw2_wall_segments[ROTT64_HW2_MAX_WALLS];
 extern volatile short rott64_hw2_wall_top[ROTT64_HW2_MAX_WALLS];
 extern volatile short rott64_hw2_wall_bottom[ROTT64_HW2_MAX_WALLS];
+extern volatile short rott64_hw2_wall_top2[ROTT64_HW2_MAX_WALLS];
+extern volatile short rott64_hw2_wall_bottom2[ROTT64_HW2_MAX_WALLS];
 extern volatile unsigned char rott64_hw2_wall_color[ROTT64_HW2_MAX_WALLS];
 
 static unsigned int rott64_hw2_seen_seq = 0;
@@ -139,26 +143,48 @@ static color_t rott64_hw2_color(unsigned int n)
     }
 }
 
+static void rott64_hw2_draw_span(
+    surface_t *fb,
+    int column,
+    int viewwidth,
+    int screenheight,
+    int top,
+    int bottom
+)
+{
+    int x0, x1, y0, y1;
+
+    if (top < 0) top = 0;
+    if (bottom > screenheight) bottom = screenheight;
+    if (bottom <= top) return;
+
+    x0 = (column * (int)fb->width) / viewwidth;
+    x1 = ((column + 1) * (int)fb->width) / viewwidth;
+    if (x0 < 0) x0 = 0;
+    if (x1 > (int)fb->width) x1 = (int)fb->width;
+    if (x1 <= x0) return;
+
+    y0 = (top * (int)fb->height) / screenheight;
+    y1 = (bottom * (int)fb->height) / screenheight;
+    if (y0 < 0) y0 = 0;
+    if (y1 > (int)fb->height) y1 = (int)fb->height;
+    if (y1 <= y0) return;
+
+    rdpq_fill_rectangle(x0, y0, x1, y1);
+}
+
 static int rott64_hw2_present(surface_t *fb)
 {
     unsigned int seq;
-    int count;
-    int vw;
-    int vh;
-    int sh;
-    int i;
-    int last_color;
+    int count, vw, vh, sh, i, last_color;
 
     if (fb == NULL)
         return 0;
 
     seq = rott64_hw2_wall_seq;
-
-    /* No new world renderer output: intro/menu/etc. */
     if (seq == 0u || seq == rott64_hw2_seen_seq)
         return 0;
 
-    /* About 30 seconds at 30 FPS, then automatic software A/B fallback. */
     if (rott64_hw2_frames >= 900u)
     {
         rott64_hw2_seen_seq = seq;
@@ -191,49 +217,18 @@ static int rott64_hw2_present(surface_t *fb)
         rott64_hw2_rdp_ready = 1;
     }
 
-    /*
-     * HW1 proved RDPQ attachment to this exact display surface. Do not clear:
-     * the software-rendered frame remains underneath as a visual reference.
-     */
     rdpq_attach(fb, NULL);
     last_color = -1;
 
     for (i = 0; i < count; ++i)
     {
-        int top = (int)rott64_hw2_wall_top[i];
-        int bottom = (int)rott64_hw2_wall_bottom[i];
-        int x0;
-        int x1;
-        int y0;
-        int y1;
+        int segments = (int)rott64_hw2_wall_segments[i];
         int color_index;
 
-        if (top < 0)
-            top = 0;
-        if (bottom > sh)
-            bottom = sh;
-        if (bottom <= top)
+        if (segments <= 0)
             continue;
-
-        x0 = (i * (int)fb->width) / vw;
-        x1 = ((i + 1) * (int)fb->width) / vw;
-
-        if (x0 < 0)
-            x0 = 0;
-        if (x1 > (int)fb->width)
-            x1 = (int)fb->width;
-        if (x1 <= x0)
-            continue;
-
-        y0 = (top * (int)fb->height) / sh;
-        y1 = (bottom * (int)fb->height) / sh;
-
-        if (y0 < 0)
-            y0 = 0;
-        if (y1 > (int)fb->height)
-            y1 = (int)fb->height;
-        if (y1 <= y0)
-            continue;
+        if (segments > 2)
+            segments = 2;
 
         color_index = (int)(rott64_hw2_wall_color[i] & 7u);
 
@@ -252,7 +247,20 @@ static int rott64_hw2_present(surface_t *fb)
             last_color = color_index;
         }
 
-        rdpq_fill_rectangle(x0, y0, x1, y1);
+        rott64_hw2_draw_span(
+            fb, i, vw, sh,
+            (int)rott64_hw2_wall_top[i],
+            (int)rott64_hw2_wall_bottom[i]
+        );
+
+        if (segments >= 2)
+        {
+            rott64_hw2_draw_span(
+                fb, i, vw, sh,
+                (int)rott64_hw2_wall_top2[i],
+                (int)rott64_hw2_wall_bottom2[i]
+            );
+        }
     }
 
     rdpq_detach_show();
@@ -260,7 +268,8 @@ static int rott64_hw2_present(surface_t *fb)
     rott64_hw2_frames++;
     return 1;
 }
-/* ROTT64_HW2_LIVE_WALLS_PLATFORM_END */
+/* ROTT64_HW2B_EXACT_SPANS_PLATFORM_END */
+
 
 int VL_SaveBMP(const char *file) { (void)file; return -1; }
 void SetShowCursor(int show) { (void)show; }

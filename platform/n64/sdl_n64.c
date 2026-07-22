@@ -28,6 +28,66 @@ static int relative_x;
 static int relative_y;
 static Uint32 mouse_buttons;
 
+
+/* ROTT64_NATIVE_GAMEPAD_XY_V2_BEGIN
+ *
+ * Gameplay analog bridge only.
+ *
+ * IMPORTANT REGRESSION GUARD:
+ * - does not perform another controller poll
+ * - does not alter the existing digital button/menu translation
+ * - reads the already-polled port-1 state once
+ *
+ * stick X: signed turn axis
+ * stick Y: signed forward/back axis, with N64 up converted to game forward
+ */
+static int rott64_n64_scale_stick_axis(int value)
+{
+    int sign;
+    int magnitude;
+
+    if (value >= -8 && value <= 8)
+        return 0;
+
+    sign = (value < 0) ? -1 : 1;
+    magnitude = (value < 0) ? -value : value;
+
+    if (magnitude > 90)
+        magnitude = 90;
+
+    magnitude -= 8;
+    magnitude = (magnitude * 127) / 82;
+
+    if (magnitude > 127)
+        magnitude = 127;
+
+    return sign * magnitude;
+}
+
+void rott64_n64_gamepad_axes(int *turn_x, int *move_y)
+{
+    joypad_inputs_t input;
+    int x;
+    int y;
+
+    if (turn_x == NULL || move_y == NULL)
+        return;
+
+    input = joypad_get_inputs(JOYPAD_PORT_1);
+
+    x = rott64_n64_scale_stick_axis((int)input.stick_x);
+    y = rott64_n64_scale_stick_axis((int)input.stick_y);
+
+    *turn_x = x;
+
+    /*
+     * Taradino movement uses negative Y for forward.
+     * N64 stick-up is positive, so invert it here.
+     */
+    *move_y = -y;
+}
+/* ROTT64_NATIVE_GAMEPAD_XY_V2_END */
+
 static bool queue_empty(void)
 {
     return queue_read == queue_write;

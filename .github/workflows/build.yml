@@ -109,8 +109,10 @@ jobs:
       # ROTT64_HW2_ENGINE_PATCH_STEP_V1
       - name: Patch generated engine for HW2 live walls
         run: |
-          python3 tools/hw2_patch_engine.py generated/rott
-          grep -q 'ROTT64_HW2_LIVE_WALLS_ENGINE_EXPORT_BEGIN' generated/rott/rt_draw.c
+          python3 tools/hw2_patch_engine_exact.py generated/rott
+          python3 tools/r48_patch_gamepad.py generated/rott
+          grep -q 'ROTT64_NATIVE_GAMEPAD_XY_ENGINE_V2' generated/rott/rt_playr.c
+          grep -q 'ROTT64_HW2B_EXACT_SPANS_FRAME_BEGIN' generated/rott/rt_draw.c
           grep -q 'rott64_hw2_wall_top' generated/rott/rt_draw.c
           grep -q 'rott64_hw2_wall_bottom' generated/rott/rt_draw.c
 
