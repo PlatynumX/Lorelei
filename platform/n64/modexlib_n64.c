@@ -42,6 +42,106 @@ static bool display_ready;
 extern int iG_X_center;
 extern int iG_Y_center;
 
+/* ROTT64_HW1_RDP_PROBE_V2_BEGIN
+ * R46/HW1 v2: direct RDP framebuffer proof.
+ *
+ * The old script incorrectly assumed this mini-SDL backend implemented SDL_Flip.
+ * This version hooks the actual libdragon display_show() presentation point found
+ * in the R45d source tree.
+ *
+ * For the first 180 presented frames, the already-acquired framebuffer is handed
+ * to RDPQ and replaced with a live flat-shaded perspective room. After that, the
+ * original software-rendered ROTT presentation resumes automatically.
+ */
+static unsigned int rott64_hw1_v2_frame = 0;
+static int rott64_hw1_v2_rdp_initialized = 0;
+
+static void rott64_hw1_v2_quad(float x0, float y0, float x1, float y1,
+                               float x2, float y2, float x3, float y3)
+{
+    float a[2] = { x0, y0 };
+    float b[2] = { x1, y1 };
+    float c[2] = { x2, y2 };
+    float d[2] = { x3, y3 };
+    rdpq_triangle(&TRIFMT_FILL, a, b, c);
+    rdpq_triangle(&TRIFMT_FILL, a, c, d);
+}
+
+static void rott64_hw1_v2_color(int r, int g, int b)
+{
+    rdpq_set_prim_color(RGBA32(r, g, b, 255));
+}
+
+static int rott64_hw1_v2_present(surface_t *fb)
+{
+    float w, h, shift;
+    float bx0, bx1, by0, by1;
+    unsigned int phase;
+
+    if (fb == NULL || rott64_hw1_v2_frame >= 180u)
+        return 0;
+
+    if (!rott64_hw1_v2_rdp_initialized)
+    {
+        /* libdragon documents rdpq_init() as safe to call multiple times. */
+        rdpq_init();
+        rott64_hw1_v2_rdp_initialized = 1;
+    }
+
+    w = (float)fb->width;
+    h = (float)fb->height;
+    phase = rott64_hw1_v2_frame % 120u;
+    shift = (float)((phase < 60u) ? (int)phase - 30 : 90 - (int)phase) * (w / 320.0f);
+
+    bx0 = w * 0.29f + shift;
+    bx1 = w * 0.71f + shift;
+    by0 = h * 0.23f;
+    by1 = h * 0.76f;
+
+    rdpq_attach(fb, NULL);
+    rdpq_clear(RGBA32(8, 10, 18, 255));
+    rdpq_set_mode_standard();
+    rdpq_mode_combiner(RDPQ_COMBINER_FLAT);
+
+    /* ceiling */
+    rott64_hw1_v2_color(38, 43, 58);
+    rott64_hw1_v2_quad(0.0f, 0.0f, w, 0.0f, bx1, by0, bx0, by0);
+
+    /* floor */
+    rott64_hw1_v2_color(55, 48, 39);
+    rott64_hw1_v2_quad(bx0, by1, bx1, by1, w, h, 0.0f, h);
+
+    /* left and right walls */
+    rott64_hw1_v2_color(115, 47, 43);
+    rott64_hw1_v2_quad(0.0f, 0.0f, bx0, by0, bx0, by1, 0.0f, h);
+    rott64_hw1_v2_color(45, 70, 105);
+    rott64_hw1_v2_quad(bx1, by0, w, 0.0f, w, h, bx1, by1);
+
+    /* back wall */
+    rott64_hw1_v2_color(82, 83, 79);
+    rott64_hw1_v2_quad(bx0, by0, bx1, by0, bx1, by1, bx0, by1);
+
+    /* moving door */
+    rott64_hw1_v2_color(101, 67, 41);
+    rott64_hw1_v2_quad(w * 0.455f + shift, h * 0.43f,
+                       w * 0.565f + shift, h * 0.43f,
+                       w * 0.565f + shift, by1,
+                       w * 0.455f + shift, by1);
+
+    /* yellow hardware-motion marker */
+    rott64_hw1_v2_color(220, 193, 68);
+    rott64_hw1_v2_quad(w * 0.08f + (float)(phase) * (w / 180.0f), h * 0.88f,
+                       w * 0.13f + (float)(phase) * (w / 180.0f), h * 0.88f,
+                       w * 0.13f + (float)(phase) * (w / 180.0f), h * 0.92f,
+                       w * 0.08f + (float)(phase) * (w / 180.0f), h * 0.92f);
+
+    rdpq_detach_show();
+    rott64_hw1_v2_frame++;
+    return 1;
+}
+/* ROTT64_HW1_RDP_PROBE_V2_END */
+
+
 static uint16_t rgba5551(SDL_Color color)
 {
     const uint16_t r = (uint16_t)(color.r >> 3);
@@ -84,7 +184,8 @@ static void present_frame(void)
             }
         }
     }
-    display_show(surface);
+    if (!rott64_hw1_v2_present(surface))
+        display_show(surface);
 #else
     (void)rgba5551;
 #endif
