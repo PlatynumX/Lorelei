@@ -33,12 +33,24 @@ jobs:
       - name: Run host validation
         run: make test-host
 
+      # ROTT64_FULL_MUSIC_CACHE_V1_PREPARED_RESTORE
+      - name: Restore prepared full Dark War music cache
+        id: music-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            assets/music
+            platform/n64/n64_music_map_generated.h
+          key: rott64-darkwar-rendered-music-v1-${{ hashFiles('filesystem/rott/DARKWAR.WAD', 'tools/extract_music.py', 'tools/render_music.sh') }}
+
       - name: Install music preparation tools
+        if: steps.music-cache.outputs.cache-hit != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y timidity freepats ffmpeg
 
       - name: Prepare full Dark War music assets
+        if: steps.music-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
           python3 tools/extract_music.py \
@@ -47,6 +59,16 @@ jobs:
             platform/n64/n64_music_map_generated.h \
             --mode full
           bash tools/render_music.sh assets/music
+
+      # ROTT64_FULL_MUSIC_CACHE_V1_PREPARED_SAVE
+      - name: Save prepared full Dark War music cache
+        if: steps.music-cache.outputs.cache-hit != 'true' && hashFiles('assets/music/*.wav') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            assets/music
+            platform/n64/n64_music_map_generated.h
+          key: rott64-darkwar-rendered-music-v1-${{ hashFiles('filesystem/rott/DARKWAR.WAD', 'tools/extract_music.py', 'tools/render_music.sh') }}
 
       - name: Fetch pinned Taradino source
         run: bash tools/fetch_taradino.sh
@@ -98,6 +120,14 @@ jobs:
           cp vendor/taradino/source/.rott64-upstream-commit \
             build/reports/taradino-upstream-commit.txt
 
+      # ROTT64_FULL_MUSIC_CACHE_V1_WAV64_RESTORE
+      - name: Restore final N64 music cache
+        id: music-wav64-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: filesystem/rott/music
+          key: rott64-darkwar-wav64-v1-${{ hashFiles('filesystem/rott/DARKWAR.WAD', 'tools/extract_music.py', 'tools/render_music.sh', 'Makefile') }}
+
       - name: Cross-compile Nintendo 64 ROM
         id: n64_build
         continue-on-error: true
@@ -142,6 +172,14 @@ jobs:
           echo "rom_built=false" >> "$GITHUB_OUTPUT"
           [ "$status" -ne 0 ] || status=1
           exit "$status"
+
+      # ROTT64_FULL_MUSIC_CACHE_V1_WAV64_SAVE
+      - name: Save final N64 music cache
+        if: always() && steps.music-wav64-cache.outputs.cache-hit != 'true' && hashFiles('filesystem/rott/music/*.wav64') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: filesystem/rott/music
+          key: rott64-darkwar-wav64-v1-${{ hashFiles('filesystem/rott/DARKWAR.WAD', 'tools/extract_music.py', 'tools/render_music.sh', 'Makefile') }}
 
       - name: Verify final Dark War ROM size and format
         if: always() && steps.n64_build.outputs.rom_built == 'true'

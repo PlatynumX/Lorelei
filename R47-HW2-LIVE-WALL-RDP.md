@@ -22,3 +22,40 @@ R47 deliberately retains R_DrawWallColumn as a fallback. After this build proves
 the geometry and screen mapping are correct on hardware, the next revision will
 remove the matching CPU wall rasterization and start moving wall pixels/textures
 to hardware for real performance gain.
+
+## v3 compile-order correction
+
+The v2 source reached and passed engine preflight, then reached the N64 compiler.
+
+The compiler exposed one source-order issue in the generated `modexlib.c`:
+`present_frame()` calls `rott64_hw2_present()` before the static helper definition.
+With warnings promoted to errors, that produced an implicit declaration followed
+by a conflicting static declaration.
+
+V3 adds only a file-scope forward declaration before `present_frame()`.  The
+live Taradino wall exporter and RDP diagnostic behavior are otherwise unchanged.
+
+## v3 persistent full-version music cache
+
+This revision also stops rebuilding the unchanged Dark War soundtrack on every
+GitHub Actions run.
+
+Two content-addressed caches are used:
+
+- Rendered soundtrack:
+  `assets/music` and `platform/n64/n64_music_map_generated.h`
+  keyed by DARKWAR.WAD, extract_music.py, and render_music.sh.
+  A cache hit skips installation of the heavy music preparation packages and
+  skips the 34-track MIDI-to-WAV render.
+
+- Final N64 soundtrack:
+  `filesystem/rott/music`
+  keyed by the same music inputs plus Makefile, which owns the WAV-to-WAV64
+  conversion rules.
+
+The rendered soundtrack is saved immediately after generation, before the
+cross-compile starts. The final WAV64 cache is saved whenever those files exist,
+even when a later compile step fails.
+
+Changing the WAD or music conversion logic changes the key automatically and
+forces one fresh generation.

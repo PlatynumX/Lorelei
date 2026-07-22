@@ -53,6 +53,9 @@ static uint16_t rgba5551(SDL_Color color)
     return (uint16_t)((r << 11) | (g << 6) | (b << 1) | 1u);
 }
 
+/* ROTT64_HW2_PRESENT_FORWARD_DECL_FIX */
+static int rott64_hw2_present(surface_t *fb);
+
 static void present_frame(void)
 {
 #ifdef __N64__
