@@ -857,3 +857,19 @@ def main() -> int:
     except (OSError,RuntimeError) as exc: print(f"prepare_engine.py: {exc}",file=sys.stderr); return 1
     print(f"Prepared N64 engine tree: {output}"); return 0
 if __name__=="__main__": raise SystemExit(main())
+
+# ROTT64_HW2_LIVE_WALLS_PREPARE_HOOK_BEGIN
+if __name__ == "__main__":
+    import os as _hw2_os
+    import subprocess as _hw2_subprocess
+    import sys as _hw2_sys
+
+    _hw2_repo = _hw2_os.path.dirname(
+        _hw2_os.path.dirname(_hw2_os.path.abspath(__file__))
+    )
+    _hw2_subprocess.check_call([
+        _hw2_sys.executable,
+        _hw2_os.path.join(_hw2_repo, "tools", "hw2_patch_engine.py"),
+        _hw2_os.path.join(_hw2_repo, "generated", "rott"),
+    ])
+# ROTT64_HW2_LIVE_WALLS_PREPARE_HOOK_END

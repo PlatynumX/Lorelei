@@ -42,138 +42,7 @@ static bool display_ready;
 extern int iG_X_center;
 extern int iG_Y_center;
 
-/* ROTT64_HW1_V4_CLEAN_R45D_BEGIN
- * R46 HW1 v4: direct N64 RDP framebuffer proof.
- *
- * Built fresh from the exact preserved R45d baseline.
- * For the first 180 presented frames, RDPQ draws a live flat-shaded room
- * directly into the framebuffer already acquired by the existing N64
- * display backend. After frame 180, the normal R45d software presentation
- * path resumes automatically.
- */
-static unsigned int rott64_hw1_v4_frame = 0;
-static int rott64_hw1_v4_rdp_initialized = 0;
 
-static void rott64_hw1_v4_quad(float x0, float y0,
-                               float x1, float y1,
-                               float x2, float y2,
-                               float x3, float y3)
-{
-    float a[2] = { x0, y0 };
-    float b[2] = { x1, y1 };
-    float c[2] = { x2, y2 };
-    float d[2] = { x3, y3 };
-
-    rdpq_triangle(&TRIFMT_FILL, a, b, c);
-    rdpq_triangle(&TRIFMT_FILL, a, c, d);
-}
-
-static void rott64_hw1_v4_color(int r, int g, int b)
-{
-    rdpq_set_prim_color(RGBA32(r, g, b, 255));
-}
-
-static int rott64_hw1_v4_present(surface_t *fb)
-{
-    float w;
-    float h;
-    float shift;
-    float bx0;
-    float bx1;
-    float by0;
-    float by1;
-    unsigned int phase;
-
-    if (fb == NULL || rott64_hw1_v4_frame >= 180u)
-        return 0;
-
-    if (!rott64_hw1_v4_rdp_initialized)
-    {
-        rdpq_init();
-        rott64_hw1_v4_rdp_initialized = 1;
-    }
-
-    w = (float)fb->width;
-    h = (float)fb->height;
-
-    phase = rott64_hw1_v4_frame % 120u;
-    shift = (float)(
-        (phase < 60u)
-            ? ((int)phase - 30)
-            : (90 - (int)phase)
-    ) * (w / 320.0f);
-
-    bx0 = w * 0.29f + shift;
-    bx1 = w * 0.71f + shift;
-    by0 = h * 0.23f;
-    by1 = h * 0.76f;
-
-    rdpq_attach(fb, NULL);
-    rdpq_clear(RGBA32(8, 10, 18, 255));
-    rdpq_set_mode_standard();
-    rdpq_mode_combiner(RDPQ_COMBINER_FLAT);
-
-    rott64_hw1_v4_color(38, 43, 58);
-    rott64_hw1_v4_quad(
-        0.0f, 0.0f,
-        w, 0.0f,
-        bx1, by0,
-        bx0, by0
-    );
-
-    rott64_hw1_v4_color(55, 48, 39);
-    rott64_hw1_v4_quad(
-        bx0, by1,
-        bx1, by1,
-        w, h,
-        0.0f, h
-    );
-
-    rott64_hw1_v4_color(115, 47, 43);
-    rott64_hw1_v4_quad(
-        0.0f, 0.0f,
-        bx0, by0,
-        bx0, by1,
-        0.0f, h
-    );
-
-    rott64_hw1_v4_color(45, 70, 105);
-    rott64_hw1_v4_quad(
-        bx1, by0,
-        w, 0.0f,
-        w, h,
-        bx1, by1
-    );
-
-    rott64_hw1_v4_color(82, 83, 79);
-    rott64_hw1_v4_quad(
-        bx0, by0,
-        bx1, by0,
-        bx1, by1,
-        bx0, by1
-    );
-
-    rott64_hw1_v4_color(101, 67, 41);
-    rott64_hw1_v4_quad(
-        w * 0.455f + shift, h * 0.43f,
-        w * 0.565f + shift, h * 0.43f,
-        w * 0.565f + shift, by1,
-        w * 0.455f + shift, by1
-    );
-
-    rott64_hw1_v4_color(220, 193, 68);
-    rott64_hw1_v4_quad(
-        w * 0.08f + (float)phase * (w / 180.0f), h * 0.88f,
-        w * 0.13f + (float)phase * (w / 180.0f), h * 0.88f,
-        w * 0.13f + (float)phase * (w / 180.0f), h * 0.92f,
-        w * 0.08f + (float)phase * (w / 180.0f), h * 0.92f
-    );
-
-    rdpq_detach_show();
-    rott64_hw1_v4_frame++;
-    return 1;
-}
-/* ROTT64_HW1_V4_CLEAN_R45D_END */
 
 
 static uint16_t rgba5551(SDL_Color color)
@@ -218,7 +87,7 @@ static void present_frame(void)
             }
         }
     }
-    if (!rott64_hw1_v4_present(surface))
+    if (!rott64_hw2_present(surface))
         display_show(surface);
 #else
     (void)rgba5551;
@@ -227,6 +96,169 @@ static void present_frame(void)
 
 SDL_Window *VL_GetVideoWindow(void) { return NULL; }
 SDL_Surface *VL_GetVideoSurface(void) { return sdl_surface; }
+
+/* ROTT64_HW2_LIVE_WALLS_PLATFORM_BEGIN
+ *
+ * Real Taradino wall-span RDP diagnostic.
+ * Intro/menu frames have no fresh DrawWalls() sequence and pass through
+ * untouched. Gameplay frames overlay the real per-column wall extents.
+ *
+ * R47 intentionally leaves the CPU wall pixels underneath this overlay.
+ * Once the geometry is confirmed on hardware, R48 can remove that fallback.
+ */
+#define ROTT64_HW2_MAX_WALLS 640
+
+extern volatile unsigned int rott64_hw2_wall_seq;
+extern volatile int rott64_hw2_wall_count;
+extern volatile int rott64_hw2_viewwidth;
+extern volatile int rott64_hw2_viewheight;
+extern volatile int rott64_hw2_screenheight;
+extern volatile short rott64_hw2_wall_top[ROTT64_HW2_MAX_WALLS];
+extern volatile short rott64_hw2_wall_bottom[ROTT64_HW2_MAX_WALLS];
+extern volatile unsigned char rott64_hw2_wall_color[ROTT64_HW2_MAX_WALLS];
+
+static unsigned int rott64_hw2_seen_seq = 0;
+static unsigned int rott64_hw2_frames = 0;
+static int rott64_hw2_rdp_ready = 0;
+
+static color_t rott64_hw2_color(unsigned int n)
+{
+    switch (n & 7u)
+    {
+        case 0: return RGBA32(214, 67, 59, 255);
+        case 1: return RGBA32(54, 119, 191, 255);
+        case 2: return RGBA32(205, 160, 50, 255);
+        case 3: return RGBA32(66, 154, 91, 255);
+        case 4: return RGBA32(145, 83, 173, 255);
+        case 5: return RGBA32(203, 104, 46, 255);
+        case 6: return RGBA32(61, 160, 164, 255);
+        default: return RGBA32(170, 170, 170, 255);
+    }
+}
+
+static int rott64_hw2_present(surface_t *fb)
+{
+    unsigned int seq;
+    int count;
+    int vw;
+    int vh;
+    int sh;
+    int i;
+    int last_color;
+
+    if (fb == NULL)
+        return 0;
+
+    seq = rott64_hw2_wall_seq;
+
+    /* No new world renderer output: intro/menu/etc. */
+    if (seq == 0u || seq == rott64_hw2_seen_seq)
+        return 0;
+
+    /* About 30 seconds at 30 FPS, then automatic software A/B fallback. */
+    if (rott64_hw2_frames >= 900u)
+    {
+        rott64_hw2_seen_seq = seq;
+        return 0;
+    }
+
+    count = rott64_hw2_wall_count;
+    vw = rott64_hw2_viewwidth;
+    vh = rott64_hw2_viewheight;
+    sh = rott64_hw2_screenheight;
+
+    if (count <= 0 ||
+        count > ROTT64_HW2_MAX_WALLS ||
+        vw <= 0 ||
+        vw > ROTT64_HW2_MAX_WALLS ||
+        vh <= 0 ||
+        sh <= 0 ||
+        vh > sh)
+    {
+        rott64_hw2_seen_seq = seq;
+        return 0;
+    }
+
+    if (count > vw)
+        count = vw;
+
+    if (!rott64_hw2_rdp_ready)
+    {
+        rdpq_init();
+        rott64_hw2_rdp_ready = 1;
+    }
+
+    /*
+     * HW1 proved RDPQ attachment to this exact display surface. Do not clear:
+     * the software-rendered frame remains underneath as a visual reference.
+     */
+    rdpq_attach(fb, NULL);
+    last_color = -1;
+
+    for (i = 0; i < count; ++i)
+    {
+        int top = (int)rott64_hw2_wall_top[i];
+        int bottom = (int)rott64_hw2_wall_bottom[i];
+        int x0;
+        int x1;
+        int y0;
+        int y1;
+        int color_index;
+
+        if (top < 0)
+            top = 0;
+        if (bottom > sh)
+            bottom = sh;
+        if (bottom <= top)
+            continue;
+
+        x0 = (i * (int)fb->width) / vw;
+        x1 = ((i + 1) * (int)fb->width) / vw;
+
+        if (x0 < 0)
+            x0 = 0;
+        if (x1 > (int)fb->width)
+            x1 = (int)fb->width;
+        if (x1 <= x0)
+            continue;
+
+        y0 = (top * (int)fb->height) / sh;
+        y1 = (bottom * (int)fb->height) / sh;
+
+        if (y0 < 0)
+            y0 = 0;
+        if (y1 > (int)fb->height)
+            y1 = (int)fb->height;
+        if (y1 <= y0)
+            continue;
+
+        color_index = (int)(rott64_hw2_wall_color[i] & 7u);
+
+        if (last_color < 0)
+        {
+            rdpq_set_mode_fill(
+                rott64_hw2_color((unsigned int)color_index)
+            );
+            last_color = color_index;
+        }
+        else if (color_index != last_color)
+        {
+            rdpq_set_fill_color(
+                rott64_hw2_color((unsigned int)color_index)
+            );
+            last_color = color_index;
+        }
+
+        rdpq_fill_rectangle(x0, y0, x1, y1);
+    }
+
+    rdpq_detach_show();
+    rott64_hw2_seen_seq = seq;
+    rott64_hw2_frames++;
+    return 1;
+}
+/* ROTT64_HW2_LIVE_WALLS_PLATFORM_END */
+
 int VL_SaveBMP(const char *file) { (void)file; return -1; }
 void SetShowCursor(int show) { (void)show; }
 
