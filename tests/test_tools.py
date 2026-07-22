@@ -217,6 +217,11 @@ def test_prepare_engine() -> None:
         vgatext = (output / "vgatext.c").read_text()
         assert "ROTT64 replacement for Taradino's desktop VGA text renderer" in vgatext
         assert "SDL_CreateTexture" not in vgatext
+        cfg = (output / "rt_cfg.c").read_text()
+        assert '#include "SDL.h"' in cfg
+        assert "SDL_SCANCODE_LCTRL" in cfg
+        assert "SDL_SCANCODE_BACKSPACE" in cfg
+        assert "SDL_SCANCODE_CAPSLOCK" in cfg
         game = (output / "rt_game.c").read_text()
         assert '#include "rott64_flash_save.h"' in game
         assert "#define SafeOpenWrite rott64_save_open_write" in game
@@ -401,6 +406,8 @@ def test_r45_controller_contract() -> None:
     prep = (ROOT / "tools/prepare_engine.py").read_text()
     save = (ROOT / "platform/n64/rott64_flash_save.c").read_text()
 
+    assert "extern unsigned char inmenu;" in sdl
+    assert "extern unsigned char ingame;" in sdl
     assert "const bool menu_mode = (inmenu != 0) || (ingame == 0);" in sdl
     assert "relative_x += n64_mouse_axis(input.stick_x);" in sdl
     assert "relative_y -= n64_mouse_axis(input.stick_y);" in sdl

@@ -471,6 +471,17 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
 
     cfg_path=output/"rt_cfg.c"
     text=cfg_path.read_text(encoding="utf-8",errors="strict")
+    # R45d: N64 controller defaults below use SDL_SCANCODE_* constants.
+    # Pinned Taradino rt_cfg.c does not include SDL.h itself. Prepend the
+    # N64 compatibility header without depending on any exact upstream include
+    # ordering so the real source and host fixture are both covered.
+    if '#include "SDL.h"' not in text:
+        text = (
+            '#ifdef __N64__\n'
+            '#include "SDL.h"\n'
+            '#endif\n'
+            + text
+        )
     # Do not probe or parse desktop config/save files from the read-only ROM.
     # Preserve Taradino's own defaults so buttonscan, view size, difficulty,
     # battle options, and violence settings are initialized normally.
@@ -534,6 +545,12 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
     )
     cfg_text = cfg_text[:defaults_close] + n64_bindings + cfg_text[defaults_close:]
     cfg_path.write_text(cfg_text, encoding="utf-8")
+
+    cfg_verify = cfg_path.read_text(encoding="utf-8", errors="strict")
+    if "SDL_SCANCODE_" in cfg_verify and '#include "SDL.h"' not in cfg_verify:
+        raise RuntimeError(
+            "R45d rt_cfg uses SDL_SCANCODE_* without including SDL.h"
+        )
 
 
     # Fix legacy ctype usage for targets where plain char is signed. The ctype

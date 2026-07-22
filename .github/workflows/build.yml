@@ -61,6 +61,13 @@ jobs:
           mkdir -p build/reports
           set -o pipefail
           make prepare 2>&1 | tee build/reports/prepare-engine.log
+          # R45d generated rt_cfg SDL guard
+          if grep -q 'SDL_SCANCODE_' generated/rott/rt_cfg.c; then
+            grep -Fq '#include "SDL.h"' generated/rott/rt_cfg.c || {
+              echo "generated rt_cfg.c uses SDL_SCANCODE_* without SDL.h" >&2
+              exit 1
+            }
+          fi
           if [ -f generated/reports/r45c-save-reader-owners.txt ]; then
             cp generated/reports/r45c-save-reader-owners.txt build/reports/
           fi
@@ -159,7 +166,7 @@ jobs:
         if: always() && steps.n64_build.outputs.rom_built == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-darkwar-r45c-controls-savefix
+          name: rott64-darkwar-r45d-controls-savefix
           path: |
             rott64.z64
             rott64.z64.sha256
@@ -169,7 +176,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-darkwar-r45c-build-reports
+          name: rott64-darkwar-r45d-build-reports
           path: |
             ci-reports/
             build/reports/

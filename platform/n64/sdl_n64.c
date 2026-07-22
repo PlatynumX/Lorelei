@@ -10,8 +10,8 @@
 #include <libdragon.h>
 
 /* Taradino menu state, defined in rt_menu.c. */
-extern int inmenu;
-extern int ingame;
+extern unsigned char inmenu;
+extern unsigned char ingame;
 #endif
 
 #define EVENT_QUEUE_CAPACITY 64u
