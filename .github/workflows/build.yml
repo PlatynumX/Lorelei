@@ -61,8 +61,8 @@ jobs:
           mkdir -p build/reports
           set -o pipefail
           make prepare 2>&1 | tee build/reports/prepare-engine.log
-          if [ -f generated/reports/r45b-save-reader-owners.txt ]; then
-            cp generated/reports/r45b-save-reader-owners.txt build/reports/
+          if [ -f generated/reports/r45c-save-reader-owners.txt ]; then
+            cp generated/reports/r45c-save-reader-owners.txt build/reports/
           fi
           if [ -f generated/reports/r43-sd-startup-trace-map.txt ]; then
             cp generated/reports/r43-sd-startup-trace-map.txt build/reports/
@@ -159,7 +159,7 @@ jobs:
         if: always() && steps.n64_build.outputs.rom_built == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-darkwar-r45-save-header-fix
+          name: rott64-darkwar-r45c-controls-savefix
           path: |
             rott64.z64
             rott64.z64.sha256
@@ -169,7 +169,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-darkwar-r45b-build-reports
+          name: rott64-darkwar-r45c-build-reports
           path: |
             ci-reports/
             build/reports/

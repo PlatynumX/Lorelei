@@ -551,12 +551,12 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
         menu_text = menu_text.replace(old, new)
     menu_path.write_text(menu_text, encoding="utf-8")
 
-    # R45b: Taradino save-header reader ownership fix.
+    # R45c: Taradino 20251222 save-reader API fix.
     #
-    # The pinned 20251222 source owns save-menu state and header parsing in
-    # rt_menu.c, not rt_game.c.  Do not assume a source filename or return
-    # type. Locate the real function definitions structurally across all
-    # fetched engine .c files.
+    # The pinned 20251222 public API declares GetSavedMessage() and
+    # GetSavedHeader() in rt_game.h. Do not assume formatting or source-file
+    # placement; locate their real definitions structurally across fetched
+    # engine .c files and wrap only those functions with native reads.
     def find_named_function(name):
         pattern = re.compile(
             rf"(?m)^[ \t]*(?!#)(?P<head>[^;\n{{}}]*\b{re.escape(name)}"
@@ -584,7 +584,7 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
                             break
                 if close_brace is None:
                     raise RuntimeError(
-                        f"R45b {name}: closing brace missing in "
+                        f"R45c {name}: closing brace missing in "
                         f"{candidate.name}"
                     )
                 found.append(
@@ -593,7 +593,7 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
         if len(found) != 1:
             owners = ", ".join(item[0].name for item in found) or "none"
             raise RuntimeError(
-                f"R45b {name}: expected one definition, found "
+                f"R45c {name}: expected one definition, found "
                 f"{len(found)} ({owners})"
             )
         return found[0]
@@ -619,7 +619,7 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
     )
 
     save_reader_report = []
-    for function_name in ("LoadTag", "GetSaveHeader"):
+    for function_name in ("GetSavedMessage", "GetSavedHeader"):
         owner, owner_text, function_start, function_end = \
             find_named_function(function_name)
 
@@ -628,9 +628,8 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
             f"{function_name}={owner.name}"
         )
 
-        # Route only the save-reader function itself through the native
-        # FlashRAM read API. This preserves Taradino's parsing logic and does
-        # not globally redefine LoadFile for unrelated menu assets.
+        # Route only the actual Taradino save-reader function through the
+        # native FlashRAM API, preserving its own message/header parsing.
         patched_function = (
             read_macros
             + function_text
@@ -647,7 +646,7 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
     # these functions.  This report travels with GitHub build diagnostics.
     report_dir = output.parent / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)
-    (report_dir / "r45b-save-reader-owners.txt").write_text(
+    (report_dir / "r45c-save-reader-owners.txt").write_text(
         "\n".join(save_reader_report) + "\n",
         encoding="utf-8",
     )
