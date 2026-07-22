@@ -59,3 +59,19 @@ even when a later compile step fails.
 
 Changing the WAD or music conversion logic changes the key automatically and
 forces one fresh generation.
+
+## v4 generated-engine hook correction
+
+V3 reached the linker, where the HW2 wall symbols were undefined. The wall
+exporter itself had never run: its hook was appended after prepare_engine.py's
+existing raise SystemExit(main()), making the appended hook unreachable.
+
+V4 removes that dead hook and runs:
+python3 tools/hw2_patch_engine.py generated/rott
+
+as a dedicated GitHub Actions step after clean engine verification and before
+preflight. The workflow asserts that rt_draw.c contains the HW2 export marker
+and wall arrays before compilation.
+
+The persistent music cache from v3 is unchanged. V3 successfully saved both the
+rendered soundtrack and final WAV64 cache, so unchanged music should restore.

@@ -106,6 +106,14 @@ jobs:
           ! grep -q 'PopulateEpisodeMenu' tools/prepare_engine.py
           test -f generated/rott/.rott64-prepared
 
+      # ROTT64_HW2_ENGINE_PATCH_STEP_V1
+      - name: Patch generated engine for HW2 live walls
+        run: |
+          python3 tools/hw2_patch_engine.py generated/rott
+          grep -q 'ROTT64_HW2_LIVE_WALLS_ENGINE_EXPORT_BEGIN' generated/rott/rt_draw.c
+          grep -q 'rott64_hw2_wall_top' generated/rott/rt_draw.c
+          grep -q 'rott64_hw2_wall_bottom' generated/rott/rt_draw.c
+
       - name: Run engine preflight
         shell: bash
         run: |
