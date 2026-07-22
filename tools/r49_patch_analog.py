@@ -45,8 +45,8 @@ def main():
     _,co,cc=span(text,"PollControls")
     oldjoy=text[jo:jc+1]; oldctl=text[co:cc+1]
     reports=root.parent/"reports"; reports.mkdir(parents=True,exist_ok=True)
-    (reports/"r48-v12-PollJoystickMove-before.c").write_text(oldjoy+"\n")
-    (reports/"r48-v12-PollControls-before.c").write_text(oldctl+"\n")
+    (reports/"r49-sw-PollJoystickMove-before.c").write_text(oldjoy+"\n")
+    (reports/"r49-sw-PollControls-before.c").write_text(oldctl+"\n")
 
     for x in ("INL_GetJoyDelta","joyx","joyy","JX","JY","buttonpoll[bt_run]"):
         if x not in oldjoy: fail("actual PollJoystickMove missing "+x)
@@ -99,8 +99,8 @@ def main():
     _,co2,cc2=span(text,"PollControls")
     _,jo2,jc2=span(text,"PollJoystickMove")
     finalctl=text[co2:cc2+1]; finaljoy=text[jo2:jc2+1]
-    (reports/"r48-v12-PollControls-after.c").write_text(finalctl+"\n")
-    (reports/"r48-v12-PollJoystickMove-after.c").write_text(finaljoy+"\n")
+    (reports/"r49-sw-PollControls-after.c").write_text(finalctl+"\n")
+    (reports/"r49-sw-PollJoystickMove-after.c").write_text(finaljoy+"\n")
 
     for x in ("INL_GetJoyDelta","joypadenabled","threshold"):
         if x in finaljoy: fail("desktop joystick token survived: "+x)

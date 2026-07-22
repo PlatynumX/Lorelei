@@ -104,13 +104,10 @@ jobs:
           ! grep -q -- '-DSHAREWARE=1' Makefile
           ! grep -q 'ROTT_REGISTERED' tools/prepare_engine.py
           ! grep -q 'PopulateEpisodeMenu' tools/prepare_engine.py
+          python3 tools/r49_patch_analog.py generated/rott
           test -f generated/rott/.rott64-prepared
 
-      # ROTT64_HW2_ENGINE_PATCH_STEP_V1
-      - name: Patch generated engine for HW2 live walls
         run: |
-          python3 tools/hw2_patch_engine_exact.py generated/rott
-          python3 tools/r48_patch_gamepad.py generated/rott
           # R48 V14: validate and retain the REAL generated control source
           grep -q 'ROTT64_NATIVE_GAMEPAD_XY_ENGINE_V3_SOURCE_AWARE' generated/rott/rt_playr.c
           mkdir -p build/reports
@@ -125,9 +122,6 @@ jobs:
           cp generated/reports/r48-v12-PollJoystickMove-before.c build/reports/
           cp generated/reports/r48-v12-PollJoystickMove-after.c build/reports/
           ! grep -Eq '^[[:space:]]*else[[:space:]]*/\*' generated/rott/rt_playr.c
-          grep -q 'ROTT64_HW2B_EXACT_SPANS_FRAME_BEGIN' generated/rott/rt_draw.c
-          grep -q 'rott64_hw2_wall_top' generated/rott/rt_draw.c
-          grep -q 'rott64_hw2_wall_bottom' generated/rott/rt_draw.c
 
       - name: Run engine preflight
         shell: bash
