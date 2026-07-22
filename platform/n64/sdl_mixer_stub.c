@@ -296,6 +296,11 @@ static void apply_channel_mix(int channel)
     if (chunk != NULL) {
         base *= (float)chunk->volume / (float)MIX_MAX_VOLUME;
     }
+    /* Reserve final-mix headroom for overlapping close effects. */
+    base *= 0.78f;
+    if (channel_left[channel] >= 220u && channel_right[channel] >= 220u) {
+        base *= 0.86f;
+    }
     left = base * ((float)channel_left[channel] / 255.0f);
     right = base * ((float)channel_right[channel] / 255.0f);
 

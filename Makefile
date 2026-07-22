@@ -61,7 +61,7 @@ BUILD_DIR := build
 include $(N64_INST)/include/n64.mk
 
 ENGINE_SOURCES := $(sort $(filter-out generated/rott/adlmusic.c generated/rott/sdlmusic.c,$(wildcard generated/rott/*.c)))
-PLATFORM_SOURCES := platform/n64/n64_platform.c platform/n64/sdl_n64.c platform/n64/sdl_mixer_stub.c platform/n64/posix_stubs.c
+PLATFORM_SOURCES := platform/n64/n64_platform.c platform/n64/sdl_n64.c platform/n64/sdl_mixer_stub.c platform/n64/posix_stubs.c platform/n64/rott64_flash_save.c
 ALL_SOURCES := $(ENGINE_SOURCES) $(PLATFORM_SOURCES)
 OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(ALL_SOURCES))
 DIAG_OBJS := $(BUILD_DIR)/platform/n64/bootdiag.o
@@ -98,6 +98,7 @@ rott64.z64: N64_ROM_TITLE = "ROTT64 DARK WAR"
 # invalid/unknown cartridge.
 rott64.z64: N64_ROM_REGION = E
 rott64.z64: N64_ROM_CATEGORY = N
+rott64.z64: N64_ROM_SAVETYPE = flashram
 # Keep the first runtime test uncompressed. This removes the open IPL3 ELF
 # decompression path as a variable when testing on older Mupen64Plus Android
 # cores. It increases ROM size but does not change game code.

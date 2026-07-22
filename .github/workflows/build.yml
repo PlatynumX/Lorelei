@@ -104,8 +104,12 @@ jobs:
             sh -lc '
               set -eux
               rm -rf /tmp/libdragon
-              git clone --depth 1 \
-                https://github.com/DragonMinded/libdragon.git /tmp/libdragon
+              git clone https://github.com/DragonMinded/libdragon.git /tmp/libdragon
+              git -C /tmp/libdragon fetch \
+                https://github.com/meeq/libdragon.git \
+                ab53eaa95272dca06c67484199113117358e2a03
+              git -C /tmp/libdragon checkout \
+                ab53eaa95272dca06c67484199113117358e2a03
               make -C /tmp/libdragon -j2 install tools-install
               make -j2
             ' 2>&1 | tee ci-reports/n64-build.log
@@ -152,7 +156,7 @@ jobs:
         if: always() && steps.n64_build.outputs.rom_built == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-darkwar-clean-registered-r40
+          name: rott64-darkwar-r44-native-save
           path: |
             rott64.z64
             rott64.z64.sha256
@@ -162,7 +166,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-darkwar-r40-build-diagnostics
+          name: rott64-darkwar-r44-build-reports
           path: |
             ci-reports/
             build/reports/

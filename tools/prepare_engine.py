@@ -628,6 +628,59 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
         '#define CMAKE_PROJECT_VERSION_PATCH 22\n'
         '#endif\n', encoding="ascii")
 
+
+    # R44: route Taradino's complete save serializer into native FlashRAM.
+    game_path = output / "rt_game.c"
+    game_text = game_path.read_text(encoding="utf-8", errors="strict")
+    calc_anchor = re.search(r"(?m)^[ \t]*long[ \t]+CalculateSaveGameCheckSum[ \t]*\(", game_text)
+    getlevel_anchor = re.search(r"(?m)^[ \t]*int[ \t]+GetLevel[ \t]*\(", game_text)
+    if calc_anchor is None or getlevel_anchor is None or calc_anchor.start() >= getlevel_anchor.start():
+        raise RuntimeError("R44 save-function scope anchors not found")
+    save_macros = (
+        '#ifdef __N64__\n#include "rott64_flash_save.h"\n'
+        '#define SafeOpenWrite rott64_save_open_write\n'
+        '#define SafeOpenAppend rott64_save_open_append\n'
+        '#define SafeOpenRead rott64_save_open_read\n'
+        '#define SafeWrite rott64_save_write\n'
+        '#define SafeRead rott64_save_read\n'
+        '#define filelength rott64_save_filelength\n'
+        '#define LoadFile rott64_save_load_file\n'
+        '#define close rott64_save_close\n#endif\n'
+    )
+    save_undefs = (
+        '#ifdef __N64__\n#undef SafeOpenWrite\n#undef SafeOpenAppend\n'
+        '#undef SafeOpenRead\n#undef SafeWrite\n#undef SafeRead\n'
+        '#undef filelength\n#undef LoadFile\n#undef close\n#endif\n'
+    )
+    game_text = (game_text[:calc_anchor.start()] + save_macros
+                 + game_text[calc_anchor.start():getlevel_anchor.start()]
+                 + save_undefs + game_text[getlevel_anchor.start():])
+    game_text = game_text.replace(
+        'if (num > 15 || num < 0) Error("Illegal Saved game value=%d\\n", num);',
+        'if (num != 0) return false;')
+    game_text = game_text.replace(
+        'if (num > 15 || num < 0) Error("Illegal Load game value=%d\\n", num);',
+        'if (num != 0) return false;')
+    game_path.write_text(game_text, encoding="utf-8")
+
+    menu_path = output / "rt_menu.c"
+    menu_text = menu_path.read_text(encoding="utf-8", errors="strict")
+    menu_text = '#ifdef __N64__\n#include "rott64_flash_save.h"\n#endif\n' + menu_text
+    old = 'file = M_FileCaseExists(path);'
+    if menu_text.count(old) != 1:
+        raise RuntimeError(f"R44 save scan expected one match, found {menu_text.count(old)}")
+    menu_text = menu_text.replace(
+        old,
+        '#ifdef __N64__\n'
+        '        file = (which == 0) ? rott64_save_case_exists(path) : NULL;\n'
+        '#else\n        file = M_FileCaseExists(path);\n#endif',
+        1)
+    menu_text = menu_text.replace(
+        'unlink(filename);',
+        '#ifdef __N64__\n            rott64_save_unlink(filename);\n'
+        '#else\n            unlink(filename);\n#endif')
+    menu_path.write_text(menu_text, encoding="utf-8")
+
     marker=output/".rott64-prepared"
     marker.write_text(
         "Taradino 20251222\n"

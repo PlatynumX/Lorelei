@@ -85,7 +85,16 @@ def test_prepare_engine() -> None:
         (source / "rt_menu.c").write_text(
             'void a(char *source, int length) { while (*source && isspace(*source) && length) source++; }\n'
             'void b(char *source, int length) { while (*source && !isspace(*source) && length) source++; }\n'
-            'void c(char *wordtext, int pos) { while (wordtext[pos] && isspace(wordtext[pos])) pos++; }\n',
+            'void c(char *wordtext, int pos) { while (wordtext[pos] && isspace(wordtext[pos])) pos++; }\n'
+            'void ScanForSavedGames(void) { int which; char *path; char *file; file = M_FileCaseExists(path); }\n'
+            'void DeleteSave(char *filename) { unlink(filename); }\n',
+            encoding="utf-8",
+        )
+        (source / "rt_game.c").write_text(
+            'long CalculateSaveGameCheckSum(char *filename) { int handle = SafeOpenRead(filename); int n = filelength(handle); char b[4]; SafeRead(handle,b,n); close(handle); return 0; }\n'
+            'int SaveTheGame(int num, void *game) { if (num > 15 || num < 0) Error("Illegal Saved game value=%d\\n", num); int h=SafeOpenWrite("rottgam0.rot"); SafeWrite(h,game,4); close(h); h=SafeOpenAppend("rottgam0.rot"); SafeWrite(h,game,4); close(h); return 1; }\n'
+            'int LoadTheGame(int num, void *game) { if (num > 15 || num < 0) Error("Illegal Load game value=%d\\n", num); void *b; LoadFile("rottgam0.rot",&b); return 1; }\n'
+            'int GetLevel(int episode, int mapon) { return episode + mapon; }\n',
             encoding="utf-8",
         )
         (source / "rt_util.c").write_text(
@@ -205,6 +214,10 @@ def test_prepare_engine() -> None:
         vgatext = (output / "vgatext.c").read_text()
         assert "ROTT64 replacement for Taradino's desktop VGA text renderer" in vgatext
         assert "SDL_CreateTexture" not in vgatext
+        game = (output / "rt_game.c").read_text()
+        assert '#include "rott64_flash_save.h"' in game
+        assert "#define SafeOpenWrite rott64_save_open_write" in game
+        assert "if (num != 0) return false;" in game
         menu = (output / "rt_menu.c").read_text()
         assert menu.count("isspace((unsigned char)*source)") == 2
         assert "isspace((unsigned char)wordtext[pos])" in menu
