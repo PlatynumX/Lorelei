@@ -277,15 +277,54 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
             "S10: before FX volume",
             "FX volume",
         ),
-        (
-            r"(?m)^[ \t]*return[ \t]*\([ \t]*0[ \t]*\)[ \t]*;",
-            "S99: leaving SD_Startup",
-            "successful return",
-        ),
     )
 
     for pattern, label, description in phase_specs:
         sd_func = trace_before_once(sd_func, pattern, label, description)
+
+    # SD_Startup has an early zero-success path and a normal final zero return.
+    # The early return may be on the same line as its `if`, so do not search
+    # only for line-leading return statements. Mark the early branch by its
+    # condition, then mark the final standalone return by taking the last
+    # matching return statement in the function.
+    early_patterns = (
+        r"(?m)^(?P<i>[ \t]*)if[ \t]*\([ \t]*FXMode[ \t]*==[ \t]*0[ \t]*\)",
+        r"(?m)^(?P<i>[ \t]*)if[ \t]*\([ \t]*NoSound[ \t]*\)",
+    )
+    early_match = None
+    for early_pattern in early_patterns:
+        matches = list(re.finditer(early_pattern, sd_func))
+        if len(matches) == 1:
+            early_match = matches[0]
+            break
+    if early_match is not None:
+        early_indent = early_match.group("i")
+        sd_func = (
+            sd_func[:early_match.start()]
+            + f'{early_indent}n64_platform_checkpoint("S00E: early sound-disabled path");\n'
+            + sd_func[early_match.start():]
+        )
+
+    zero_returns = list(
+        re.finditer(
+            r"(?m)^(?P<i>[ \t]*)return[ \t]*\([ \t]*0[ \t]*\)[ \t]*;",
+            sd_func,
+        )
+    )
+    if not zero_returns:
+        raise RuntimeError(
+            "R42c SD_Startup final return: no standalone return (0) found"
+        )
+
+    final_return = zero_returns[-1]
+    final_indent = final_return.group("i")
+    final_stmt = final_return.group(0).lstrip(" \t")
+    sd_func = (
+        sd_func[:final_return.start()]
+        + f'{final_indent}n64_platform_checkpoint("S99: leaving SD_Startup");\n'
+        + f"{final_indent}{final_stmt}"
+        + sd_func[final_return.end():]
+    )
 
     if "n64_platform_checkpoint(const char *message)" not in sd_text:
         prefix = (
@@ -333,6 +372,7 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
                 "S08: before FX callback",
                 "S09: before marking sound started",
                 "S10: before FX volume",
+                "S00E: early sound-disabled path",
                 "S99: leaving SD_Startup",
             ]
         )

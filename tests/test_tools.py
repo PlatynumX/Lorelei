@@ -220,6 +220,7 @@ def test_prepare_engine() -> None:
         assert "S00: entered SD_Startup" in sound
         assert "S03: before digital sound remap" in sound
         assert "S04: remap loop completed" in sound
+        assert "S00E: early sound-disabled path" in sound
         assert "S99: leaving SD_Startup" in sound
         assert "sounds[i].snds[fx_digital] =\n" in sound
         assert "W_GetNumForName(W_GetNameForNum(snd + soundstart));" in sound
