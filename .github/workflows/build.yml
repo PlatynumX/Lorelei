@@ -156,7 +156,7 @@ jobs:
         if: always() && steps.n64_build.outputs.rom_built == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-darkwar-r44-native-save
+          name: rott64-darkwar-r44b-save-header-fix
           path: |
             rott64.z64
             rott64.z64.sha256
