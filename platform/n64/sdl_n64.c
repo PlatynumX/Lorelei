@@ -112,7 +112,7 @@ static bool queue_full(void)
 static SDL_Keycode keycode_for_scancode(SDL_Scancode code)
 {
     if (code >= SDL_SCANCODE_A && code <= SDL_SCANCODE_Z) {
-        return 'a' + (code - SDL_SPACE);
+        return 'a' + (code - SDL_SCANCODE_A);
     }
     switch (code) {
         case SDL_SCANCODE_RETURN: return SDLK_RETURN;
