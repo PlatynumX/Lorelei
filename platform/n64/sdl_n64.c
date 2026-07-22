@@ -41,6 +41,8 @@ static Uint32 mouse_buttons;
  * stick X: signed turn axis
  * stick Y: signed forward/back axis, with N64 up converted to game forward
  */
+#if defined(__N64__)
+/* ROTT64_NATIVE_GAMEPAD_XY_SCALE_HOSTFIX_V10 */
 static int rott64_n64_scale_stick_axis(int value)
 {
     int sign;
@@ -63,28 +65,36 @@ static int rott64_n64_scale_stick_axis(int value)
 
     return sign * magnitude;
 }
+#endif
 
 void rott64_n64_gamepad_axes(int *turn_x, int *move_y)
 {
-    joypad_inputs_t input;
-    int x;
-    int y;
-
     if (turn_x == NULL || move_y == NULL)
         return;
 
-    input = joypad_get_inputs(JOYPAD_PORT_1);
+#if defined(__N64__)
+    /* ROTT64_NATIVE_GAMEPAD_XY_AXES_HOSTFIX_V10 */
+    {
+        joypad_inputs_t input;
+        int x;
+        int y;
 
-    x = rott64_n64_scale_stick_axis((int)input.stick_x);
-    y = rott64_n64_scale_stick_axis((int)input.stick_y);
+        input = joypad_get_inputs(JOYPAD_PORT_1);
 
-    *turn_x = x;
+        x = rott64_n64_scale_stick_axis((int)input.stick_x);
+        y = rott64_n64_scale_stick_axis((int)input.stick_y);
 
+        *turn_x = x;
+        *move_y = -y;
+    }
+#else
     /*
-     * Taradino movement uses negative Y for forward.
-     * N64 stick-up is positive, so invert it here.
+     * Host tests compile sdl_n64.c without libdragon.
+     * Keep the exported ABI while hiding N64-only joypad declarations.
      */
-    *move_y = -y;
+    *turn_x = 0;
+    *move_y = 0;
+#endif
 }
 /* ROTT64_NATIVE_GAMEPAD_XY_V2_END */
 
