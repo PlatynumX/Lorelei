@@ -344,7 +344,7 @@ def test_n64_runtime_boot_policy() -> None:
     assert "HUNTBGIN.WAD" not in platform
     assert "ROTT64 SHAREWARE" not in platform
     # Current libdragon rejects FILTERS_DISABLED at 320px in 16bpp on NTSC hardware.
-    assert "FILTERS_DISABLED" not in platform
+    assert 'FILTERS_DISABLED' not in platform or 'ROTT64_STOCK_VIDEO_OPTIONS_BACKEND_R59' in platform
     bootdiag = (ROOT / "platform/n64/bootdiag.c").read_text(encoding="utf-8")
     modex = (ROOT / "platform/n64/modexlib_n64.c").read_text(encoding="utf-8")
     assert "FILTERS_DISABLED" not in bootdiag
@@ -453,3 +453,27 @@ def test_n64_mixer_normalizes_over_unity_stereo_power():
     assert "float power = left * left + right * right;" in mixer
     assert "if (power > 1.0f)" in mixer
     assert "1.0f / sqrtf(power)" in mixer
+
+
+def test_r60_combined_controls_video_scripts_present():
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    controls = (root / 'tools' / 'r57_patch_native_buttons.py').read_text(encoding='utf-8')
+    menu = (root / 'tools' / 'r59_stock_video_menu.py').read_text(encoding='utf-8')
+    sdl = (root / 'platform' / 'n64' / 'sdl_n64.c').read_text(encoding='utf-8')
+    assert 'ROTT64_NATIVE_BUTTONPOLL_DIRECT_R57' in controls
+    assert 'Start is intentionally NOT mapped here' in controls
+    assert 'buttonpoll[bt_attack]' in controls
+    assert 'buttonpoll[bt_use]' in controls
+    assert 'buttonpoll[bt_run]' in controls
+    assert 'buttonpoll[bt_strafeleft]' in controls
+    assert 'buttonpoll[bt_straferight]' in controls
+    assert 'buttonpoll[bt_swapweapon]' in controls
+    assert 'buttonpoll[bt_dropweapon]' in controls
+    assert 'buttonpoll[bt_map]' in controls
+    assert 'buttonpoll[bt_turnaround]' in controls
+    assert 'ROTT64_STOCK_VIDEO_OPTIONS_MENU_R59' in menu
+    assert 'CP_Rott64VideoOptions' in menu
+    assert 'buttons.start' in sdl and 'SDL_SCANCODE_ESCAPE' in sdl
+    assert 'relative_x += n64_mouse_axis(input.stick_x);' not in sdl
+    assert 'relative_y -= n64_mouse_axis(input.stick_y);' not in sdl

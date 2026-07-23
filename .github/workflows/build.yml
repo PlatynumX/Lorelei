@@ -1,10 +1,6 @@
-# r53 verified controls trigger: 2026-07-23T00:26:19.999955+00:00
-# r50k trigger: 2026-07-22T23:45:43.078356+00:00
+# r60f combined controls + stock video trigger: 2026-07-23T01:46:16Z
 # r50j report guard refresh: force fresh workflow push
-# r50h force software-controls workflow trigger: 2026-07-22T23:32:24Z
-# r50g workflow/build trigger: 2026-07-22T23:29:56Z
 name: Build ROTT64 Dark War registered
-# r50i force software-controls Actions trigger: 2026-07-22T23:35:30Z
 
 on:
   push:
@@ -113,7 +109,15 @@ jobs:
           ! grep -q 'ROTT_REGISTERED' tools/prepare_engine.py
           ! grep -q 'PopulateEpisodeMenu' tools/prepare_engine.py
           python3 tools/r49_patch_analog.py generated/rott
-          python3 tools/r53_controls_direct.py generated/rott
+          python3 tools/r57_patch_native_buttons.py generated/rott
+          python3 tools/r59_stock_video_menu.py generated/rott
+          grep -q 'ROTT64_NATIVE_BUTTONPOLL_DIRECT_R57' generated/rott/rt_playr.c
+          grep -q 'ROTT64_STOCK_VIDEO_OPTIONS_MENU_R59' generated/rott/rt_menu.c
+          grep -R -q 'ROTT64_STOCK_VIDEO_OPTIONS_BACKEND_R59' platform/n64
+          ! grep -q 'ROTT64_START_DIRECT_EX_TITLES' generated/rott/rt_main.c generated/rott/rt_playr.c 2>/dev/null
+          ! grep -R -q 'relative_x += n64_mouse_axis(input.stick_x);' platform/n64
+          ! grep -R -q 'relative_y -= n64_mouse_axis(input.stick_y);' platform/n64
+          ! grep -R -q 'rott64_video_r58_menu_controls(buttons, pressed)' platform/n64
           mkdir -p build/reports
           cp generated/reports/r53-controls-direct-report.md build/reports/
           test -f generated/rott/.rott64-prepared

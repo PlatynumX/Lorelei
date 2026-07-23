@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #ifdef __N64__
 #include <libdragon.h>
+#include <stdbool.h>
+#include <stdint.h>
 #endif
 
 static bool initialized;
@@ -14,10 +16,59 @@ static uint64_t rumble_started_ms;
 static uint8_t rumble_strength;
 static bool rumble_output_active;
 
+/* ROTT64_STOCK_VIDEO_OPTIONS_BACKEND_R59_BEGIN
+ * Software-renderer video backend exposed through stock User Options menu.
+ */
+#if defined(__N64__)
+static int rott64_video_r59_resolution = 0;
+static int rott64_video_r59_aspect = 0;
+static int rott64_video_r59_filter = 0;
+static int rott64_video_r59_screen_pct = 95;
+static int rott64_video_r59_pending_reinit = 0;
+static bitdepth_t rott64_video_r59_bitdepth = DEPTH_16_BPP;
+static uint32_t rott64_video_r59_buffers = 2;
+static gamma_t rott64_video_r59_gamma = GAMMA_NONE;
+static int rott64_video_r59_clamp_pct(int v) { if (v < 80) return 80; if (v > 100) return 100; return v; }
+static resolution_t rott64_video_r59_resolution_struct(void)
+{
+    resolution_t r;
+    int base_w = rott64_video_r59_resolution ? 640 : 320;
+    int base_h = rott64_video_r59_aspect ? (rott64_video_r59_resolution ? 400 : 200) : (rott64_video_r59_resolution ? 480 : 240);
+    r.width = (base_w * rott64_video_r59_screen_pct) / 100;
+    r.height = (base_h * rott64_video_r59_screen_pct) / 100;
+    r.interlaced = rott64_video_r59_resolution ? true : false;
+    if (r.width < 2) r.width = 2;
+    if (r.height < 1) r.height = 1;
+    return r;
+}
+static filter_options_t rott64_video_r59_filters(void) { return rott64_video_r59_filter ? FILTERS_RESAMPLE : FILTERS_DISABLED; }
+static void rott64_video_r59_display_init(bitdepth_t bit, uint32_t buffers, gamma_t gamma)
+{
+    rott64_video_r59_bitdepth = bit; rott64_video_r59_buffers = buffers; rott64_video_r59_gamma = gamma;
+    display_init(rott64_video_r59_resolution_struct(), bit, buffers, gamma, rott64_video_r59_filters());
+    rott64_video_r59_pending_reinit = 0;
+}
+static void rott64_video_r59_apply_pending(void)
+{
+    if (!rott64_video_r59_pending_reinit) return;
+    display_close();
+    rott64_video_r59_display_init(rott64_video_r59_bitdepth, rott64_video_r59_buffers, rott64_video_r59_gamma);
+}
+const char *rott64_video_r59_resolution_label(void) { return rott64_video_r59_resolution ? "640 EXP" : "320"; }
+const char *rott64_video_r59_aspect_label(void) { return rott64_video_r59_aspect ? "ORIGINAL" : "4:3"; }
+const char *rott64_video_r59_filter_label(void) { return rott64_video_r59_filter ? "SMOOTH" : "SHARP"; }
+int rott64_video_r59_screen_percent(void) { return rott64_video_r59_screen_pct; }
+void rott64_video_r59_cycle_resolution(void) { rott64_video_r59_resolution ^= 1; rott64_video_r59_pending_reinit = 1; }
+void rott64_video_r59_cycle_aspect(void) { rott64_video_r59_aspect ^= 1; rott64_video_r59_pending_reinit = 1; }
+void rott64_video_r59_cycle_filter(void) { rott64_video_r59_filter ^= 1; rott64_video_r59_pending_reinit = 1; }
+void rott64_video_r59_adjust_screen(int delta) { rott64_video_r59_screen_pct = rott64_video_r59_clamp_pct(rott64_video_r59_screen_pct + delta); rott64_video_r59_pending_reinit = 1; }
+#endif
+/* ROTT64_STOCK_VIDEO_OPTIONS_BACKEND_R59_END */
+
 static void boot_display_open(void)
 {
     if (boot_display_ready) return;
-    display_init(RESOLUTION_320x240, DEPTH_16_BPP, 2, GAMMA_NONE, FILTERS_RESAMPLE);
+    rott64_video_r59_display_init(DEPTH_16_BPP, 2, GAMMA_NONE);
     graphics_set_default_font();
     boot_display_ready = true;
 }
@@ -26,6 +77,7 @@ static void boot_display_show(const char *stage)
 {
     surface_t *surface;
     boot_display_open();
+    rott64_video_r59_apply_pending();
     surface = display_get();
     graphics_fill_screen(surface, graphics_make_color(0, 0, 32, 255));
     graphics_set_color(

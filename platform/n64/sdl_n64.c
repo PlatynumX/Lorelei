@@ -159,12 +159,12 @@ static key_binding_t bindings[KEY_BINDING_COUNT] = {
     {SDL_SCANCODE_RETURN, false},      /* confirm / swap */
     {SDL_SCANCODE_LSHIFT, false},      /* run */
     {SDL_SCANCODE_ESCAPE, false},      /* back / pause */
-    {SDL_SCANCODE_TAB, false},         /* drop */
+    {SDL_SCANCODE_DELETE, false},      /* drop */
     {SDL_SCANCODE_COMMA, false},       /* strafe left */
     {SDL_SCANCODE_PERIOD, false},      /* strafe right */
     {SDL_SCANCODE_SPACE, false},       /* use */
     {SDL_SCANCODE_BACKSPACE, false},   /* volte-face */
-    {SDL_SCANCODE_M, false},           /* map */
+    {SDL_SCANCODE_TAB, false},         /* map */
     {SDL_SCANCODE_CAPSLOCK, false},    /* autorun */
 };
 
@@ -236,11 +236,11 @@ static void poll_n64_controller(void)
     if (!menu_mode) {
         if (look_up_held != buttons.d_up) {
             look_up_held = buttons.d_up;
-            emit_key(SDL_SCANCODE_I, look_up_held);
+            emit_key(SDL_SCANCODE_PAGEUP, look_up_held);
         }
         if (look_down_held != buttons.d_down) {
             look_down_held = buttons.d_down;
-            emit_key(SDL_SCANCODE_K, look_down_held);
+            emit_key(SDL_SCANCODE_PAGEDOWN, look_down_held);
         }
 
         /* ROTT64_R53_ANALOG_NOT_MOUSE
