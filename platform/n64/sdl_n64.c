@@ -158,12 +158,12 @@ static key_binding_t bindings[KEY_BINDING_COUNT] = {
     {SDL_SCANCODE_LCTRL, false},       /* fire */
     {SDL_SCANCODE_RETURN, false},      /* confirm / swap */
     {SDL_SCANCODE_LSHIFT, false},      /* run */
-    {SDL_SCANCODE_ESCAPE, false},      /* back / pause */
+    {SDL_SCANCODE_ESCAPE, false},      /* back / Start = Escape */
     {SDL_SCANCODE_DELETE, false},      /* drop */
     {SDL_SCANCODE_COMMA, false},       /* strafe left */
     {SDL_SCANCODE_PERIOD, false},      /* strafe right */
     {SDL_SCANCODE_SPACE, false},       /* use */
-    {SDL_SCANCODE_BACKSPACE, false},   /* volte-face */
+    {SDL_SCANCODE_BACKSPACE, false},   /* 180 turn */
     {SDL_SCANCODE_TAB, false},         /* map */
     {SDL_SCANCODE_CAPSLOCK, false},    /* autorun */
 };
@@ -218,20 +218,18 @@ static void poll_n64_controller(void)
     update_binding(7, (menu_mode && (buttons.b || buttons.start)) ||
                        (!menu_mode && buttons.start));
 
-    /* Gameplay:
-       analog mouse, Z fire, A use, B run,
-       C-left/right strafe, C-up swap, C-down drop,
-       D-up/down look, D-left intentionally unassigned, D-right autorun,
-       L map, R volte-face. */
-    update_binding(4, !menu_mode && buttons.z);
-    update_binding(6, !menu_mode && buttons.b);
-    update_binding(8, !menu_mode && buttons.c_down);
-    update_binding(9, !menu_mode && buttons.c_left);
-    update_binding(10, !menu_mode && buttons.c_right);
-    update_binding(11, !menu_mode && buttons.a);
-    update_binding(12, !menu_mode && buttons.r);
-    update_binding(13, !menu_mode && buttons.l);
-    update_binding(14, !menu_mode && buttons.d_right);
+    /* Gameplay keyboard fallback for stock engine paths.
+       The generated r57 patch also writes these same gameplay buttons directly
+       into buttonpoll[], so they do not depend on a PC keybinding menu. */
+    update_binding(4,  !menu_mode && buttons.z);        /* Z fire */
+    update_binding(6,  !menu_mode && buttons.b);        /* B run */
+    update_binding(8,  !menu_mode && buttons.c_down);   /* C-down drop */
+    update_binding(9,  !menu_mode && buttons.c_left);   /* C-left strafe left */
+    update_binding(10, !menu_mode && buttons.c_right);  /* C-right strafe right */
+    update_binding(11, !menu_mode && buttons.a);        /* A use/open */
+    update_binding(12, !menu_mode && buttons.r);        /* R 180 turn */
+    update_binding(13, !menu_mode && buttons.l);        /* L map */
+    update_binding(14, !menu_mode && buttons.d_right);  /* D-right autorun */
 
     if (!menu_mode) {
         if (look_up_held != buttons.d_up) {
@@ -243,20 +241,19 @@ static void poll_n64_controller(void)
             emit_key(SDL_SCANCODE_PAGEDOWN, look_down_held);
         }
 
-        /* ROTT64_R53_ANALOG_NOT_MOUSE
-         * Gameplay analog is consumed by rott64_n64_gamepad_axes() in generated rt_playr.c.
-         * Do not also inject stick motion as SDL relative mouse deltas.
-         */
+        /* Analog stick is consumed by rott64_n64_gamepad_axes() in generated rt_playr.c.
+           Do not also inject stick motion as SDL relative mouse deltas. */
         (void)input;
         relative_x = 0;
-        relative_y = 0;} else {
+        relative_y = 0;
+    } else {
         if (look_up_held) {
             look_up_held = false;
-            emit_key(SDL_SCANCODE_I, false);
+            emit_key(SDL_SCANCODE_PAGEUP, false);
         }
         if (look_down_held) {
             look_down_held = false;
-            emit_key(SDL_SCANCODE_K, false);
+            emit_key(SDL_SCANCODE_PAGEDOWN, false);
         }
         relative_x = 0;
         relative_y = 0;

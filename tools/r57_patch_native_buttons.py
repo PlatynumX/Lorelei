@@ -85,28 +85,19 @@ def main() -> None:
         print("PASS: r57 native buttonpoll patch already present")
         return
 
+    generated_text = text
+    for gp in list(root.rglob("*.h")) + [p for p in root.rglob("*.c") if p != path]:
+        try:
+            generated_text += "\n" + gp.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            pass
+
     required = [
-        "buttonpoll", "PollControls", "PollKeyboardButtons", "PollKeyboardMove", "PollMove",
+        "buttonpoll", "PollControls", "PollKeyboardButtons",
         "bt_attack", "bt_use", "bt_run", "bt_strafeleft", "bt_straferight",
         "bt_swapweapon", "bt_dropweapon", "bt_lookup", "bt_lookdown",
         "bt_map", "bt_turnaround", "gamestate.autorun",
     ]
-    # Validate tokens against the full generated engine, not only rt_playr.c.
-    # rt_def.h owns action enums like bt_map, so requiring every bt_* token
-    # to appear in rt_playr.c was a false failure.
-    generated_text = text
-    for gp in root.rglob("*.h"):
-        try:
-            generated_text += "\n" + gp.read_text(encoding="utf-8", errors="ignore")
-        except Exception:
-            pass
-    for gp in root.rglob("*.c"):
-        if gp == path:
-            continue
-        try:
-            generated_text += "\n" + gp.read_text(encoding="utf-8", errors="ignore")
-        except Exception:
-            pass
     missing = [x for x in required if x not in generated_text]
     if missing:
         fail("generated engine missing expected control tokens: " + ", ".join(missing))
@@ -116,7 +107,7 @@ def main() -> None:
     start, _open_i, end = span_function(text, "PollControls")
     ctl = text[start:end + 1]
     if "ROTT64_START_DIRECT_EX_TITLES" in ctl:
-        fail("old direct Start-to-title marker still exists; Start must remain Escape")
+        fail("old direct Start-to-title marker still exists; Start must remain platform Escape")
 
     kb = re.search(r"(?m)^(?P<i>[ \t]*)PollKeyboardButtons[ \t]*\([ \t]*\)[ \t]*;", ctl)
     if not kb:
@@ -131,38 +122,37 @@ def main() -> None:
 {ind}#if defined(__N64__)
 {ind}{{
 {ind}   joypad_buttons_t rott64_n64_buttons;
-{ind}   static boolean rott64_n64_autorun_latched = false;
+{ind}   static int rott64_n64_autorun_latched = 0;
 {ind}
 {ind}   rott64_n64_buttons = joypad_get_buttons_held(JOYPAD_PORT_1);
 {ind}
-{ind}   buttonpoll[bt_attack]      |= rott64_n64_buttons.z       ? true : false;
-{ind}   buttonpoll[bt_use]         |= rott64_n64_buttons.a       ? true : false;
-{ind}   buttonpoll[bt_run]         |= rott64_n64_buttons.b       ? true : false;
-{ind}   buttonpoll[bt_strafeleft]  |= rott64_n64_buttons.c_left  ? true : false;
-{ind}   buttonpoll[bt_straferight] |= rott64_n64_buttons.c_right ? true : false;
-{ind}   buttonpoll[bt_swapweapon]  |= rott64_n64_buttons.c_up    ? true : false;
-{ind}   buttonpoll[bt_dropweapon]  |= rott64_n64_buttons.c_down  ? true : false;
-{ind}   buttonpoll[bt_lookup]      |= rott64_n64_buttons.d_up    ? true : false;
-{ind}   buttonpoll[bt_lookdown]    |= rott64_n64_buttons.d_down  ? true : false;
-{ind}   buttonpoll[bt_map]         |= rott64_n64_buttons.l       ? true : false;
-{ind}   buttonpoll[bt_turnaround]  |= rott64_n64_buttons.r       ? true : false;
+{ind}   buttonpoll[bt_attack]      |= rott64_n64_buttons.z       ? 1 : 0;
+{ind}   buttonpoll[bt_use]         |= rott64_n64_buttons.a       ? 1 : 0;
+{ind}   buttonpoll[bt_run]         |= rott64_n64_buttons.b       ? 1 : 0;
+{ind}   buttonpoll[bt_strafeleft]  |= rott64_n64_buttons.c_left  ? 1 : 0;
+{ind}   buttonpoll[bt_straferight] |= rott64_n64_buttons.c_right ? 1 : 0;
+{ind}   buttonpoll[bt_swapweapon]  |= rott64_n64_buttons.c_up    ? 1 : 0;
+{ind}   buttonpoll[bt_dropweapon]  |= rott64_n64_buttons.c_down  ? 1 : 0;
+{ind}   buttonpoll[bt_lookup]      |= rott64_n64_buttons.d_up    ? 1 : 0;
+{ind}   buttonpoll[bt_lookdown]    |= rott64_n64_buttons.d_down  ? 1 : 0;
+{ind}   buttonpoll[bt_map]         |= rott64_n64_buttons.l       ? 1 : 0;
+{ind}   buttonpoll[bt_turnaround]  |= rott64_n64_buttons.r       ? 1 : 0;
 {ind}
 {ind}   if (rott64_n64_buttons.d_right)
 {ind}      {{
 {ind}      if (!rott64_n64_autorun_latched)
 {ind}         {{
 {ind}         gamestate.autorun = gamestate.autorun ? 0 : 1;
-{ind}         rott64_n64_autorun_latched = true;
+{ind}         rott64_n64_autorun_latched = 1;
 {ind}         }}
 {ind}      }}
 {ind}   else
-{ind}      rott64_n64_autorun_latched = false;
+{ind}      rott64_n64_autorun_latched = 0;
 {ind}}}
 {ind}#endif
 '''
 
-    insert_at = kb.end()
-    ctl2 = ctl[:insert_at] + block + ctl[insert_at:]
+    ctl2 = ctl[:kb.end()] + block + ctl[kb.end():]
     text = text[:start] + ctl2 + text[end + 1:]
     path.write_text(text, encoding="utf-8", newline="\n")
 

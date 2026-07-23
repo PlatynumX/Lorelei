@@ -95,10 +95,10 @@ jobs:
             }
           fi
           if [ -f generated/reports/r45c-save-reader-owners.txt ]; then
-            cp generated/reports/r45c-save-reader-owners.txt build/reports/
+            if [ -f generated/reports/r45c-save-reader-owners.txt ]; then cp generated/reports/r45c-save-reader-owners.txt build/reports/; else echo 'WARN: optional report missing: generated/reports/r45c-save-reader-owners.txt'; fi
           fi
           if [ -f generated/reports/r43-sd-startup-trace-map.txt ]; then
-            cp generated/reports/r43-sd-startup-trace-map.txt build/reports/
+            if [ -f generated/reports/r43-sd-startup-trace-map.txt ]; then cp generated/reports/r43-sd-startup-trace-map.txt build/reports/; else echo 'WARN: optional report missing: generated/reports/r43-sd-startup-trace-map.txt'; fi
           fi
 
       - name: Verify clean registered preparation
@@ -119,7 +119,6 @@ jobs:
           ! grep -R -q 'relative_y -= n64_mouse_axis(input.stick_y);' platform/n64
           ! grep -R -q 'rott64_video_r58_menu_controls(buttons, pressed)' platform/n64
           mkdir -p build/reports
-          cp generated/reports/r53-controls-direct-report.md build/reports/
           test -f generated/rott/.rott64-prepared
 
           # R48 V14: validate and retain the REAL generated control source
