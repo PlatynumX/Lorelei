@@ -46,7 +46,12 @@ static resolution_t rott64_video_r59_resolution_struct(void)
     if (r.height < 1) r.height = 1;
     return r;
 }
-static filter_options_t rott64_video_r59_filters(void) { return rott64_video_r59_filter ? FILTERS_RESAMPLE : FILTERS_DISABLED; }
+static filter_options_t rott64_video_r59_filters(void)
+{
+    return rott64_video_r59_filter
+        ? FILTERS_RESAMPLE_ANTIALIAS
+        : FILTERS_RESAMPLE;
+}
 static void rott64_video_r59_display_init(bitdepth_t bit, uint32_t buffers, gamma_t gamma)
 {
     rott64_video_r59_bitdepth = bit; rott64_video_r59_buffers = buffers; rott64_video_r59_gamma = gamma;
