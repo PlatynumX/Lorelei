@@ -137,19 +137,19 @@ void CP_Rott64VideoOptions(void);
     tables = f'''
 /* {MARK}_TABLES_BEGIN */
 CP_MenuNames Rott64VideoNames[] =
-   {{{{
-   {{{{ "RESOLUTION" }}}},
-   {{{{ "ASPECT RATIO" }}}},
-   {{{{ "FILTERING" }}}},
-   {{{{ "SCREEN SIZE" }}}}
-   }}}};
+   {{
+   "RESOLUTION",
+   "ASPECT RATIO",
+   "FILTERING",
+   "SCREEN SIZE"
+   }};
 CP_iteminfo Rott64VideoItems = {{ 20, MENU_Y, 4, 0, 43, Rott64VideoNames, mn_largefont }};
 CP_itemtype Rott64VideoMenu[] =
    {{
-   {{2, "\\0", 'R', NULL}},
-   {{1, "\\0", 'A', NULL}},
-   {{1, "\\0", 'F', NULL}},
-   {{1, "\\0", 'S', NULL}}
+   {{2, "\\0", 'R', {{ NULL }}}},
+   {{1, "\\0", 'A', {{ NULL }}}},
+   {{1, "\\0", 'F', {{ NULL }}}},
+   {{1, "\\0", 'S', {{ NULL }}}}
    }};
 /* {MARK}_TABLES_END */
 '''

@@ -28,7 +28,12 @@ static int rott64_video_r59_pending_reinit = 0;
 static bitdepth_t rott64_video_r59_bitdepth = DEPTH_16_BPP;
 static uint32_t rott64_video_r59_buffers = 2;
 static gamma_t rott64_video_r59_gamma = GAMMA_NONE;
-static int rott64_video_r59_clamp_pct(int v) { if (v < 80) return 80; if (v > 100) return 100; return v; }
+static int rott64_video_r59_clamp_pct(int v)
+{
+    if (v < 80) return 100;
+    if (v > 100) return 80;
+    return v;
+}
 static resolution_t rott64_video_r59_resolution_struct(void)
 {
     resolution_t r;
