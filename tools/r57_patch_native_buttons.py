@@ -128,7 +128,7 @@ def main() -> None:
 {ind}
 {ind}   buttonpoll[bt_attack]      |= rott64_n64_buttons.z       ? 1 : 0;
 {ind}   buttonpoll[bt_use]         |= rott64_n64_buttons.a       ? 1 : 0;
-{ind}   buttonpoll[bt_run]         |= rott64_n64_buttons.b       ? 1 : 0;
+{ind}   buttonpoll[bt_swapweapon]  |= rott64_n64_buttons.b       ? 1 : 0;
 {ind}   buttonpoll[bt_strafeleft]  |= rott64_n64_buttons.c_left  ? 1 : 0;
 {ind}   buttonpoll[bt_straferight] |= rott64_n64_buttons.c_right ? 1 : 0;
 {ind}   buttonpoll[bt_swapweapon]  |= rott64_n64_buttons.c_up    ? 1 : 0;
@@ -161,7 +161,7 @@ def main() -> None:
     (report_dir / "r57-native-buttons-report.md").write_text(
         "# r57 native gameplay buttons\n\n"
         "- Direct buttonpoll mappings installed in PollControls after PollKeyboardButtons().\n"
-        "- Z=fire, A=use, B=run, C-left/right=strafe, C-up=swap, C-down=drop.\n"
+        "- Z=fire, A=use, B=swap weapon, C-left/right=strafe, C-up=swap, C-down=drop.\n"
         "- D-up/down=look, D-right=autorun toggle, L=map, R=180 turn.\n"
         "- Start is not handled here; it remains platform SDL Escape.\n",
         encoding="utf-8",

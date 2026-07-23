@@ -103,14 +103,10 @@ def patch_rt_menu(path: Path) -> None:
     decl_block = f'''
     /* {MARK}_DECLS_BEGIN */
     #if defined(__N64__)
-    extern const char *rott64_video_r59_resolution_label(void);
     extern const char *rott64_video_r59_filter_label(void);
-    extern void rott64_video_r59_cycle_resolution(void);
     extern void rott64_video_r59_cycle_filter(void);
     #else
-    static const char *rott64_video_r59_resolution_label(void) {{ return "320x240"; }}
     static const char *rott64_video_r59_filter_label(void) {{ return "SHARP"; }}
-    static void rott64_video_r59_cycle_resolution(void) {{ }}
     static void rott64_video_r59_cycle_filter(void) {{ }}
     #endif
     void CP_Rott64VideoOptions(void);
@@ -130,13 +126,11 @@ def patch_rt_menu(path: Path) -> None:
     /* {MARK}_TABLES_BEGIN */
     CP_MenuNames Rott64VideoNames[] =
        {{
-       "RESOLUTION",
        "FILTERING"
        }};
-    CP_iteminfo Rott64VideoItems = {{ 20, MENU_Y, 2, 0, 43, Rott64VideoNames, mn_largefont }};
+    CP_iteminfo Rott64VideoItems = {{ 20, MENU_Y, 1, 0, 43, Rott64VideoNames, mn_largefont }};
     CP_itemtype Rott64VideoMenu[] =
        {{
-       {{2, "\\0", 'R', {{ NULL }}}},
        {{1, "\\0", 'F', {{ NULL }}}}
        }};
     /* {MARK}_TABLES_END */
@@ -149,13 +143,12 @@ def patch_rt_menu(path: Path) -> None:
     funcs = f'''
     //****************************************************************************
     // CP_Rott64VideoOptions () -- {MARK}
-    // VI-backend settings only. Taradino keeps its native SCREEN SIZE control.
+    // N64 output is fixed 320x240 4:3; only VI filtering is user-selectable.
+    // Taradino keeps its native SCREEN SIZE control in User Options.
     //****************************************************************************
     static void Rott64VideoUpdateNames(void)
     {{
        snprintf(Rott64VideoNames[0], sizeof(Rott64VideoNames[0]),
-          "RESOLUTION: %s", rott64_video_r59_resolution_label());
-       snprintf(Rott64VideoNames[1], sizeof(Rott64VideoNames[1]),
           "FILTER: %s", rott64_video_r59_filter_label());
     }}
 
@@ -182,10 +175,6 @@ def patch_rt_menu(path: Path) -> None:
           switch (which)
           {{
              case 0:
-                rott64_video_r59_cycle_resolution();
-                DrawRott64VideoOptionsMenu();
-                break;
-             case 1:
                 rott64_video_r59_cycle_filter();
                 DrawRott64VideoOptionsMenu();
                 break;

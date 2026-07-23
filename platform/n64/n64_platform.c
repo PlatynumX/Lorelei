@@ -5,6 +5,7 @@
 #include <libdragon.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 #endif
 
 static bool initialized;
@@ -20,17 +21,50 @@ static bool rumble_output_active;
  * Software-renderer video backend exposed through stock User Options menu.
  */
 #if defined(__N64__)
-static int rott64_video_r59_resolution = 0;
 static int rott64_video_r59_filter = 0;
 static int rott64_video_r59_pending_reinit = 0;
 static bitdepth_t rott64_video_r59_bitdepth = DEPTH_16_BPP;
 static uint32_t rott64_video_r59_buffers = 2;
 static gamma_t rott64_video_r59_gamma = GAMMA_NONE;
+
+/* ROTT64_R83_STRETCH_320X200_TO_320X240
+ *
+ * Taradino/ROTT renders its classic 320x200 software image. The N64 output is
+ * the standard 320x240 progressive 4:3 mode. Expand those 200 converted rows
+ * over all 240 output rows immediately before display_show().
+ *
+ * Destination rows are processed bottom-to-top. source_y is always <= dest_y,
+ * so every original source row is read before it can be overwritten.
+ */
+static void rott64_r83_present_4x3(surface_t *fb)
+{
+    unsigned char *base;
+    int y;
+
+    if (fb == NULL || fb->buffer == NULL)
+        return;
+    if (fb->width != 320 || fb->height != 240 || fb->stride == 0)
+        return;
+
+    base = (unsigned char *)fb->buffer;
+
+    for (y = 239; y >= 0; --y)
+    {
+        const int source_y = (y * 200) / 240;
+        if (source_y == y)
+            continue;
+
+        memmove(base + ((size_t)y * fb->stride),
+                base + ((size_t)source_y * fb->stride),
+                fb->stride);
+    }
+}
+
 static resolution_t rott64_video_r59_resolution_struct(void)
 {
-    return rott64_video_r59_resolution
-        ? RESOLUTION_640x480
-        : RESOLUTION_320x240;
+    /* R83: fixed safe N64 output. ROTT's 320x200 image is stretched at
+     * presentation time to this standard 320x240 4:3 framebuffer. */
+    return RESOLUTION_320x240;
 }
 static filter_options_t rott64_video_r59_filters(void)
 {
@@ -50,12 +84,7 @@ static void rott64_video_r59_apply_pending(void)
     display_close();
     rott64_video_r59_display_init(rott64_video_r59_bitdepth, rott64_video_r59_buffers, rott64_video_r59_gamma);
 }
-const char *rott64_video_r59_resolution_label(void)
-{
-    return rott64_video_r59_resolution ? "640x480" : "320x240";
-}
 const char *rott64_video_r59_filter_label(void) { return rott64_video_r59_filter ? "SMOOTH" : "SHARP"; }
-void rott64_video_r59_cycle_resolution(void) { rott64_video_r59_resolution ^= 1; rott64_video_r59_pending_reinit = 1; }
 void rott64_video_r59_cycle_filter(void) { rott64_video_r59_filter ^= 1; rott64_video_r59_pending_reinit = 1; }
 #endif
 /* ROTT64_STOCK_VIDEO_OPTIONS_BACKEND_R59_END */
@@ -81,6 +110,7 @@ static void boot_display_show(const char *stage)
     );
     graphics_draw_text(surface, 16, 24, "ROTT64 DARK WAR");
     graphics_draw_text(surface, 16, 64, stage ? stage : "Starting...");
+    rott64_r83_present_4x3(surface);
     display_show(surface);
 }
 
