@@ -100,30 +100,22 @@ def patch_rt_menu(path: Path) -> None:
         if required not in text:
             fail("rt_menu.c does not contain stock User Options menu structure: " + required)
 
-    decl_block = f"""
-/* {MARK}_DECLS_BEGIN */
-#if defined(__N64__)
-extern const char *rott64_video_r59_resolution_label(void);
-extern const char *rott64_video_r59_aspect_label(void);
-extern const char *rott64_video_r59_filter_label(void);
-extern int rott64_video_r59_screen_percent(void);
-extern void rott64_video_r59_cycle_resolution(void);
-extern void rott64_video_r59_cycle_aspect(void);
-extern void rott64_video_r59_cycle_filter(void);
-extern void rott64_video_r59_adjust_screen(int delta);
-#else
-static const char *rott64_video_r59_resolution_label(void) {{ return "320"; }}
-static const char *rott64_video_r59_aspect_label(void) {{ return "4:3"; }}
-static const char *rott64_video_r59_filter_label(void) {{ return "SHARP"; }}
-static int rott64_video_r59_screen_percent(void) {{ return 95; }}
-static void rott64_video_r59_cycle_resolution(void) {{ }}
-static void rott64_video_r59_cycle_aspect(void) {{ }}
-static void rott64_video_r59_cycle_filter(void) {{ }}
-static void rott64_video_r59_adjust_screen(int delta) {{ (void)delta; }}
-#endif
-void CP_Rott64VideoOptions(void);
-/* {MARK}_DECLS_END */
-"""
+    decl_block = f'''
+    /* {MARK}_DECLS_BEGIN */
+    #if defined(__N64__)
+    extern const char *rott64_video_r59_resolution_label(void);
+    extern const char *rott64_video_r59_filter_label(void);
+    extern void rott64_video_r59_cycle_resolution(void);
+    extern void rott64_video_r59_cycle_filter(void);
+    #else
+    static const char *rott64_video_r59_resolution_label(void) {{ return "320x240"; }}
+    static const char *rott64_video_r59_filter_label(void) {{ return "SHARP"; }}
+    static void rott64_video_r59_cycle_resolution(void) {{ }}
+    static void rott64_video_r59_cycle_filter(void) {{ }}
+    #endif
+    void CP_Rott64VideoOptions(void);
+    /* {MARK}_DECLS_END */
+    '''
     pos = text.find("CP_iteminfo OptionsItems")
     if pos < 0:
         fail("could not find OptionsItems declaration anchor")
@@ -135,97 +127,75 @@ void CP_Rott64VideoOptions(void);
     text = patch_options_toggle_loop(text)
 
     tables = f'''
-/* {MARK}_TABLES_BEGIN */
-CP_MenuNames Rott64VideoNames[] =
-   {{
-   "RESOLUTION",
-   "ASPECT RATIO",
-   "FILTERING",
-   "SCREEN SIZE"
-   }};
-CP_iteminfo Rott64VideoItems = {{ 20, MENU_Y, 4, 0, 43, Rott64VideoNames, mn_largefont }};
-CP_itemtype Rott64VideoMenu[] =
-   {{
-   {{2, "\\0", 'R', {{ NULL }}}},
-   {{1, "\\0", 'A', {{ NULL }}}},
-   {{1, "\\0", 'F', {{ NULL }}}},
-   {{1, "\\0", 'S', {{ NULL }}}}
-   }};
-/* {MARK}_TABLES_END */
-'''
+    /* {MARK}_TABLES_BEGIN */
+    CP_MenuNames Rott64VideoNames[] =
+       {{
+       "RESOLUTION",
+       "FILTERING"
+       }};
+    CP_iteminfo Rott64VideoItems = {{ 20, MENU_Y, 2, 0, 43, Rott64VideoNames, mn_largefont }};
+    CP_itemtype Rott64VideoMenu[] =
+       {{
+       {{2, "\\0", 'R', {{ NULL }}}},
+       {{1, "\\0", 'F', {{ NULL }}}}
+       }};
+    /* {MARK}_TABLES_END */
+    '''
     m = find_array(text, "CP_itemtype", "OptionsMenu")
     if not m:
         fail("could not locate OptionsMenu[] after insertion")
     text = text[:m.end()] + tables + text[m.end():]
 
     funcs = f'''
-//****************************************************************************
-//
-// CP_Rott64VideoOptions () -- {MARK}
-//
-// Software-renderer video options live under stock User Options.
-//
-//****************************************************************************
-static void Rott64VideoUpdateNames(void)
-{{
-   snprintf(Rott64VideoNames[0], sizeof(Rott64VideoNames[0]),
-      "RESOLUTION: %s", rott64_video_r59_resolution_label());
-   snprintf(Rott64VideoNames[1], sizeof(Rott64VideoNames[1]),
-      "ASPECT: %s", rott64_video_r59_aspect_label());
-   snprintf(Rott64VideoNames[2], sizeof(Rott64VideoNames[2]),
-      "FILTER: %s", rott64_video_r59_filter_label());
-   snprintf(Rott64VideoNames[3], sizeof(Rott64VideoNames[3]),
-      "SCREEN SIZE: %d%%", rott64_video_r59_screen_percent());
-}}
+    //****************************************************************************
+    // CP_Rott64VideoOptions () -- {MARK}
+    // VI-backend settings only. Taradino keeps its native SCREEN SIZE control.
+    //****************************************************************************
+    static void Rott64VideoUpdateNames(void)
+    {{
+       snprintf(Rott64VideoNames[0], sizeof(Rott64VideoNames[0]),
+          "RESOLUTION: %s", rott64_video_r59_resolution_label());
+       snprintf(Rott64VideoNames[1], sizeof(Rott64VideoNames[1]),
+          "FILTER: %s", rott64_video_r59_filter_label());
+    }}
 
-void DrawRott64VideoOptionsMenu (void)
-{{
-   MenuNum = 1;
-   SetAlternateMenuBuf();
-   ClearMenuBuf();
-   SetMenuTitle ("Video Options");
-   Rott64VideoUpdateNames();
-   MN_GetCursorLocation( &Rott64VideoItems, &Rott64VideoMenu[ 0 ] );
-   DrawMenu (&Rott64VideoItems, &Rott64VideoMenu[0]);
-   DisplayInfo (0);
-   FlipMenuBuf();
-}}
+    void DrawRott64VideoOptionsMenu (void)
+    {{
+       MenuNum = 1;
+       SetAlternateMenuBuf();
+       ClearMenuBuf();
+       SetMenuTitle ("Video Options");
+       Rott64VideoUpdateNames();
+       MN_GetCursorLocation( &Rott64VideoItems, &Rott64VideoMenu[ 0 ] );
+       DrawMenu (&Rott64VideoItems, &Rott64VideoMenu[0]);
+       DisplayInfo (0);
+       FlipMenuBuf();
+    }}
 
-void CP_Rott64VideoOptions (void)
-{{
-   int which;
-
-   DrawRott64VideoOptionsMenu();
-   do
-   {{
-      which = HandleMenu (&Rott64VideoItems, &Rott64VideoMenu[0], NULL);
-      switch (which)
-      {{
-         case 0:
-            rott64_video_r59_cycle_resolution();
-            DrawRott64VideoOptionsMenu();
-            break;
-         case 1:
-            rott64_video_r59_cycle_aspect();
-            DrawRott64VideoOptionsMenu();
-            break;
-         case 2:
-            rott64_video_r59_cycle_filter();
-            DrawRott64VideoOptionsMenu();
-            break;
-         case 3:
-            rott64_video_r59_adjust_screen(5);
-            DrawRott64VideoOptionsMenu();
-            break;
-      }}
-   }} while (which >= 0);
-
-   handlewhich = OptionsItems.amount - 1;
-   DrawOptionsMenu();
-}}
-
-/* {MARK}_FUNCS_END */
-'''
+    void CP_Rott64VideoOptions (void)
+    {{
+       int which;
+       DrawRott64VideoOptionsMenu();
+       do
+       {{
+          which = HandleMenu (&Rott64VideoItems, &Rott64VideoMenu[0], NULL);
+          switch (which)
+          {{
+             case 0:
+                rott64_video_r59_cycle_resolution();
+                DrawRott64VideoOptionsMenu();
+                break;
+             case 1:
+                rott64_video_r59_cycle_filter();
+                DrawRott64VideoOptionsMenu();
+                break;
+          }}
+       }} while (which >= 0);
+       handlewhich = OptionsItems.amount - 1;
+       DrawOptionsMenu();
+    }}
+    /* {MARK}_FUNCS_END */
+    '''
     pos = text.find("//  DrawOptionsMenu")
     if pos < 0:
         pos = text.find("void DrawOptionsMenu")

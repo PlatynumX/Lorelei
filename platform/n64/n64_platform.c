@@ -21,30 +21,16 @@ static bool rumble_output_active;
  */
 #if defined(__N64__)
 static int rott64_video_r59_resolution = 0;
-static int rott64_video_r59_aspect = 0;
 static int rott64_video_r59_filter = 0;
-static int rott64_video_r59_screen_pct = 95;
 static int rott64_video_r59_pending_reinit = 0;
 static bitdepth_t rott64_video_r59_bitdepth = DEPTH_16_BPP;
 static uint32_t rott64_video_r59_buffers = 2;
 static gamma_t rott64_video_r59_gamma = GAMMA_NONE;
-static int rott64_video_r59_clamp_pct(int v)
-{
-    if (v < 80) return 100;
-    if (v > 100) return 80;
-    return v;
-}
 static resolution_t rott64_video_r59_resolution_struct(void)
 {
-    resolution_t r;
-    int base_w = rott64_video_r59_resolution ? 640 : 320;
-    int base_h = rott64_video_r59_aspect ? (rott64_video_r59_resolution ? 400 : 200) : (rott64_video_r59_resolution ? 480 : 240);
-    r.width = (base_w * rott64_video_r59_screen_pct) / 100;
-    r.height = (base_h * rott64_video_r59_screen_pct) / 100;
-    r.interlaced = rott64_video_r59_resolution ? true : false;
-    if (r.width < 2) r.width = 2;
-    if (r.height < 1) r.height = 1;
-    return r;
+    return rott64_video_r59_resolution
+        ? RESOLUTION_640x480
+        : RESOLUTION_320x240;
 }
 static filter_options_t rott64_video_r59_filters(void)
 {
@@ -64,14 +50,13 @@ static void rott64_video_r59_apply_pending(void)
     display_close();
     rott64_video_r59_display_init(rott64_video_r59_bitdepth, rott64_video_r59_buffers, rott64_video_r59_gamma);
 }
-const char *rott64_video_r59_resolution_label(void) { return rott64_video_r59_resolution ? "640 EXP" : "320"; }
-const char *rott64_video_r59_aspect_label(void) { return rott64_video_r59_aspect ? "ORIGINAL" : "4:3"; }
+const char *rott64_video_r59_resolution_label(void)
+{
+    return rott64_video_r59_resolution ? "640x480" : "320x240";
+}
 const char *rott64_video_r59_filter_label(void) { return rott64_video_r59_filter ? "SMOOTH" : "SHARP"; }
-int rott64_video_r59_screen_percent(void) { return rott64_video_r59_screen_pct; }
 void rott64_video_r59_cycle_resolution(void) { rott64_video_r59_resolution ^= 1; rott64_video_r59_pending_reinit = 1; }
-void rott64_video_r59_cycle_aspect(void) { rott64_video_r59_aspect ^= 1; rott64_video_r59_pending_reinit = 1; }
 void rott64_video_r59_cycle_filter(void) { rott64_video_r59_filter ^= 1; rott64_video_r59_pending_reinit = 1; }
-void rott64_video_r59_adjust_screen(int delta) { rott64_video_r59_screen_pct = rott64_video_r59_clamp_pct(rott64_video_r59_screen_pct + delta); rott64_video_r59_pending_reinit = 1; }
 #endif
 /* ROTT64_STOCK_VIDEO_OPTIONS_BACKEND_R59_END */
 
