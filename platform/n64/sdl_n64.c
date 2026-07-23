@@ -184,20 +184,18 @@ static void poll_n64_controller(void)
 {
     rott64_mixer_pump();
 #ifdef __N64__
-    joypad_inputs_t input;
     joypad_buttons_t buttons;
     joypad_buttons_t pressed;
     static uint64_t next_auto_fire_rumble_ms;
-    static bool look_up_held;
-    static bool look_down_held;
     const uint64_t now = n64_platform_ticks_ms();
     const bool menu_mode = (inmenu != 0) || (ingame == 0);
 
     n64_platform_poll();
-    input = joypad_get_inputs(JOYPAD_PORT_1);
     buttons = joypad_get_buttons_held(JOYPAD_PORT_1);
     pressed = joypad_get_buttons_pressed(JOYPAD_PORT_1);
 
+    /* Keep the existing firing rumble behavior. Gameplay action dispatch itself
+       is handled only by generated/rott/rt_playr.c via the r57 buttonpoll path. */
     if (!menu_mode) {
         if (pressed.z) {
             n64_platform_rumble_pulse(55u, 210u);
@@ -208,56 +206,21 @@ static void poll_n64_controller(void)
         }
     }
 
-    /* Menus: D-pad navigation, A/Z confirm, B/Start back. */
+    /* ROTT64_R85_MENU_INPUT_ONLY
+       SDL keyboard translation is now menu navigation plus gameplay Start/Escape
+       only. Do NOT inject gameplay A/B/Z/C/D/L/R here: r57 owns those actions. */
     update_binding(0, menu_mode && buttons.d_up);
     update_binding(1, menu_mode && buttons.d_down);
     update_binding(2, menu_mode && buttons.d_left);
     update_binding(3, menu_mode && buttons.d_right);
-    update_binding(5, (menu_mode && (buttons.a || buttons.z)) ||
-                       (!menu_mode && buttons.c_up));
+    update_binding(5, menu_mode && (buttons.a || buttons.z));
     update_binding(7, (menu_mode && (buttons.b || buttons.start)) ||
                        (!menu_mode && buttons.start));
 
-    /* Gameplay keyboard fallback for stock engine paths.
-       The generated r57 patch also writes these same gameplay buttons directly
-       into buttonpoll[], so they do not depend on a PC keybinding menu. */
-    update_binding(4,  !menu_mode && buttons.z);        /* Z fire */
-    update_binding(6,  !menu_mode && buttons.b);        /* B run */
-    update_binding(8,  !menu_mode && buttons.c_down);   /* C-down drop */
-    update_binding(9,  !menu_mode && buttons.c_left);   /* C-left strafe left */
-    update_binding(10, !menu_mode && buttons.c_right);  /* C-right strafe right */
-    update_binding(11, !menu_mode && buttons.a);        /* A use/open */
-    update_binding(12, !menu_mode && buttons.r);        /* R 180 turn */
-    update_binding(13, !menu_mode && buttons.l);        /* L map */
-    update_binding(14, !menu_mode && buttons.d_right);  /* D-right autorun */
-
-    if (!menu_mode) {
-        if (look_up_held != buttons.d_up) {
-            look_up_held = buttons.d_up;
-            emit_key(SDL_SCANCODE_PAGEUP, look_up_held);
-        }
-        if (look_down_held != buttons.d_down) {
-            look_down_held = buttons.d_down;
-            emit_key(SDL_SCANCODE_PAGEDOWN, look_down_held);
-        }
-
-        /* Analog stick is consumed by rott64_n64_gamepad_axes() in generated rt_playr.c.
-           Do not also inject stick motion as SDL relative mouse deltas. */
-        (void)input;
-        relative_x = 0;
-        relative_y = 0;
-    } else {
-        if (look_up_held) {
-            look_up_held = false;
-            emit_key(SDL_SCANCODE_PAGEUP, false);
-        }
-        if (look_down_held) {
-            look_down_held = false;
-            emit_key(SDL_SCANCODE_PAGEDOWN, false);
-        }
-        relative_x = 0;
-        relative_y = 0;
-    }
+    /* Analog movement is consumed by rott64_n64_gamepad_axes() in rt_playr.c.
+       Never inject the stick as a second SDL mouse path. */
+    relative_x = 0;
+    relative_y = 0;
 #else
     /* Host tests push events explicitly. */
 #endif

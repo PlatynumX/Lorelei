@@ -111,6 +111,7 @@ jobs:
           python3 tools/r49_patch_analog.py generated/rott
           python3 tools/r57_patch_native_buttons.py generated/rott
           python3 tools/r59_stock_video_menu.py generated/rott
+          grep -q 'ROTT64_R85_DETAIL_FILTER_MENU' generated/rott/rt_menu.c
           grep -q 'ROTT64_NATIVE_BUTTONPOLL_DIRECT_R57' generated/rott/rt_playr.c
           grep -q 'ROTT64_STOCK_VIDEO_OPTIONS_MENU_R59' generated/rott/rt_menu.c
           grep -R -q 'ROTT64_STOCK_VIDEO_OPTIONS_BACKEND_R59' platform/n64
@@ -225,14 +226,23 @@ jobs:
           print(f"Final Dark War ROM: {len(data)} bytes")
           PY
 
+      - name: Package ROTT64 r85 ROM
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f rott64.z64 || { echo 'ERROR: successful build did not produce rott64.z64'; exit 1; }
+          cp -f rott64.z64 rott64-r85.z64
+          sha256sum rott64-r85.z64 > rott64-r85.z64.sha256
+          ls -lh rott64-r85.z64 rott64-r85.z64.sha256
       - name: Upload Dark War ROM
         if: always() && steps.n64_build.outputs.rom_built == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-darkwar-r45d-controls-savefix
+          name: rott64-r85-build
           path: |
-            rott64.z64
-            rott64.z64.sha256
+            rott64-r85.z64
+            rott64-r85.z64.sha256
           if-no-files-found: error
 
       - name: Upload diagnostics
