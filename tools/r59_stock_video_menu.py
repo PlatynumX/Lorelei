@@ -136,16 +136,12 @@ void CP_Rott64VideoOptions(void);
 
     tables = f'''
 /* {MARK}_TABLES_BEGIN */
-static char Rott64VideoResolutionName[64] = "RESOLUTION";
-static char Rott64VideoAspectName[64]     = "ASPECT RATIO";
-static char Rott64VideoFilterName[64]     = "FILTERING";
-static char Rott64VideoScreenName[64]     = "SCREEN SIZE";
 CP_MenuNames Rott64VideoNames[] =
    {{
-   Rott64VideoResolutionName,
-   Rott64VideoAspectName,
-   Rott64VideoFilterName,
-   Rott64VideoScreenName
+   "RESOLUTION",
+   "ASPECT RATIO",
+   "FILTERING",
+   "SCREEN SIZE"
    }};
 CP_iteminfo Rott64VideoItems = {{ 20, MENU_Y, 4, 0, 43, Rott64VideoNames, mn_largefont }};
 CP_itemtype Rott64VideoMenu[] =
@@ -172,13 +168,13 @@ CP_itemtype Rott64VideoMenu[] =
 //****************************************************************************
 static void Rott64VideoUpdateNames(void)
 {{
-   snprintf(Rott64VideoResolutionName, sizeof(Rott64VideoResolutionName),
+   snprintf(Rott64VideoNames[0], sizeof(Rott64VideoNames[0]),
       "RESOLUTION: %s", rott64_video_r59_resolution_label());
-   snprintf(Rott64VideoAspectName, sizeof(Rott64VideoAspectName),
+   snprintf(Rott64VideoNames[1], sizeof(Rott64VideoNames[1]),
       "ASPECT: %s", rott64_video_r59_aspect_label());
-   snprintf(Rott64VideoFilterName, sizeof(Rott64VideoFilterName),
+   snprintf(Rott64VideoNames[2], sizeof(Rott64VideoNames[2]),
       "FILTER: %s", rott64_video_r59_filter_label());
-   snprintf(Rott64VideoScreenName, sizeof(Rott64VideoScreenName),
+   snprintf(Rott64VideoNames[3], sizeof(Rott64VideoNames[3]),
       "SCREEN SIZE: %d%%", rott64_video_r59_screen_percent());
 }}
 
