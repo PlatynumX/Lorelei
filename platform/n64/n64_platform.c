@@ -46,6 +46,29 @@ static void rott64_r83_present_4x3(surface_t *fb)
     if (fb->width != 320 || fb->height != 240 || fb->stride == 0)
         return;
 
+#if defined(__N64__)
+    /* ROTT64_R87_PRESENT_BOUNDS */
+    {
+        const uint32_t mem = (uint32_t)get_memory_size();
+        const uint32_t phys = (uint32_t)PhysicalAddr(fb->buffer);
+        const uint32_t bytes = (uint32_t)fb->stride * (uint32_t)fb->height;
+        const uint32_t min_stride =
+            (uint32_t)fb->width * (uint32_t)display_get_bitdepth();
+
+        assertf(fb->stride >= min_stride,
+            "R87 BAD FB STRIDE stride=%u min=%lu w=%u h=%u bpp=%lu",
+            (unsigned int)fb->stride, (unsigned long)min_stride,
+            (unsigned int)fb->width, (unsigned int)fb->height,
+            (unsigned long)display_get_bitdepth());
+
+        assertf(phys < mem && bytes <= mem - phys,
+            "R87 FB OOB buf=%p phys=%08lx bytes=%lu mem=%lu stride=%u h=%u",
+            fb->buffer, (unsigned long)phys, (unsigned long)bytes,
+            (unsigned long)mem, (unsigned int)fb->stride,
+            (unsigned int)fb->height);
+    }
+#endif
+
     base = (unsigned char *)fb->buffer;
 
     for (y = 239; y >= 0; --y)
