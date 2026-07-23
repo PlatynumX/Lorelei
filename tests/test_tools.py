@@ -409,8 +409,14 @@ def test_r45_controller_contract() -> None:
     assert "extern unsigned char inmenu;" in sdl
     assert "extern unsigned char ingame;" in sdl
     assert "const bool menu_mode = (inmenu != 0) || (ingame == 0);" in sdl
-    assert "relative_x += n64_mouse_axis(input.stick_x);" in sdl
-    assert "relative_y -= n64_mouse_axis(input.stick_y);" in sdl
+    # r56 native-control contract: N64 stick must not be routed through SDL relative mouse deltas.
+    assert "joypad_get_inputs(JOYPAD_PORT_1)" in sdl
+    assert "input.stick_x" in sdl
+    assert "input.stick_y" in sdl
+    assert "relative_x += n64_mouse_axis(input.stick_x);" not in sdl
+    assert "relative_x -= n64_mouse_axis(input.stick_x);" not in sdl
+    assert "relative_y += n64_mouse_axis(input.stick_y);" not in sdl
+    assert "relative_y -= n64_mouse_axis(input.stick_y);" not in sdl
     assert "menu_mode && (buttons.a || buttons.z)" in sdl
     assert "menu_mode && (buttons.b || buttons.start)" in sdl
     assert "!menu_mode && buttons.c_left" in sdl
