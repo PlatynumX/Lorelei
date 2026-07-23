@@ -1,3 +1,4 @@
+# r53 verified controls trigger: 2026-07-23T00:26:19.999955+00:00
 # r50k trigger: 2026-07-22T23:45:43.078356+00:00
 # r50j report guard refresh: force fresh workflow push
 # r50h force software-controls workflow trigger: 2026-07-22T23:32:24Z
@@ -112,6 +113,9 @@ jobs:
           ! grep -q 'ROTT_REGISTERED' tools/prepare_engine.py
           ! grep -q 'PopulateEpisodeMenu' tools/prepare_engine.py
           python3 tools/r49_patch_analog.py generated/rott
+          python3 tools/r53_controls_direct.py generated/rott
+          mkdir -p build/reports
+          cp generated/reports/r53-controls-direct-report.md build/reports/
           test -f generated/rott/.rott64-prepared
 
           # R48 V14: validate and retain the REAL generated control source

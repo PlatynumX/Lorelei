@@ -178,26 +178,7 @@ static void update_binding(unsigned index, bool held)
 }
 #endif
 
-#ifdef __N64__
-static int n64_mouse_axis(int value)
-{
-    const int deadzone = 8;
-    const int max_axis = 85;
-    const int max_delta = 9;
-    int magnitude = value < 0 ? -value : value;
-    int scaled;
-    int delta;
-
-    if (magnitude <= deadzone) return 0;
-    if (magnitude > max_axis) magnitude = max_axis;
-
-    scaled = magnitude - deadzone;
-    delta = (scaled * scaled * max_delta) /
-            ((max_axis - deadzone) * (max_axis - deadzone));
-    if (delta < 1) delta = 1;
-    return value < 0 ? -delta : delta;
-}
-#endif
+/* ROTT64_R53_ANALOG_NOT_MOUSE: removed SDL relative-mouse stick helper. */
 
 static void poll_n64_controller(void)
 {
@@ -207,7 +188,6 @@ static void poll_n64_controller(void)
     joypad_buttons_t buttons;
     joypad_buttons_t pressed;
     static uint64_t next_auto_fire_rumble_ms;
-    static uint64_t next_mouse_sample_ms;
     static bool look_up_held;
     static bool look_down_held;
     const uint64_t now = n64_platform_ticks_ms();
@@ -263,12 +243,13 @@ static void poll_n64_controller(void)
             emit_key(SDL_SCANCODE_K, look_down_held);
         }
 
-        if (now >= next_mouse_sample_ms) {
-            relative_x += n64_mouse_axis(input.stick_x);
-            relative_y -= n64_mouse_axis(input.stick_y);
-            next_mouse_sample_ms = now + 8u;
-        }
-    } else {
+        /* ROTT64_R53_ANALOG_NOT_MOUSE
+         * Gameplay analog is consumed by rott64_n64_gamepad_axes() in generated rt_playr.c.
+         * Do not also inject stick motion as SDL relative mouse deltas.
+         */
+        (void)input;
+        relative_x = 0;
+        relative_y = 0;} else {
         if (look_up_held) {
             look_up_held = false;
             emit_key(SDL_SCANCODE_I, false);
