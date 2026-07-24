@@ -1,4 +1,4 @@
-/* ROTT64_R89D_RSP_MIXER_DISABLED_DIAGNOSTIC
+/* ROTT64_R89H_RSP_MIXER_DISABLED_DIAGNOSTIC
  *
  * Hardware crash observed on character select:
  *   RSP CRASH: rsp_queue / rspq_highpri_sync
