@@ -801,13 +801,6 @@ def main() -> int:
     a=p.parse_args(); root=a.root.resolve(); upstream=(a.upstream or root/"vendor/taradino/source").resolve(); output=(a.output or root/"generated/rott").resolve()
     try:
         prepare(root, upstream, output)
-        # ROTT64_R89J_PREPARE_ENGINE_AUDIO_SILENCE_HOOK
-        import subprocess as _rott64_r89j_subprocess
-        import sys as _rott64_r89j_sys
-        from pathlib import Path as _Rott64R89jPath
-        r89j_audio_tool = _Rott64R89jPath(__file__).with_name("r89j_silence_generated_direct_audio.py")
-        if r89j_audio_tool.exists():
-            _rott64_r89j_subprocess.run([_rott64_r89j_sys.executable, str(r89j_audio_tool), str(output)], check=True)
 
     except (OSError,RuntimeError) as exc: print(f"prepare_engine.py: {exc}",file=sys.stderr); return 1
     print(f"Prepared N64 engine tree: {output}"); return 0

@@ -1,35 +1,101 @@
-/* ROTT64_R89H_RSP_MIXER_DISABLED_DIAGNOSTIC
+/* ROTT64_R90_SDL_MIXER_USES_AUDIO_CONTRACT
  *
- * Hardware crash observed on character select:
- *   RSP CRASH: rsp_queue / rspq_highpri_sync
- *   Current Overlay: rsp_mixer
- *
- * This keeps SDL_mixer compatibility and VOC decoding for host tests, but does
- * not call libdragon audio/RSP playback APIs on N64.
- *
- * Goal: prove whether the character-select crash is caused by the RSP mixer
- * path while preserving controls/video/menu/save code.
+ * SDL_mixer compatibility for Taradino routed through the shared ROTT64
+ * libdragon audio contract.  This is intentionally not a silent diagnostic:
+ * Mix_* calls decode VOC chunks and play them on FX channels 0..7, while the
+ * generated music path uses the reserved music channel pair 8/9.
  */
 
 #include "SDL_mixer.h"
+#include "rott64_audio.h"
 
 #include <limits.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef __N64__
+#include <samplebuffer.h>
+#endif
+
 #define VOC_SIGNATURE "Creative Voice File\x1a"
 #define VOC_SIGNATURE_LEN 20u
-#define ROTT64_SILENT_CHANNELS 8
+#define ROTT64_SDL_CHANNELS ROTT64_FX_CHANNELS
 
 static int opened;
 static int output_frequency = MIX_DEFAULT_FREQUENCY;
-static int channel_count = ROTT64_SILENT_CHANNELS;
+static int channel_count = ROTT64_SDL_CHANNELS;
 static int master_volume = MIX_MAX_VOLUME;
 static int music_volume = MIX_MAX_VOLUME;
-static int channel_volume[ROTT64_SILENT_CHANNELS];
-static Mix_Chunk *last_chunk[ROTT64_SILENT_CHANNELS];
+static int channel_volume[ROTT64_SDL_CHANNELS];
+static Mix_Chunk *last_chunk[ROTT64_SDL_CHANNELS];
 static void (*finished_callback)(int);
+
+#ifdef __N64__
+typedef struct rott64_chunk_wave_s
+{
+    waveform_t wave;
+    Mix_Chunk *chunk;
+} rott64_chunk_wave_t;
+
+static void rott64_chunk_wave_read(void *ctx, samplebuffer_t *sbuf,
+                                   int wpos, int wlen, bool seeking)
+{
+    rott64_chunk_wave_t *backend = (rott64_chunk_wave_t *)ctx;
+    Mix_Chunk *chunk = backend ? backend->chunk : NULL;
+    int available = 0;
+    int copy = 0;
+    int8_t *dest;
+
+    (void)seeking;
+
+    if (wlen <= 0)
+        return;
+
+    dest = (int8_t *)samplebuffer_append(sbuf, wlen);
+    if (dest == NULL)
+        return;
+
+    if (chunk != NULL && chunk->abuf != NULL && wpos < (int)chunk->alen)
+    {
+        available = (int)chunk->alen - wpos;
+        copy = available < wlen ? available : wlen;
+        if (copy > 0)
+            memcpy(dest, chunk->abuf + wpos, (size_t)copy);
+    }
+
+    if (copy < wlen)
+        memset(dest + copy, 0, (size_t)(wlen - copy));
+}
+
+static int rott64_chunk_make_backend(Mix_Chunk *chunk)
+{
+    rott64_chunk_wave_t *backend;
+
+    if (chunk == NULL)
+        return -1;
+
+    backend = (rott64_chunk_wave_t *)calloc(1u, sizeof(*backend));
+    if (backend == NULL)
+        return SDL_SetError("out of memory allocating N64 waveform backend");
+
+    backend->chunk = chunk;
+    backend->wave.name = "ROTT64 VOC";
+    backend->wave.bits = chunk->bits ? chunk->bits : 8u;
+    backend->wave.channels = chunk->channels ? chunk->channels : 1u;
+    backend->wave.frequency = chunk->frequency ? (float)chunk->frequency
+                                               : (float)MIX_DEFAULT_FREQUENCY;
+    backend->wave.len = (int)chunk->alen;
+    backend->wave.loop_len = 0;
+    backend->wave.start = NULL;
+    backend->wave.read = rott64_chunk_wave_read;
+    backend->wave.ctx = backend;
+    backend->wave.state_size = 0;
+
+    chunk->backend = backend;
+    return 0;
+}
+#endif
 
 static Uint16 read_le16(const Uint8 *p)
 {
@@ -65,6 +131,7 @@ static int append_pcm(Uint8 **pcm, size_t *length, size_t *capacity,
     if (needed > *capacity)
     {
         size_t next = *capacity ? *capacity : 4096u;
+
         while (next < needed)
         {
             if (next > SIZE_MAX / 2u)
@@ -83,9 +150,7 @@ static int append_pcm(Uint8 **pcm, size_t *length, size_t *capacity,
         *capacity = next;
     }
 
-    /* Creative VOC PCM is unsigned 8-bit. Preserve the existing ROTT64
-     * compatibility behavior by flipping to signed 8-bit sample data.
-     */
+    /* Creative VOC PCM is unsigned 8-bit. libdragon waveforms expect signed. */
     for (size_t i = 0; i < count; ++i)
         (*pcm)[*length + i] = (Uint8)(source[i] ^ 0x80u);
 
@@ -247,8 +312,17 @@ static Mix_Chunk *decode_voc(const Uint8 *data, size_t size)
     chunk->channels = 1u;
     chunk->bits = 8u;
 
+#ifdef __N64__
+    if (rott64_chunk_make_backend(chunk) != 0)
+        goto fail_chunk;
+#endif
+
     return chunk;
 
+#ifdef __N64__
+fail_chunk:
+    free(chunk);
+#endif
 fail:
     free(pcm);
     return NULL;
@@ -256,7 +330,7 @@ fail:
 
 void rott64_mixer_pump(void)
 {
-    /* Intentionally silent. Do not touch RSP/audio hardware. */
+    rott64_audio_pump();
 }
 
 int Mix_OpenAudio(int frequency, Uint16 format, int channels, int chunksize)
@@ -272,11 +346,16 @@ int Mix_OpenAudio(int frequency, Uint16 format, int channels, int chunksize)
     output_frequency = frequency > 0 ? frequency : MIX_DEFAULT_FREQUENCY;
     opened = 1;
 
-    for (int i = 0; i < ROTT64_SILENT_CHANNELS; ++i)
+    for (int i = 0; i < ROTT64_SDL_CHANNELS; ++i)
     {
         channel_volume[i] = MIX_MAX_VOLUME;
         last_chunk[i] = NULL;
     }
+
+#ifdef __N64__
+    if (!rott64_audio_init_once())
+        return SDL_SetError("ROTT64 audio initialization failed");
+#endif
 
     return 0;
 }
@@ -298,6 +377,9 @@ int Mix_MasterVolume(int volume)
         if (volume > MIX_MAX_VOLUME)
             volume = MIX_MAX_VOLUME;
         master_volume = volume;
+#ifdef __N64__
+        rott64_audio_init_once();
+#endif
     }
 
     return old;
@@ -305,7 +387,7 @@ int Mix_MasterVolume(int volume)
 
 void Mix_CloseAudio(void)
 {
-    for (int i = 0; i < ROTT64_SILENT_CHANNELS; ++i)
+    for (int i = 0; i < ROTT64_SDL_CHANNELS; ++i)
         last_chunk[i] = NULL;
 
     opened = 0;
@@ -330,8 +412,8 @@ int Mix_AllocateChannels(int numchans)
 {
     if (numchans >= 0)
     {
-        if (numchans > ROTT64_SILENT_CHANNELS)
-            numchans = ROTT64_SILENT_CHANNELS;
+        if (numchans > ROTT64_SDL_CHANNELS)
+            numchans = ROTT64_SDL_CHANNELS;
         channel_count = numchans;
     }
 
@@ -390,12 +472,15 @@ void Mix_FreeChunk(Mix_Chunk *chunk)
     if (chunk == NULL)
         return;
 
-    for (int i = 0; i < ROTT64_SILENT_CHANNELS; ++i)
+    for (int i = 0; i < ROTT64_SDL_CHANNELS; ++i)
     {
         if (last_chunk[i] == chunk)
             last_chunk[i] = NULL;
     }
 
+#ifdef __N64__
+    free(chunk->backend);
+#endif
     if (chunk->allocated)
         free(chunk->abuf);
     free(chunk);
@@ -403,20 +488,35 @@ void Mix_FreeChunk(Mix_Chunk *chunk)
 
 int Mix_PlayChannelTimed(int channel, Mix_Chunk *chunk, int loops, int ticks)
 {
+    int chosen = channel;
+
     (void)ticks;
 
     if (!opened || chunk == NULL || loops != 0)
         return -1;
 
-    if (channel < 0)
-        channel = 0;
+    if (chosen < 0)
+        chosen = 0;
 
-    if (channel >= channel_count)
+    if (chosen >= channel_count)
         return -1;
 
-    /* Report a successful logical handle but do not start RSP mixer playback. */
-    last_chunk[channel] = chunk;
-    return channel;
+#ifdef __N64__
+    if (chunk->backend != NULL)
+    {
+        rott64_chunk_wave_t *backend = (rott64_chunk_wave_t *)chunk->backend;
+        rott64_audio_play_channel_checked(chosen, &backend->wave, __FILE__, __LINE__);
+        rott64_audio_set_channel_vol_pan_checked(
+            chosen,
+            (float)chunk->volume / (float)MIX_MAX_VOLUME,
+            0.5f,
+            __FILE__,
+            __LINE__);
+    }
+#endif
+
+    last_chunk[chosen] = chunk;
+    return chosen;
 }
 
 int Mix_HaltChannel(int channel)
@@ -431,6 +531,9 @@ int Mix_HaltChannel(int channel)
     if (channel < 0 || channel >= channel_count)
         return -1;
 
+#ifdef __N64__
+    rott64_audio_stop_channel_checked(channel, __FILE__, __LINE__);
+#endif
     last_chunk[channel] = NULL;
 
     if (finished_callback != NULL)
@@ -441,8 +544,28 @@ int Mix_HaltChannel(int channel)
 
 int Mix_Playing(int channel)
 {
-    (void)channel;
+    if (channel == -1)
+    {
+        int count = 0;
+        for (int i = 0; i < channel_count; ++i)
+            count += Mix_Playing(i) ? 1 : 0;
+        return count;
+    }
+
+    if (channel < 0 || channel >= channel_count)
+        return 0;
+
+#ifdef __N64__
+    if (last_chunk[channel] != NULL
+        && rott64_audio_channel_playing_checked(channel, __FILE__, __LINE__))
+    {
+        return 1;
+    }
+    last_chunk[channel] = NULL;
     return 0;
+#else
+    return last_chunk[channel] != NULL ? 1 : 0;
+#endif
 }
 
 int Mix_Volume(int channel, int volume)
@@ -487,11 +610,19 @@ int Mix_VolumeChunk(Mix_Chunk *chunk, int volume)
 
 int Mix_SetPanning(int channel, Uint8 left, Uint8 right)
 {
-    (void)left;
-    (void)right;
-
     if (channel < 0 || channel >= channel_count)
         return 0;
+
+#ifdef __N64__
+    {
+        float lvol = (float)left / 255.0f;
+        float rvol = (float)right / 255.0f;
+        rott64_audio_set_channel_vol_checked(channel, lvol, rvol, __FILE__, __LINE__);
+    }
+#else
+    (void)left;
+    (void)right;
+#endif
 
     return 1;
 }
@@ -519,11 +650,18 @@ void Mix_HookMusic(void (*mix_func)(void *, Uint8 *, int), void *arg)
 
 void Mix_HaltMusic(void)
 {
+#ifdef __N64__
+    rott64_audio_stop_channel_checked(ROTT64_MUSIC_CHANNEL, __FILE__, __LINE__);
+#endif
 }
 
 int Mix_PlayingMusic(void)
 {
+#ifdef __N64__
+    return rott64_audio_channel_playing_checked(ROTT64_MUSIC_CHANNEL, __FILE__, __LINE__);
+#else
     return 0;
+#endif
 }
 
 void Mix_PauseMusic(void)
@@ -539,7 +677,17 @@ int Mix_VolumeMusic(int volume)
     int old = music_volume;
 
     if (volume >= 0)
+    {
         music_volume = volume > MIX_MAX_VOLUME ? MIX_MAX_VOLUME : volume;
+#ifdef __N64__
+        rott64_audio_set_channel_vol_pan_checked(
+            ROTT64_MUSIC_CHANNEL,
+            (float)music_volume / (float)MIX_MAX_VOLUME,
+            0.5f,
+            __FILE__,
+            __LINE__);
+#endif
+    }
 
     return old;
 }

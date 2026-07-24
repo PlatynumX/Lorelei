@@ -16,7 +16,7 @@ test-host:
 	$(HOST_WAD_TEST)
 	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -Isrc src/indexed_video.c src/input_map.c tests/test_platform.c -o $(HOST_PLATFORM_TEST)
 	$(HOST_PLATFORM_TEST)
-	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -Iplatform/n64 platform/n64/n64_platform.c platform/n64/sdl_n64.c platform/n64/sdl_mixer_stub.c platform/n64/vgatext_n64.c tests/test_sdl_compat.c -o $(HOST_SDL_TEST)
+	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -Iplatform/n64 platform/n64/n64_platform.c platform/n64/sdl_n64.c platform/n64/sdl_mixer_stub.c platform/n64/rott64_audio.c platform/n64/vgatext_n64.c tests/test_sdl_compat.c -o $(HOST_SDL_TEST)
 	$(HOST_SDL_TEST)
 	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -D__N64__=1 -Iplatform/n64 tests/test_dirent_stub.c -o $(HOST_DIRENT_TEST)
 	$(HOST_DIRENT_TEST)
@@ -61,7 +61,7 @@ BUILD_DIR := build
 include $(N64_INST)/include/n64.mk
 
 ENGINE_SOURCES := $(sort $(filter-out generated/rott/adlmusic.c generated/rott/sdlmusic.c,$(wildcard generated/rott/*.c)))
-PLATFORM_SOURCES := platform/n64/n64_platform.c platform/n64/sdl_n64.c platform/n64/sdl_mixer_stub.c platform/n64/posix_stubs.c
+PLATFORM_SOURCES := platform/n64/n64_platform.c platform/n64/sdl_n64.c platform/n64/sdl_mixer_stub.c platform/n64/posix_stubs.c platform/n64/rott64_audio.c
 ALL_SOURCES := $(ENGINE_SOURCES) $(PLATFORM_SOURCES)
 OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(ALL_SOURCES))
 DIAG_OBJS := $(BUILD_DIR)/platform/n64/bootdiag.o
@@ -75,6 +75,7 @@ CFLAGS += -std=gnu11 -O2 -G0 -ffast-math -fno-strict-aliasing
 # the MIPS build. All other libdragon -Werror diagnostics remain fatal.
 CFLAGS += -Wno-error=maybe-uninitialized
 CFLAGS += -Igenerated/rott -Iplatform/n64
+CFLAGS += -include platform/n64/rott64_audio.h
 CFLAGS += -D__N64__=1
 CFLAGS += -DDATADIR='"rom://rott"'
 CFLAGS += -DPACKAGE_STRING='"ROTT64 Dark War Registered"'

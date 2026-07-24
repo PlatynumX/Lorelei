@@ -5,8 +5,8 @@ from pathlib import Path
 import re
 import sys
 
-MARK = "ROTT64_R89J_GENERATED_MENU_POSTPATCH"
-HELPER = "rott64_r89j_existing_save_path"
+MARK = "ROTT64_R90_SD_SAVE_MENU_HELPER"
+HELPER = "rott64_r90_existing_save_path"
 
 def fail(msg: str) -> None:
     raise SystemExit("ERROR: " + msg)
@@ -14,17 +14,18 @@ def fail(msg: str) -> None:
 def ensure_stdio(text: str) -> str:
     if "#include <stdio.h>" in text:
         return text
-    incs = list(re.finditer(r"(?m)^#include[^\n]*\n", text))
-    if incs:
-        pos = incs[-1].end()
+    includes = list(re.finditer(r"(?m)^#include[^\n]*\n", text))
+    if includes:
+        pos = includes[-1].end()
         return text[:pos] + "#include <stdio.h>\n" + text[pos:]
     return "#include <stdio.h>\n" + text
 
 def ensure_helper(text: str) -> str:
-    if HELPER in text or re.search(r"rott64_r\d+[a-z]?_existing_save_path", text):
+    if re.search(r"(?m)^static[ \t]+char[ \t]*\*[ \t]*" + re.escape(HELPER) + r"[ \t]*\(", text):
         return text
+
     helper = (
-        f"\n/* {MARK}: return save path only when it exists; do not assign FILE * to char *. */\n"
+        f"\n/* {MARK}: return the path only if the save file exists. */\n"
         f"static char *{HELPER}(const char *path)\n"
         "{\n"
         "    FILE *fp;\n\n"
@@ -37,14 +38,33 @@ def ensure_helper(text: str) -> str:
         "    return (char *)path;\n"
         "}\n\n"
     )
-    m = re.search(r"(?m)^[ \t]*void[ \t]+ScanForSavedGames[ \t]*\(", text)
-    if m:
-        return text[:m.start()] + helper + text[m.start():]
-    return helper + text
 
-def patch_text(text: str) -> tuple[str, int]:
+    m = re.search(r"(?m)^[ \t]*(?:static[ \t]+)?void[ \t]+ScanForSavedGames[ \t]*\(", text)
+    if not m:
+        fail("could not locate ScanForSavedGames")
+    return text[:m.start()] + helper + text[m.start():]
+
+def main(argv: list[str]) -> int:
+    if len(argv) != 2:
+        fail("usage: r90_patch_sd_save_menu.py generated/rott")
+
+    menu = Path(argv[1]) / "rt_menu.c"
+    if not menu.is_file():
+        fail("missing generated rt_menu.c")
+
+    text = menu.read_text(encoding="utf-8", errors="strict")
+    original = text
     n_total = 0
+
     text = ensure_stdio(text)
+
+    # Normalize all previous temporary helper names to the single r90 helper.
+    text, n = re.subn(
+        r"\brott64_r\d+[a-z]?_existing_save_path\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)",
+        HELPER + r"(\1)",
+        text,
+    )
+    n_total += n
 
     text, n = re.subn(
         r"\brott64_save_case_exists\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)",
@@ -67,8 +87,6 @@ def patch_text(text: str) -> tuple[str, int]:
     )
     n_total += n
 
-    text = ensure_helper(text)
-
     text, n = re.subn(
         r"(if\s*\(\s*!rott64_n64_sd_saves_ready\s*\(\s*\)\s*\)\s*\n[ \t]*)return\s*;",
         r"\1return 0;",
@@ -76,34 +94,30 @@ def patch_text(text: str) -> tuple[str, int]:
     )
     n_total += n
 
-    if MARK not in text and (HELPER in text or "remove(" in text):
-        text = "/* " + MARK + " */\n" + text
-
-    return text, n_total
-
-def main(argv: list[str]) -> int:
-    if len(argv) != 2:
-        fail("usage: r89j_post_patch_generated_menu.py generated/rott")
-
-    menu = Path(argv[1]) / "rt_menu.c"
-    if not menu.is_file():
-        fail("missing generated rt_menu.c")
-
-    text = menu.read_text(encoding="utf-8", errors="strict")
-    patched, n = patch_text(text)
+    text = ensure_helper(text)
 
     for stale in ("rott64_save_case_exists", "rott64_save_unlink"):
-        if stale in patched:
+        if stale in text:
             fail("stale save helper survived: " + stale)
 
-    if re.search(r"=\s*[^;\n?]+?\?\s*fopen\s*\([^;\n]+:\s*NULL\s*;", patched):
+    if re.search(r"=\s*[^;\n?]+?\?\s*fopen\s*\([^;\n]+:\s*NULL\s*;", text):
         fail("bad FILE*/char* fopen conditional survived")
 
-    if patched != text:
-        menu.write_text(patched.rstrip() + "\n", encoding="utf-8", newline="\n")
+    helper_def = text.find("static char *" + HELPER)
+    helper_call = text.find(HELPER + "(")
+    if helper_def < 0 or helper_call < 0:
+        fail("r90 helper definition/call missing")
+    if helper_call < helper_def:
+        fail("r90 helper is called before it is defined")
 
-    print(f"PASS: {MARK}")
-    print(f"PASS: save-menu replacements/guard updates: {n}")
+    if MARK not in text:
+        text = "/* " + MARK + " */\n" + text
+
+    if text != original:
+        menu.write_text(text.rstrip() + "\n", encoding="utf-8", newline="\n")
+
+    print("PASS: " + MARK)
+    print(f"PASS: replacements/guard updates: {n_total}")
     return 0
 
 if __name__ == "__main__":
