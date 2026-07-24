@@ -145,6 +145,120 @@ static void boot_display_close(void)
 }
 #endif
 
+
+/* ROTT64_R88_LIBDRAGON_SD_SAVES
+ *
+ * TARGET: mount/probe libdragon sd:/.
+ * HOST: compile no-op stubs only.
+ */
+#if defined(__N64__)
+
+static int rott64_r88_sd_saves_ready = 0;
+static const char *rott64_r88_sd_root = "sd:";
+
+static int rott64_r88_probe_file(const char *root)
+{
+    static const unsigned char expected[8] = {
+        'R','O','T','T','6','4','8','8'
+    };
+    unsigned char got[sizeof(expected)];
+    char pathbuf[96];
+    FILE *fp;
+    size_t n;
+    int slash;
+
+    if (root == NULL || root[0] == '\0')
+        return 0;
+
+    slash = root[strlen(root) - 1] == '/';
+
+    if (snprintf(pathbuf, sizeof(pathbuf), "%s%s.rott64-r88c-rwtest",
+                 root, slash ? "" : "/") >= (int)sizeof(pathbuf))
+        return 0;
+
+    fp = fopen(pathbuf, "wb");
+    if (fp == NULL)
+        return 0;
+
+    n = fwrite(expected, 1, sizeof(expected), fp);
+    if (n != sizeof(expected) || fflush(fp) != 0)
+    {
+        fclose(fp);
+        remove(pathbuf);
+        return 0;
+    }
+
+    if (fclose(fp) != 0)
+    {
+        remove(pathbuf);
+        return 0;
+    }
+
+    memset(got, 0, sizeof(got));
+    fp = fopen(pathbuf, "rb");
+    if (fp == NULL)
+    {
+        remove(pathbuf);
+        return 0;
+    }
+
+    n = fread(got, 1, sizeof(got), fp);
+    fclose(fp);
+    remove(pathbuf);
+
+    return n == sizeof(expected)
+        && memcmp(got, expected, sizeof(expected)) == 0;
+}
+
+static void rott64_r88_init_sd_saves(void)
+{
+    if (!rott64_r88_probe_file("sd:/"))
+        (void)debug_init_sdfs("sd:/", -1);
+
+    if (!rott64_r88_probe_file("sd:/"))
+    {
+        rott64_r88_sd_saves_ready = 0;
+        rott64_r88_sd_root = "sd:";
+        fprintf(stderr,
+                "ROTT64 r88e: writable SD filesystem unavailable\n");
+        return;
+    }
+
+    rott64_r88_sd_root = "sd:";
+    rott64_r88_sd_saves_ready = 1;
+
+    fprintf(stderr,
+            "ROTT64 r88e: writable SD saves enabled at sd:/\n");
+}
+
+int rott64_n64_sd_saves_ready(void)
+{
+    return rott64_r88_sd_saves_ready;
+}
+
+const char *rott64_n64_sd_save_root(void)
+{
+    return rott64_r88_sd_root;
+}
+
+#else
+
+/* Host-test stubs: no libdragon/debug SD symbols. */
+static void rott64_r88_init_sd_saves(void)
+{
+}
+
+int rott64_n64_sd_saves_ready(void)
+{
+    return 0;
+}
+
+const char *rott64_n64_sd_save_root(void)
+{
+    return "";
+}
+
+#endif
 void n64_platform_init(void)
 {
     if (initialized) return;
@@ -196,6 +310,8 @@ void n64_platform_init(void)
     boot_display_close();
 #endif
     initialized = true;
+
+    rott64_r88_init_sd_saves();
 }
 
 

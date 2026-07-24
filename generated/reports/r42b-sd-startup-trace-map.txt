@@ -1,0 +1,14 @@
+source=rt_sound.c
+S00: entered SD_Startup
+S01: before prior-sound shutdown check
+S02: before DIGISTRT lookup
+S03: before digital sound remap
+S04: remap loop completed
+S05: before REMOSTRT lookup
+S06: before FX_Init
+S07: FX_Init returned
+S08: before FX callback
+S09: before marking sound started
+S10: before FX volume
+S00E: early sound-disabled path
+S99: leaving SD_Startup

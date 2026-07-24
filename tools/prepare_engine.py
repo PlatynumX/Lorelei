@@ -615,16 +615,6 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
             )
         return found[0]
 
-    read_macros = (
-        '#ifdef __N64__\n'
-        '#include "rott64_flash_save.h"\n'
-        '#define SafeOpenRead rott64_save_open_read\n'
-        '#define SafeRead rott64_save_read\n'
-        '#define filelength rott64_save_filelength\n'
-        '#define LoadFile rott64_save_load_file\n'
-        '#define close rott64_save_close\n'
-        '#endif\n'
-    )
     read_undefs = (
         '\n#ifdef __N64__\n'
         '#undef SafeOpenRead\n'
@@ -636,37 +626,11 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
     )
 
     save_reader_report = []
-    for function_name in ("GetSavedMessage", "GetSavedHeader"):
-        owner, owner_text, function_start, function_end = \
-            find_named_function(function_name)
-
-        function_text = owner_text[function_start:function_end]
-        save_reader_report.append(
-            f"{function_name}={owner.name}"
-        )
-
-        # Route only the actual Taradino save-reader function through the
-        # native FlashRAM API, preserving its own message/header parsing.
-        patched_function = (
-            read_macros
-            + function_text
-            + read_undefs
-        )
-        owner_text = (
-            owner_text[:function_start]
-            + patched_function
-            + owner_text[function_end:]
-        )
-        owner.write_text(owner_text, encoding="utf-8")
 
     # Re-scan after mutation and record exactly where the pinned source put
     # these functions.  This report travels with GitHub build diagnostics.
     report_dir = output.parent / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)
-    (report_dir / "r45c-save-reader-owners.txt").write_text(
-        "\n".join(save_reader_report) + "\n",
-        encoding="utf-8",
-    )
 
     # Apply the same signed-char ctype fix to the command-line helpers.
     # isalpha(), like the other ctype macros, only accepts EOF or values that
@@ -792,29 +756,12 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
     # R44: route Taradino's complete save serializer into native FlashRAM.
     game_path = output / "rt_game.c"
     game_text = game_path.read_text(encoding="utf-8", errors="strict")
-    calc_anchor = re.search(r"(?m)^[ \t]*long[ \t]+CalculateSaveGameCheckSum[ \t]*\(", game_text)
     getlevel_anchor = re.search(r"(?m)^[ \t]*int[ \t]+GetLevel[ \t]*\(", game_text)
-    if calc_anchor is None or getlevel_anchor is None or calc_anchor.start() >= getlevel_anchor.start():
-        raise RuntimeError("R44 save-function scope anchors not found")
-    save_macros = (
-        '#ifdef __N64__\n#include "rott64_flash_save.h"\n'
-        '#define SafeOpenWrite rott64_save_open_write\n'
-        '#define SafeOpenAppend rott64_save_open_append\n'
-        '#define SafeOpenRead rott64_save_open_read\n'
-        '#define SafeWrite rott64_save_write\n'
-        '#define SafeRead rott64_save_read\n'
-        '#define filelength rott64_save_filelength\n'
-        '#define LoadFile rott64_save_load_file\n'
-        '#define close rott64_save_close\n#endif\n'
-    )
     save_undefs = (
         '#ifdef __N64__\n#undef SafeOpenWrite\n#undef SafeOpenAppend\n'
         '#undef SafeOpenRead\n#undef SafeWrite\n#undef SafeRead\n'
         '#undef filelength\n#undef LoadFile\n#undef close\n#endif\n'
     )
-    game_text = (game_text[:calc_anchor.start()] + save_macros
-                 + game_text[calc_anchor.start():getlevel_anchor.start()]
-                 + save_undefs + game_text[getlevel_anchor.start():])
     game_text = game_text.replace(
         'if (num > 15 || num < 0) Error("Illegal Saved game value=%d\\n", num);',
         'if (num != 0) return false;')
@@ -825,7 +772,6 @@ def prepare(root: Path, upstream: Path, output: Path) -> None:
 
     menu_path = output / "rt_menu.c"
     menu_text = menu_path.read_text(encoding="utf-8", errors="strict")
-    menu_text = '#ifdef __N64__\n#include "rott64_flash_save.h"\n#endif\n' + menu_text
     old = 'file = M_FileCaseExists(path);'
     if menu_text.count(old) != 1:
         raise RuntimeError(f"R44 save scan expected one match, found {menu_text.count(old)}")

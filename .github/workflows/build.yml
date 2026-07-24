@@ -94,8 +94,6 @@ jobs:
               exit 1
             }
           fi
-          if [ -f generated/reports/r45c-save-reader-owners.txt ]; then
-            if [ -f generated/reports/r45c-save-reader-owners.txt ]; then cp generated/reports/r45c-save-reader-owners.txt build/reports/; else echo 'WARN: optional report missing: generated/reports/r45c-save-reader-owners.txt'; fi
           fi
           if [ -f generated/reports/r43-sd-startup-trace-map.txt ]; then
             if [ -f generated/reports/r43-sd-startup-trace-map.txt ]; then cp generated/reports/r43-sd-startup-trace-map.txt build/reports/; else echo 'WARN: optional report missing: generated/reports/r43-sd-startup-trace-map.txt'; fi
@@ -113,6 +111,7 @@ jobs:
           python3 tools/r59_stock_video_menu.py generated/rott
           python3 tools/r86_patch_stat_integrity.py generated/rott
           python3 tools/r87_patch_zone_integrity.py generated/rott
+          python3 tools/r88_patch_sd_saves.py generated/rott
           grep -q 'ROTT64_R85_DETAIL_FILTER_MENU' generated/rott/rt_menu.c
           grep -q 'ROTT64_NATIVE_BUTTONPOLL_DIRECT_R57' generated/rott/rt_playr.c
           grep -q 'ROTT64_STOCK_VIDEO_OPTIONS_MENU_R59' generated/rott/rt_menu.c
@@ -228,23 +227,23 @@ jobs:
           print(f"Final Dark War ROM: {len(data)} bytes")
           PY
 
-      - name: Package ROTT64 r87 ROM
+      - name: Package ROTT64 r88e ROM
         if: success()
         shell: bash
         run: |
           set -euo pipefail
           test -f rott64.z64 || { echo 'ERROR: successful build did not produce rott64.z64'; exit 1; }
-          cp -f rott64.z64 rott64-r87.z64
-          sha256sum rott64-r87.z64 > rott64-r87.z64.sha256
-          ls -lh rott64-r87.z64 rott64-r87.z64.sha256
+          cp -f rott64.z64 rott64-r88e.z64
+          sha256sum rott64-r88e.z64 > rott64-r88e.z64.sha256
+          ls -lh rott64-r88e.z64 rott64-r88e.z64.sha256
       - name: Upload Dark War ROM
         if: always() && steps.n64_build.outputs.rom_built == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-r87-build
+          name: rott64-r88e-build
           path: |
-            rott64-r87.z64
-            rott64-r87.z64.sha256
+            rott64-r88e.z64
+            rott64-r88e.z64.sha256
           if-no-files-found: error
 
       - name: Upload diagnostics
