@@ -1,7 +1,7 @@
 #ifndef ROTT64_AUDIO_H
 #define ROTT64_AUDIO_H
 
-/* ROTT64_R90_AUDIO_CHANNEL_CONTRACT
+/* ROTT64_R90E_AUDIO_CHANNEL_CONTRACT
  *
  * One owner for libdragon audio/mixer initialization and channel routing.
  *

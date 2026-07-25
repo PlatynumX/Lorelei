@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+from pathlib import Path
+import re
+import sys
+
+def scrub(text: str) -> str:
+    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+    text = re.sub(r"//.*", "", text)
+    text = re.sub(r'"(?:\\.|[^"\\])*"', '""', text)
+    text = re.sub(r"'(?:\\.|[^'\\])*'", "''", text)
+    return text
+
+def read_define(header: str, name: str) -> int:
+    m = re.search(rf"(?m)^#define[ \t]+{re.escape(name)}[ \t]+([0-9]+)\b", header)
+    if not m:
+        raise SystemExit("ERROR: missing audio define " + name)
+    return int(m.group(1))
+
+def main(argv: list[str]) -> int:
+    if len(argv) != 2:
+        raise SystemExit("ERROR: usage: r90e_audit_audio_channels.py generated/rott")
+
+    gen = Path(argv[1])
+    root = Path.cwd()
+    header = (root / "platform/n64/rott64_audio.h").read_text(encoding="utf-8")
+    mixer_channels = read_define(header, "ROTT64_MIXER_CHANNELS")
+    music_ch = read_define(header, "ROTT64_MUSIC_CHANNEL")
+    music_sub = read_define(header, "ROTT64_MUSIC_STEREO_SUBCHANNEL")
+
+    if mixer_channels <= music_sub:
+        raise SystemExit("ERROR: mixer channel count does not include music subchannel")
+    if music_ch != 8 or music_sub != 9 or mixer_channels != 10:
+        raise SystemExit("ERROR: unexpected r90e audio channel contract")
+
+    max_literal = -1
+    hits = []
+
+    for p in sorted(gen.glob("*.c")):
+        text = scrub(p.read_text(encoding="utf-8", errors="ignore"))
+
+        # Direct init/poll should stay inside platform code, not generated ROTT.
+        for name in ("mixer_init", "mixer_poll", "audio_init", "audio_write_begin", "audio_write_end", "rspq_highpri_sync"):
+            if re.search(r"\b" + re.escape(name) + r"\s*\(", text):
+                raise SystemExit(f"ERROR: generated code bypasses platform audio ownership: {p}:{name}")
+
+        for m in re.finditer(r"\bmixer_ch_(?:play|stop|playing|set_vol|set_vol_pan|set_freq)\s*\(\s*([0-9]+)\b", text):
+            ch = int(m.group(1))
+            max_literal = max(max_literal, ch)
+            hits.append((str(p), ch))
+            if ch >= mixer_channels:
+                raise SystemExit(f"ERROR: generated mixer channel {ch} exceeds count {mixer_channels}: {p}")
+
+    print("PASS: ROTT64_R90E_AUDIO_CHANNEL_AUDIT")
+    print(f"PASS: mixer channels: {mixer_channels}; music pair: {music_ch}/{music_sub}; max literal channel: {max_literal}")
+    if hits:
+        print("PASS: literal generated channel calls audited:", len(hits))
+    else:
+        print("PASS: no literal generated channel calls found")
+    return 0
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))

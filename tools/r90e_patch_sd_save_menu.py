@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-
 from pathlib import Path
 import re
 import sys
 
-MARK = "ROTT64_R90_SD_SAVE_MENU_HELPER"
-HELPER = "rott64_r90_existing_save_path"
+MARK = "ROTT64_R90E_SD_SAVE_MENU_HELPER"
+HELPER = "rott64_r90e_existing_save_path"
 
 def fail(msg: str) -> None:
     raise SystemExit("ERROR: " + msg)
@@ -14,18 +13,22 @@ def fail(msg: str) -> None:
 def ensure_stdio(text: str) -> str:
     if "#include <stdio.h>" in text:
         return text
-    includes = list(re.finditer(r"(?m)^#include[^\n]*\n", text))
-    if includes:
-        pos = includes[-1].end()
-        return text[:pos] + "#include <stdio.h>\n" + text[pos:]
+    incs = list(re.finditer(r"(?m)^#include[^\n]*\n", text))
+    if incs:
+        return text[:incs[-1].end()] + "#include <stdio.h>\n" + text[incs[-1].end():]
     return "#include <stdio.h>\n" + text
 
-def ensure_helper(text: str) -> str:
-    if re.search(r"(?m)^static[ \t]+char[ \t]*\*[ \t]*" + re.escape(HELPER) + r"[ \t]*\(", text):
-        return text
+def helper_definition_exists(text: str) -> bool:
+    return re.search(
+        r"(?m)^static[ \t]+char[ \t]*\*[ \t]*" + re.escape(HELPER) + r"[ \t]*\(",
+        text,
+    ) is not None
 
+def ensure_helper(text: str) -> str:
+    if helper_definition_exists(text):
+        return text
     helper = (
-        f"\n/* {MARK}: return the path only if the save file exists. */\n"
+        f"\n/* {MARK}: return path only when save file exists. */\n"
         f"static char *{HELPER}(const char *path)\n"
         "{\n"
         "    FILE *fp;\n\n"
@@ -38,16 +41,14 @@ def ensure_helper(text: str) -> str:
         "    return (char *)path;\n"
         "}\n\n"
     )
-
     m = re.search(r"(?m)^[ \t]*(?:static[ \t]+)?void[ \t]+ScanForSavedGames[ \t]*\(", text)
     if not m:
-        fail("could not locate ScanForSavedGames")
+        fail("ScanForSavedGames not found")
     return text[:m.start()] + helper + text[m.start():]
 
 def main(argv: list[str]) -> int:
     if len(argv) != 2:
-        fail("usage: r90_patch_sd_save_menu.py generated/rott")
-
+        fail("usage: r90e_patch_sd_save_menu.py generated/rott")
     menu = Path(argv[1]) / "rt_menu.c"
     if not menu.is_file():
         fail("missing generated rt_menu.c")
@@ -58,7 +59,6 @@ def main(argv: list[str]) -> int:
 
     text = ensure_stdio(text)
 
-    # Normalize all previous temporary helper names to the single r90 helper.
     text, n = re.subn(
         r"\brott64_r\d+[a-z]?_existing_save_path\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)",
         HELPER + r"(\1)",
@@ -98,17 +98,19 @@ def main(argv: list[str]) -> int:
 
     for stale in ("rott64_save_case_exists", "rott64_save_unlink"):
         if stale in text:
-            fail("stale save helper survived: " + stale)
-
+            fail("stale helper survived: " + stale)
     if re.search(r"=\s*[^;\n?]+?\?\s*fopen\s*\([^;\n]+:\s*NULL\s*;", text):
         fail("bad FILE*/char* fopen conditional survived")
 
-    helper_def = text.find("static char *" + HELPER)
-    helper_call = text.find(HELPER + "(")
-    if helper_def < 0 or helper_call < 0:
-        fail("r90 helper definition/call missing")
-    if helper_call < helper_def:
-        fail("r90 helper is called before it is defined")
+    definition_match = re.search(
+        r"(?m)^static[ \t]+char[ \t]*\*[ \t]*" + re.escape(HELPER) + r"[ \t]*\(",
+        text,
+    )
+    first_call = text.find(HELPER + "(")
+    if definition_match is None or first_call < 0:
+        fail("helper definition/call missing")
+    if first_call < definition_match.start():
+        fail("helper is called before it is defined")
 
     if MARK not in text:
         text = "/* " + MARK + " */\n" + text
