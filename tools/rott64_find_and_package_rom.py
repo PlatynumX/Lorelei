@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-VERSION = "r92b"
+VERSION = "r92c"
 
 MAGIC_Z64 = b"\x80\x37\x12\x40"
 MAGIC_V64 = b"\x37\x80\x40\x12"
@@ -137,7 +137,7 @@ def main() -> int:
         if out.read_bytes()[:4] != MAGIC_Z64:
             fail(f"packaged ROM is not canonical z64 byte order: {out}")
 
-    print("PASS: ROTT64_R92B_ROM_DISCOVERY_PACKAGE")
+    print("PASS: ROTT64_R92C_ROM_DISCOVERY_PACKAGE")
     print(f"PASS: source ROM: {src} ({kind})")
     print(f"PASS: canonical ROM: {canonical} ({canonical.stat().st_size} bytes)")
     print(f"PASS: versioned ROM: {versioned} ({versioned.stat().st_size} bytes)")

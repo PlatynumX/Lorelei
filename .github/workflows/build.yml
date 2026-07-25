@@ -230,24 +230,24 @@ jobs:
           print(f"Final Dark War ROM: {len(data)} bytes")
           PY
 
-      - name: Package ROTT64 r92b ROM
+      - name: Package ROTT64 r92c ROM
         if: success()
         shell: bash
         run: |
           set -euo pipefail
           python3 tools/rott64_find_and_package_rom.py
           test -f rott64.z64 || { echo 'ERROR: successful build did not produce rott64.z64'; exit 1; }
-          cp -f rott64.z64 rott64-r92b.z64
-          sha256sum rott64-r92b.z64 > rott64-r92b.z64.sha256
-          ls -lh rott64-r92b.z64 rott64-r92b.z64.sha256
+          cp -f rott64.z64 rott64-r92c.z64
+          sha256sum rott64-r92c.z64 > rott64-r92c.z64.sha256
+          ls -lh rott64-r92c.z64 rott64-r92c.z64.sha256
       - name: Upload Dark War ROM
         if: always() && steps.n64_build.outputs.rom_built == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-r92b-build
+          name: rott64-r92c-build
           path: |
-            rott64-r92b.z64
-            rott64-r92b.z64.sha256
+            rott64-r92c.z64
+            rott64-r92c.z64.sha256
           if-no-files-found: error
 
       - name: Upload diagnostics

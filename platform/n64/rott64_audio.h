@@ -1,7 +1,7 @@
 #ifndef ROTT64_AUDIO_H
 #define ROTT64_AUDIO_H
 
-/* ROTT64_R92B_AUDIO_CHANNEL_CONTRACT
+/* ROTT64_R92C_AUDIO_CHANNEL_CONTRACT
  *
  * Constants only. No mixer wrapper macros and no generated-source call rewriting.
  *
