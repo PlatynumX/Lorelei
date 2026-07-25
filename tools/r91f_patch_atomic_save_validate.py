@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 import sys
 
-MARK = "ROTT64_R91C_ATOMIC_SAVE_VALIDATE"
+MARK = "ROTT64_R91F_ATOMIC_SAVE_VALIDATE"
 
 
 def fail(msg: str) -> None:
@@ -85,7 +85,7 @@ def patch_rt_game(gen: Path) -> None:
     text = add_include(text, "#include <errno.h>")
 
     helper = r'''
-/* ROTT64_R91C_ATOMIC_SAVE_VALIDATE: N64-safe save probing/commit.
+/* ROTT64_R91F_ATOMIC_SAVE_VALIDATE: N64-safe save probing/commit.
  * Menu scans must not LoadFile() an entire save just to show a name/picture.
  * Saves are written to rotttmpN.rot, streamed/checked, then committed.
  */
@@ -322,14 +322,14 @@ static boolean ROTT64_CommitSaveFile(const char *tmpname, const char *finalname)
 
     a, o, b = function_span(text, "LoadTheGame")
     load_func = text[a:b]
-    if "ROTT64_R91C_LOAD_VALIDATE_BEFORE_FULL_LOAD" not in load_func:
+    if "ROTT64_R91F_LOAD_VALIDATE_BEFORE_FULL_LOAD" not in load_func:
         needle = "\t// Load the file\n"
         if needle not in load_func:
             needle = "    // Load the file\n"
         if needle not in load_func:
             fail("LoadTheGame load-file anchor not found")
         guard = r'''
-    /* ROTT64_R91C_LOAD_VALIDATE_BEFORE_FULL_LOAD */
+    /* ROTT64_R91F_LOAD_VALIDATE_BEFORE_FULL_LOAD */
     if (!ROTT64_ValidateSaveGameSlot(num, NULL, true))
     {
         free(filename);
@@ -342,7 +342,7 @@ static boolean ROTT64_CommitSaveFile(const char *tmpname, const char *finalname)
 
     a, o, b = function_span(text, "SaveTheGame")
     save_func = text[a:b]
-    if "ROTT64_R91C_SAVE_TEMP_PATH" not in save_func:
+    if "ROTT64_R91F_SAVE_TEMP_PATH" not in save_func:
         if "\tchar *filename;" in save_func:
             save_func = save_func.replace("\tchar *filename;", "\tchar *filename;\n\tchar *finalname;\n\tchar tmplname[] = \"rotttmp0.rot\";", 1)
             indent = "\t"
@@ -357,7 +357,7 @@ static boolean ROTT64_CommitSaveFile(const char *tmpname, const char *finalname)
             old = "filename =\n\t\tM_StringJoin(ApogeePath, PATH_SEP_STR, loadname, NULL);"
         if old not in save_func:
             fail("SaveTheGame filename creation anchor not found")
-        new = ("/* ROTT64_R91C_SAVE_TEMP_PATH */\n"
+        new = ("/* ROTT64_R91F_SAVE_TEMP_PATH */\n"
                f"{indent}finalname = M_StringJoin(ApogeePath, PATH_SEP_STR, loadname, NULL);\n"
                f"{indent}itoa(num, &tmplname[7], 16);\n"
                f"{indent}tmplname[8] = '.';\n"
@@ -369,7 +369,7 @@ static boolean ROTT64_CommitSaveFile(const char *tmpname, const char *finalname)
 
 {indent}if (!ROTT64_ValidateSaveGameFile(filename, NULL, true))
 {indent}{{
-{indent}{indent}printf("ROTT64 r91c: temp save failed validation, deleting %s\n", filename);
+{indent}{indent}printf("ROTT64 r91f: temp save failed validation, deleting %s\n", filename);
 {indent}{indent}remove(filename);
 {indent}{indent}free(filename);
 {indent}{indent}free(finalname);
@@ -378,7 +378,7 @@ static boolean ROTT64_CommitSaveFile(const char *tmpname, const char *finalname)
 
 {indent}if (!ROTT64_CommitSaveFile(filename, finalname))
 {indent}{{
-{indent}{indent}printf("ROTT64 r91c: failed to commit save %s -> %s\n", filename, finalname);
+{indent}{indent}printf("ROTT64 r91f: failed to commit save %s -> %s\n", filename, finalname);
 {indent}{indent}remove(filename);
 {indent}{indent}free(filename);
 {indent}{indent}free(finalname);
@@ -400,7 +400,7 @@ static boolean ROTT64_CommitSaveFile(const char *tmpname, const char *finalname)
         if n_end != 1:
             fail("SaveTheGame final free/close anchor not found")
 
-        if "char *finalname" not in save_func or "ROTT64_R91C_SAVE_TEMP_PATH" not in save_func:
+        if "char *finalname" not in save_func or "ROTT64_R91F_SAVE_TEMP_PATH" not in save_func:
             fail("SaveTheGame temp path patch failed")
         text = text[:a] + save_func + text[b:]
 
@@ -414,8 +414,8 @@ static boolean ROTT64_CommitSaveFile(const char *tmpname, const char *finalname)
         "ROTT64_ValidateSaveGameSlot",
         "ROTT64_ValidateSaveGameFile",
         "ROTT64_CommitSaveFile",
-        "ROTT64_R91C_SAVE_TEMP_PATH",
-        "ROTT64_R91C_LOAD_VALIDATE_BEFORE_FULL_LOAD",
+        "ROTT64_R91F_SAVE_TEMP_PATH",
+        "ROTT64_R91F_LOAD_VALIDATE_BEFORE_FULL_LOAD",
     ):
         if token not in out:
             fail("rt_game.c missing " + token)
@@ -450,7 +450,7 @@ def patch_rt_menu(gen: Path) -> None:
     boolean found = false;
     gamestorage_t game;
 
-    /* ROTT64_R91C_SCAN_VALIDATES_SLOTS */
+    /* ROTT64_R91F_SCAN_VALIDATES_SLOTS */
     memset(&SaveGamesAvail[0], 0, sizeof(SaveGamesAvail));
     memset(&SaveGameNames[0][0], 0, sizeof(SaveGameNames));
 
@@ -473,16 +473,16 @@ def patch_rt_menu(gen: Path) -> None:
         MainMenu[loadgame].active = CP_Inactive;
 }''' + text[b:]
 
-    if "ROTT64_R91C_SAVE_FAILURE_DEACTIVATES_SLOT" not in text:
+    if "ROTT64_R91F_SAVE_FAILURE_DEACTIVATES_SLOT" not in text:
         before = "if (SaveTheGame(which, &game) == true)"
         idx = text.find(before)
         if idx >= 0:
             # Leave this as a best-effort marker if exact block shape differs.
             end = text.find("WaitKeyUp();", idx)
-            if end >= 0 and "ROTT64_R91C_SAVE_FAILURE_DEACTIVATES_SLOT" not in text[idx:end]:
+            if end >= 0 and "ROTT64_R91F_SAVE_FAILURE_DEACTIVATES_SLOT" not in text[idx:end]:
                 brace = text.find("}\n", idx)
                 if brace >= 0 and brace < end:
-                    text = text[:brace+2] + "\n                else\n                {\n                    /* ROTT64_R91C_SAVE_FAILURE_DEACTIVATES_SLOT */\n                    SaveGamesAvail[which] = 0;\n                    memset(&SaveGameNames[which][0], 0, 32);\n                    MainMenu[loadgame].active = CP_Inactive;\n                }" + text[brace+2:]
+                    text = text[:brace+2] + "\n                else\n                {\n                    /* ROTT64_R91F_SAVE_FAILURE_DEACTIVATES_SLOT */\n                    SaveGamesAvail[which] = 0;\n                    memset(&SaveGameNames[which][0], 0, 32);\n                    MainMenu[loadgame].active = CP_Inactive;\n                }" + text[brace+2:]
 
     if MARK not in text:
         text = "/* " + MARK + " */\n" + text
@@ -490,7 +490,7 @@ def patch_rt_menu(gen: Path) -> None:
     path.write_text(text.rstrip() + "\n", encoding="utf-8", newline="\n")
 
     out = path.read_text(encoding="utf-8", errors="ignore")
-    if "ROTT64_R91C_SCAN_VALIDATES_SLOTS" not in out:
+    if "ROTT64_R91F_SCAN_VALIDATES_SLOTS" not in out:
         fail("ScanForSavedGames was not rewritten")
     scan_start, _scan_open, scan_end = function_span(out, "ScanForSavedGames")
     scan_body = out[scan_start:scan_end]
@@ -504,7 +504,7 @@ def patch_rt_menu(gen: Path) -> None:
 
 def main(argv: list[str]) -> int:
     if len(argv) != 2:
-        fail("usage: r91c_patch_atomic_save_validate.py generated/rott")
+        fail("usage: r91f_patch_atomic_save_validate.py generated/rott")
     gen = Path(argv[1])
     if not gen.is_dir():
         fail("generated/rott directory not found")
