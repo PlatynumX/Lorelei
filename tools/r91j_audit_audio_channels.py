@@ -19,7 +19,7 @@ def read_define(header: str, name: str) -> int:
 
 def main(argv: list[str]) -> int:
     if len(argv) != 2:
-        raise SystemExit("ERROR: usage: r91f_audit_audio_channels.py generated/rott")
+        raise SystemExit("ERROR: usage: r91j_audit_audio_channels.py generated/rott")
 
     gen = Path(argv[1])
     header = Path("platform/n64/rott64_audio.h").read_text(encoding="utf-8")
@@ -28,7 +28,7 @@ def main(argv: list[str]) -> int:
     music_sub = read_define(header, "ROTT64_MUSIC_STEREO_SUBCHANNEL")
 
     if (mixer_channels, music_ch, music_sub) != (10, 8, 9):
-        raise SystemExit("ERROR: unexpected r91f audio channel contract")
+        raise SystemExit("ERROR: unexpected r91j audio channel contract")
 
     max_literal = -1
     literal_hits = 0
@@ -58,7 +58,7 @@ def main(argv: list[str]) -> int:
             if ch >= mixer_channels:
                 raise SystemExit(f"ERROR: generated mixer channel {ch} exceeds count {mixer_channels}: {p}")
 
-    print("PASS: ROTT64_R91F_AUDIO_CHANNEL_AUDIT")
+    print("PASS: ROTT64_R91J_AUDIO_CHANNEL_AUDIT")
     print(f"PASS: mixer channels: {mixer_channels}; music pair: {music_ch}/{music_sub}; max literal channel: {max_literal}")
     print(f"PASS: literal generated channel calls audited: {literal_hits}")
     return 0
