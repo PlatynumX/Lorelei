@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 import hashlib
 
-VERSION = "r92e"
+VERSION = "r92g"
 
 MAGIC_Z64 = b"\x80\x37\x12\x40"
 MAGIC_V64 = b"\x37\x80\x40\x12"
@@ -14,6 +14,33 @@ ROM_SUFFIXES = {".z64", ".n64", ".v64", ".rom", ".bin"}
 
 def fail(msg: str) -> None:
     raise SystemExit("ERROR: " + msg)
+
+def safe_write_bytes(path: Path, data: bytes) -> None:
+    tmp = path.with_name(path.name + ".tmp")
+    if tmp.exists():
+        try:
+            tmp.chmod(0o644)
+        except OSError:
+            pass
+        tmp.unlink()
+
+    tmp.write_bytes(data)
+    tmp.chmod(0o644)
+
+    if path.exists():
+        try:
+            path.chmod(0o644)
+        except OSError:
+            pass
+        try:
+            path.unlink()
+        except OSError as exc:
+            fail(f"could not replace existing output {path}: {exc}")
+
+    tmp.replace(path)
+
+def safe_write_text(path: Path, text: str) -> None:
+    safe_write_bytes(path, text.encode("utf-8"))
 
 
 def rom_kind(path: Path) -> str | None:
@@ -129,12 +156,21 @@ def main() -> int:
 
     canonical = Path("rott64.z64")
     versioned = Path(f"rott64-{VERSION}.z64")
-    canonical.write_bytes(z64_data)
-    versioned.write_bytes(z64_data)
+    # If the discovered ROM already is root rott64.z64, do not rewrite it.
+    # r92e failed when rott64.z64 existed but could not be reopened for writing.
+    if src.resolve() != canonical.resolve():
+        safe_write_bytes(canonical, z64_data)
+    else:
+        try:
+            canonical.chmod(0o644)
+        except OSError:
+            pass
+
+    safe_write_bytes(versioned, z64_data)
 
     sha = hashlib.sha256(z64_data).hexdigest()
     sha_file = Path(f"rott64-{VERSION}.z64.sha256")
-    sha_file.write_text(f"{sha}  rott64-{VERSION}.z64\n", encoding="utf-8", newline="\n")
+    safe_write_text(sha_file, f"{sha}  rott64-{VERSION}.z64\n")
 
     for out in (canonical, versioned):
         if not out.is_file() or out.stat().st_size <= 1024 * 1024:
@@ -145,7 +181,7 @@ def main() -> int:
     if not sha_file.is_file() or sha not in sha_file.read_text(encoding="utf-8"):
         fail(f"sha256 sidecar missing or invalid: {sha_file}")
 
-    print("PASS: ROTT64_R92E_ROM_DISCOVERY_PACKAGE")
+    print("PASS: ROTT64_R92G_ROM_DISCOVERY_PACKAGE")
     print(f"PASS: source ROM: {src} ({kind})")
     print(f"PASS: canonical ROM: {canonical} ({canonical.stat().st_size} bytes)")
     print(f"PASS: versioned ROM: {versioned} ({versioned.stat().st_size} bytes)")
