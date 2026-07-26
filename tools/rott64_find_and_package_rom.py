@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+import hashlib
 
-VERSION = "r92c"
+VERSION = "r92e"
 
 MAGIC_Z64 = b"\x80\x37\x12\x40"
 MAGIC_V64 = b"\x37\x80\x40\x12"
@@ -131,16 +132,24 @@ def main() -> int:
     canonical.write_bytes(z64_data)
     versioned.write_bytes(z64_data)
 
+    sha = hashlib.sha256(z64_data).hexdigest()
+    sha_file = Path(f"rott64-{VERSION}.z64.sha256")
+    sha_file.write_text(f"{sha}  rott64-{VERSION}.z64\n", encoding="utf-8", newline="\n")
+
     for out in (canonical, versioned):
         if not out.is_file() or out.stat().st_size <= 1024 * 1024:
             fail(f"packaged ROM missing or too small: {out}")
         if out.read_bytes()[:4] != MAGIC_Z64:
             fail(f"packaged ROM is not canonical z64 byte order: {out}")
 
-    print("PASS: ROTT64_R92C_ROM_DISCOVERY_PACKAGE")
+    if not sha_file.is_file() or sha not in sha_file.read_text(encoding="utf-8"):
+        fail(f"sha256 sidecar missing or invalid: {sha_file}")
+
+    print("PASS: ROTT64_R92E_ROM_DISCOVERY_PACKAGE")
     print(f"PASS: source ROM: {src} ({kind})")
     print(f"PASS: canonical ROM: {canonical} ({canonical.stat().st_size} bytes)")
     print(f"PASS: versioned ROM: {versioned} ({versioned.stat().st_size} bytes)")
+    print(f"PASS: sha256: {sha_file}")
     print(f"PASS: report: {report}")
     return 0
 
