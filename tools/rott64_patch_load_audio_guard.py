@@ -5,9 +5,9 @@ from pathlib import Path
 import re
 import sys
 
-MARK_HELPER = "ROTT64_R94F_SAVE_LOAD_AUDIO_GUARD_HELPER"
-MARK_LOAD = "ROTT64_R94F_STOP_AUDIO_BEFORE_LOAD"
-MARK_SAVE = "ROTT64_R94F_STOP_AUDIO_BEFORE_SAVE"
+MARK_HELPER = "ROTT64_R95E_SAVE_LOAD_AUDIO_GUARD_HELPER"
+MARK_LOAD = "ROTT64_R95E_STOP_AUDIO_BEFORE_LOAD"
+MARK_SAVE = "ROTT64_R95E_STOP_AUDIO_BEFORE_SAVE"
 
 def fail(msg: str) -> None:
     raise SystemExit("ERROR: " + msg)
@@ -62,7 +62,7 @@ def install_helper(text: str) -> str:
 extern void MU_StopSong(void);
 extern void SD_StopAllSounds(void);
 #endif
-static void rott64_r94f_stop_audio_for_save_load(void)
+static void rott64_r95e_stop_audio_for_save_load(void)
 {{
 #ifdef __N64__
     MU_StopSong();
@@ -81,7 +81,7 @@ def install_call(text: str, func: str, mark: str) -> str:
 
     call = f"""#ifdef __N64__
     /* {mark} */
-    rott64_r94f_stop_audio_for_save_load();
+    rott64_r95e_stop_audio_for_save_load();
 #endif
 """
     return insert_after_open_brace(text, open_brace, call)
@@ -109,7 +109,7 @@ def main(argv: list[str]) -> int:
         MARK_HELPER,
         MARK_LOAD,
         MARK_SAVE,
-        "rott64_r94f_stop_audio_for_save_load();",
+        "rott64_r95e_stop_audio_for_save_load();",
         "MU_StopSong();",
         "SD_StopAllSounds();",
     ]:
