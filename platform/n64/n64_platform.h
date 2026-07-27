@@ -4,15 +4,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#ifdef __N64__
-/* ROTT64_R104_PRESENT_WRAPPER_VOID_DECL
- * Do not include libdragon.h from this public platform header.
- * Generated ROTT files may include signal.h first; libdragon's
- * ucontext.h can then collide on stack_t. Use void* here and cast
- * inside n64_platform.c, where libdragon.h is already safe.
- */
-void rott64_n64_display_show_crt_safe(void *surface);
-#endif
 
 void n64_platform_init(void);
 void n64_platform_fatal(const char *message);

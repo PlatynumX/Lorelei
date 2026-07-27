@@ -117,18 +117,6 @@ static void rott64_r83_present_4x3(surface_t *fb)
     }
 }
 
-void rott64_n64_display_show_crt_safe(void *surface_ptr)
-{
-    /* ROTT64_R104_PRESENT_WRAPPER_VOID_IMPL
-     *
-     * Keep libdragon surface_t usage private to this translation unit so
-     * generated engine files can include n64_platform.h without pulling in
-     * libdragon/ucontext types.
-     */
-    surface_t *surface = (surface_t *)surface_ptr;
-    rott64_r83_present_4x3(surface);
-    display_show(surface);
-}
 
 
 static resolution_t rott64_video_r59_resolution_struct(void)
