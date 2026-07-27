@@ -4,8 +4,8 @@ from pathlib import Path
 import re
 import sys
 
-MARK = "ROTT64_R96A_SD_SAVE_MENU_HELPER"
-HELPER = "rott64_r96a_existing_save_path"
+MARK = "ROTT64_R96C_SD_SAVE_MENU_HELPER"
+HELPER = "rott64_r96c_existing_save_path"
 
 def fail(msg: str) -> None:
     raise SystemExit("ERROR: " + msg)
@@ -48,7 +48,7 @@ def ensure_helper(text: str) -> str:
 
 def main(argv: list[str]) -> int:
     if len(argv) != 2:
-        fail("usage: r96a_patch_sd_save_menu.py generated/rott")
+        fail("usage: r96c_patch_sd_save_menu.py generated/rott")
     menu = Path(argv[1]) / "rt_menu.c"
     if not menu.is_file():
         fail("missing generated rt_menu.c")

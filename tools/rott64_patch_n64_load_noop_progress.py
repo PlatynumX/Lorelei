@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 import sys
 
-MARK = "ROTT64_R96A_N64_NOOP_DOLOADGAMEACTION"
+MARK = "ROTT64_R96C_N64_NOOP_DOLOADGAMEACTION"
 
 def fail(msg: str) -> None:
     raise SystemExit("ERROR: " + msg)
