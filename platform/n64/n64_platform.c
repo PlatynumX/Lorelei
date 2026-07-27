@@ -117,6 +117,17 @@ static void rott64_r83_present_4x3(surface_t *fb)
     }
 }
 
+void rott64_n64_display_show_crt_safe(surface_t *surface)
+{
+    /* ROTT64_R103_DISPLAY_SHOW_WRAPPER_IMPL
+     * Real gameplay display_show() callsites route through here so the
+     * CRT-safe matte is applied before libdragon presents the frame.
+     */
+    rott64_r83_present_4x3(surface);
+    display_show(surface);
+}
+
+
 static resolution_t rott64_video_r59_resolution_struct(void)
 {
     /* R83: fixed safe N64 output. ROTT's 320x200 image is stretched at

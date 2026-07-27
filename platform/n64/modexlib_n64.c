@@ -84,7 +84,7 @@ static void present_frame(void)
             }
         }
     }
-    display_show(surface);
+    rott64_n64_display_show_crt_safe(surface); /* ROTT64_R103_PRESENT_WRAP_CALLSITE */
 #else
     (void)rgba5551;
 #endif

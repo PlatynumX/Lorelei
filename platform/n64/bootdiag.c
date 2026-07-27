@@ -6,6 +6,7 @@
 #include <libdragon.h>
 #include <stdio.h>
 #include <stdint.h>
+#include "n64_platform.h"
 
 static void spin_delay(void)
 {
@@ -26,7 +27,7 @@ static void show_stage(const char *title, const char *detail, uint32_t backgroun
     graphics_draw_text(surface, 16, 20, "ROTT64 N64 BOOT DIAGNOSTIC");
     graphics_draw_text(surface, 16, 56, title);
     if (detail != NULL) graphics_draw_text(surface, 16, 86, detail);
-    display_show(surface);
+    rott64_n64_display_show_crt_safe(surface); /* ROTT64_R103_PRESENT_WRAP_CALLSITE */
 }
 
 int main(void)
