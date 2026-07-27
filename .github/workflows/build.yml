@@ -235,10 +235,10 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/rott64_find_and_package_rom.py
-          test -f rott64-r94a.z64
-          test -f rott64-r94a.z64.sha256
-          ls -lh rott64.z64 rott64-r94a.z64 rott64-r94a.z64.sha256
-      - name: Package ROTT64 r94a ROM
+          test -f rott64-r94c.z64
+          test -f rott64-r94c.z64.sha256
+          ls -lh rott64.z64 rott64-r94c.z64 rott64-r94c.z64.sha256
+      - name: Package ROTT64 r94c ROM
         run: |
           set -euo pipefail
           python3 tools/rott64_find_and_package_rom.py
@@ -246,30 +246,30 @@ jobs:
           from pathlib import Path
           import shutil
           import zipfile
-          out = Path('rott64-r94a-build')
+          out = Path('rott64-r94c-build')
           if out.exists():
               shutil.rmtree(out)
           out.mkdir()
-          for name in ('rott64-r94a.z64', 'rott64-r94a.z64.sha256'):
+          for name in ('rott64-r94c.z64', 'rott64-r94c.z64.sha256'):
               src = Path(name)
               if not src.is_file():
                   raise SystemExit(f'missing package input: {name}')
               shutil.copy2(src, out / src.name)
-          with zipfile.ZipFile('rott64-r94a-build.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
+          with zipfile.ZipFile('rott64-r94c-build.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
               for p in sorted(out.rglob('*')):
                   zf.write(p, p.relative_to(out.parent))
           ZIPBUILD
-          test -f rott64-r94a-build.zip
-          ls -lh rott64-r94a-build.zip
+          test -f rott64-r94c-build.zip
+          ls -lh rott64-r94c-build.zip
       - name: Upload Dark War ROM
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-r94a-build
+          name: rott64-r94c-build
           if-no-files-found: error
           path: |
-            rott64-r94a.z64
-            rott64-r94a.z64.sha256
-            rott64-r94a-build.zip
+            rott64-r94c.z64
+            rott64-r94c.z64.sha256
+            rott64-r94c-build.zip
       - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
