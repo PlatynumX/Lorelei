@@ -214,9 +214,30 @@ static void poll_n64_controller(void)
     update_binding(2, menu_mode && buttons.d_left);
     update_binding(3, menu_mode && buttons.d_right);
     update_binding(5, menu_mode && (buttons.a || buttons.z));
-    /* ROTT64_R94E_START_MENU_AUDIO_STOP / ROTT64_R94E_START_MENU_AUDIO_STOP:\n       Gameplay Start emits a one-frame Escape tap. Also stop active\n       music/SFX before entering ControlPanel so libdragon's mixer is\n       not polling an old VADPCM stream during menu/save transitions. */\n    #ifdef __N64__\n    extern void MU_StopSong(void);\n    extern void SD_StopAllSounds(void);\n    #endif\n    if (menu_mode) {\n        update_binding(7, buttons.b || buttons.start);\n    } else {\n        if (bindings[7].held) {\n            update_binding(7, false);\n        }\n        if (pressed.start) {\n    #ifdef __N64__\n            MU_StopSong();\n            SD_StopAllSounds();\n    #endif\n            emit_key(SDL_SCANCODE_ESCAPE, true);\n            emit_key(SDL_SCANCODE_ESCAPE, false);\n        }\n    }
-
-    /* Analog movement is consumed by rott64_n64_gamepad_axes() in rt_playr.c.
+    /* ROTT64_R93C_START_ESCAPE_EDGE / ROTT64_R94F_START_MENU_AUDIO_STOP:
+       Gameplay Start emits a one-frame Escape tap. Also stop active
+       music/SFX before entering ControlPanel so libdragon's mixer is
+       not polling an old VADPCM stream during menu/save transitions. */
+    #ifdef __N64__
+    extern void MU_StopSong(void);
+    extern void SD_StopAllSounds(void);
+    #endif
+    if (menu_mode) {
+        update_binding(7, buttons.b || buttons.start);
+    } else {
+        if (bindings[7].held) {
+            update_binding(7, false);
+        }
+        if (pressed.start) {
+    #ifdef __N64__
+            MU_StopSong();
+            SD_StopAllSounds();
+    #endif
+            emit_key(SDL_SCANCODE_ESCAPE, true);
+            emit_key(SDL_SCANCODE_ESCAPE, false);
+        }
+    }
+/* Analog movement is consumed by rott64_n64_gamepad_axes() in rt_playr.c.
        Never inject the stick as a second SDL mouse path. */
     relative_x = 0;
     relative_y = 0;
