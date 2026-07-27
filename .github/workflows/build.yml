@@ -110,6 +110,9 @@ jobs:
           python3 tools/r59_stock_video_menu.py generated/rott
           python3 tools/r86_patch_stat_integrity.py generated/rott
           python3 tools/r87_patch_zone_integrity.py generated/rott
+          grep -Fq 'ROTT64_R98_DISABLE_LIBC_HEAP_STATS' generated/rott/z_zone.c
+          ! grep -Fq 'sys_get_heap_stats(&hs);' generated/rott/z_zone.c
+          ! grep -Fq 'heap_stats_t hs;' generated/rott/z_zone.c
           python3 tools/r88_patch_sd_saves.py generated/rott
           python3 tools/rott64_patch_sd_save_menu.py generated/rott
           python3 tools/rott64_audit_audio_channels.py generated/rott
@@ -239,10 +242,10 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/rott64_find_and_package_rom.py
-          test -f rott64-r97.z64
-          test -f rott64-r97.z64.sha256
-          ls -lh rott64.z64 rott64-r97.z64 rott64-r97.z64.sha256
-      - name: Package ROTT64 r97 ROM
+          test -f rott64-r98.z64
+          test -f rott64-r98.z64.sha256
+          ls -lh rott64.z64 rott64-r98.z64 rott64-r98.z64.sha256
+      - name: Package ROTT64 r98 ROM
         run: |
           set -euo pipefail
           python3 tools/rott64_find_and_package_rom.py
@@ -250,30 +253,30 @@ jobs:
           from pathlib import Path
           import shutil
           import zipfile
-          out = Path('rott64-r97-build')
+          out = Path('rott64-r98-build')
           if out.exists():
               shutil.rmtree(out)
           out.mkdir()
-          for name in ('rott64-r97.z64', 'rott64-r97.z64.sha256'):
+          for name in ('rott64-r98.z64', 'rott64-r98.z64.sha256'):
               src = Path(name)
               if not src.is_file():
                   raise SystemExit(f'missing package input: {name}')
               shutil.copy2(src, out / src.name)
-          with zipfile.ZipFile('rott64-r97-build.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
+          with zipfile.ZipFile('rott64-r98-build.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
               for p in sorted(out.rglob('*')):
                   zf.write(p, p.relative_to(out.parent))
           ZIPBUILD
-          test -f rott64-r97-build.zip
-          ls -lh rott64-r97-build.zip
+          test -f rott64-r98-build.zip
+          ls -lh rott64-r98-build.zip
       - name: Upload Dark War ROM
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-r97-build
+          name: rott64-r98-build
           if-no-files-found: error
           path: |
-            rott64-r97.z64
-            rott64-r97.z64.sha256
-            rott64-r97-build.zip
+            rott64-r98.z64
+            rott64-r98.z64.sha256
+            rott64-r98-build.zip
       - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4

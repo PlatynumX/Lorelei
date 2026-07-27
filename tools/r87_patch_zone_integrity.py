@@ -171,12 +171,10 @@ static void rott64_r87_check_block(memblock_t *b, const char *where)
 static void rott64_r87_validate_zone(const char *where)
 {
     int tag;
-    heap_stats_t hs;
-
-    sys_get_heap_stats(&hs);
-    assertf(hs.total > 0 && hs.used >= 0 && hs.used <= hs.total,
-        "R87 HEAP STATS BAD %s total=%d used=%d",
-        where, hs.total, hs.used);
+    /* ROTT64_R98_DISABLE_LIBC_HEAP_STATS
+     * Disabled the libc heap-stat walk from the Z_Malloc hot path.
+     * r87 redzones and zone linked-list checks remain enabled below.
+     */
 
     for (tag = 0; tag < PU_MAX; ++tag)
     {
