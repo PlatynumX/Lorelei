@@ -5,9 +5,13 @@
 #include <stdint.h>
 
 #ifdef __N64__
-#include <libdragon.h>
-/* ROTT64_R103_DISPLAY_SHOW_WRAPPER_DECL */
-void rott64_n64_display_show_crt_safe(surface_t *surface);
+/* ROTT64_R104_PRESENT_WRAPPER_VOID_DECL
+ * Do not include libdragon.h from this public platform header.
+ * Generated ROTT files may include signal.h first; libdragon's
+ * ucontext.h can then collide on stack_t. Use void* here and cast
+ * inside n64_platform.c, where libdragon.h is already safe.
+ */
+void rott64_n64_display_show_crt_safe(void *surface);
 #endif
 
 void n64_platform_init(void);
