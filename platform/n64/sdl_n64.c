@@ -214,7 +214,7 @@ static void poll_n64_controller(void)
     update_binding(2, menu_mode && buttons.d_left);
     update_binding(3, menu_mode && buttons.d_right);
     update_binding(5, menu_mode && (buttons.a || buttons.z));
-    /* ROTT64_R93C_START_ESCAPE_EDGE / ROTT64_R95E_START_MENU_AUDIO_STOP:
+    /* ROTT64_R93C_START_ESCAPE_EDGE / ROTT64_R96A_START_MENU_AUDIO_STOP:
        Gameplay Start emits a one-frame Escape tap. Also stop active
        music/SFX before entering ControlPanel so libdragon's mixer is
        not polling an old VADPCM stream during menu/save transitions. */

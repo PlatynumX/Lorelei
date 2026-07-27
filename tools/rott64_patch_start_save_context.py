@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 import sys
 
-MARK = "ROTT64_R95E_START_INGAME_SAVE_CONTEXT"
+MARK = "ROTT64_R96A_START_INGAME_SAVE_CONTEXT"
 
 def fail(msg: str) -> None:
     raise SystemExit("ERROR: " + msg)
@@ -104,7 +104,7 @@ def patch_menu(gen: Path) -> None:
     original = text
     text = add_include(text, "#include <stdio.h>")
 
-    helper_name = "rott64_r95e_can_save_in_current_context"
+    helper_name = "rott64_r96a_can_save_in_current_context"
     if helper_name not in text:
         helper = (
             f"\n/* {MARK}: saves require an active gameplay context, not title/menu state. */\n"
@@ -122,13 +122,13 @@ def patch_menu(gen: Path) -> None:
 
     a, o, b = function_span(text, "CP_SaveGame")
     func = text[a:b]
-    if "ROTT64_R95E_SAVE_CONTEXT_GUARD" not in func:
+    if "ROTT64_R96A_SAVE_CONTEXT_GUARD" not in func:
         insert = (
             "{\n"
-            "    /* ROTT64_R95E_SAVE_CONTEXT_GUARD */\n"
+            "    /* ROTT64_R96A_SAVE_CONTEXT_GUARD */\n"
             f"    if (!{helper_name}())\n"
             "    {\n"
-            "        printf(\"ROTT64 r95e: Save rejected outside active game context\\n\");\n"
+            "        printf(\"ROTT64 r96a: Save rejected outside active game context\\n\");\n"
             "        return 0;\n"
             "    }\n"
         )
@@ -142,7 +142,7 @@ def patch_menu(gen: Path) -> None:
         menu.write_text(text.rstrip() + "\n", encoding="utf-8", newline="\n")
 
     out = menu.read_text(encoding="utf-8", errors="ignore")
-    if "ROTT64_R95E_SAVE_CONTEXT_GUARD" not in out:
+    if "ROTT64_R96A_SAVE_CONTEXT_GUARD" not in out:
         fail("save context guard did not apply")
     if helper_name not in out:
         fail("save context helper missing")
@@ -165,7 +165,7 @@ def patch_start_sources(gen: Path) -> None:
         # Start patches. Do not rewrite normal title-screen code.
         text = re.sub(
             r"(?m)^([ \t]*)(?:return[ \t]+)?ex_titles[ \t]*\([^;\n]*\)[ \t]*;[ \t]*(?://.*)?$",
-            r'\1/* ROTT64_R95E_START_NO_TITLE_JUMP: Start must use in-game ControlPanel/Escape path. */',
+            r'\1/* ROTT64_R96A_START_NO_TITLE_JUMP: Start must use in-game ControlPanel/Escape path. */',
             text,
         )
 
@@ -188,7 +188,7 @@ def patch_start_sources(gen: Path) -> None:
 
 def main(argv: list[str]) -> int:
     if len(argv) != 2:
-        fail("usage: r95e_patch_start_save_context.py generated/rott")
+        fail("usage: r96a_patch_start_save_context.py generated/rott")
     gen = Path(argv[1])
     if not gen.is_dir():
         fail("generated/rott directory not found")
