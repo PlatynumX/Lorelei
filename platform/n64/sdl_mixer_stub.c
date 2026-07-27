@@ -326,13 +326,6 @@ static void apply_channel_mix(int channel)
 void rott64_mixer_pump(void)
 {
 #ifdef __N64__
-    /* ROTT64_R96C_MIXER_PUMP_SKIP_DURING_LOAD */
-    extern volatile int rott64_n64_load_restore_in_progress;
-    if (rott64_n64_load_restore_in_progress) {
-        return;
-    }
-#endif
-#ifdef __N64__
     if (!opened) {
         return;
     }
