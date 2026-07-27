@@ -38,14 +38,31 @@ static gamma_t rott64_video_r59_gamma = GAMMA_NONE;
  */
 static void rott64_r83_present_4x3(surface_t *fb)
 {
+    /* ROTT64_R99_CRT_SAFE_VIEWPORT
+     *
+     * Keep the N64 output mode at standard 320x240 4:3, but present the
+     * 320x200 software image inside a 288x216 centered safe rectangle.
+     * This leaves 16 pixels left/right and 12 pixels top/bottom for CRT
+     * overscan while preserving a 4:3 active picture.
+     */
+    enum {
+        ROTT64_R99_SAFE_X = 16,
+        ROTT64_R99_SAFE_Y = 12,
+        ROTT64_R99_SAFE_W = 288,
+        ROTT64_R99_SAFE_H = 216,
+        ROTT64_R99_SRC_W = 320,
+        ROTT64_R99_SRC_H = 200,
+        ROTT64_R99_DST_W = 320,
+        ROTT64_R99_DST_H = 240
+    };
     unsigned char *base;
     int y;
+    uint16_t source_row[ROTT64_R99_SRC_W];
 
     if (fb == NULL || fb->buffer == NULL)
         return;
-    if (fb->width != 320 || fb->height != 240 || fb->stride == 0)
+    if (fb->width != ROTT64_R99_DST_W || fb->height != ROTT64_R99_DST_H || fb->stride == 0)
         return;
-
 #if defined(__N64__)
     /* ROTT64_R87_PRESENT_BOUNDS */
     {
@@ -54,13 +71,11 @@ static void rott64_r83_present_4x3(surface_t *fb)
         const uint32_t bytes = (uint32_t)fb->stride * (uint32_t)fb->height;
         const uint32_t min_stride =
             (uint32_t)fb->width * (uint32_t)display_get_bitdepth();
-
         assertf(fb->stride >= min_stride,
             "R87 BAD FB STRIDE stride=%u min=%lu w=%u h=%u bpp=%lu",
             (unsigned int)fb->stride, (unsigned long)min_stride,
             (unsigned int)fb->width, (unsigned int)fb->height,
             (unsigned long)display_get_bitdepth());
-
         assertf(phys < mem && bytes <= mem - phys,
             "R87 FB OOB buf=%p phys=%08lx bytes=%lu mem=%lu stride=%u h=%u",
             fb->buffer, (unsigned long)phys, (unsigned long)bytes,
@@ -71,15 +86,35 @@ static void rott64_r83_present_4x3(surface_t *fb)
 
     base = (unsigned char *)fb->buffer;
 
-    for (y = 239; y >= 0; --y)
+    for (y = ROTT64_R99_DST_H - 1; y >= 0; --y)
     {
-        const int source_y = (y * 200) / 240;
-        if (source_y == y)
-            continue;
+        uint16_t *dst = (uint16_t *)(void *)(base + ((size_t)y * fb->stride));
+        int x;
 
-        memmove(base + ((size_t)y * fb->stride),
-                base + ((size_t)source_y * fb->stride),
-                fb->stride);
+        if (y < ROTT64_R99_SAFE_Y || y >= ROTT64_R99_SAFE_Y + ROTT64_R99_SAFE_H)
+        {
+            for (x = 0; x < ROTT64_R99_DST_W; ++x)
+                dst[x] = 0;
+            continue;
+        }
+
+        {
+            const int local_y = y - ROTT64_R99_SAFE_Y;
+            const int source_y = (local_y * ROTT64_R99_SRC_H) / ROTT64_R99_SAFE_H;
+            const uint16_t *src =
+                (const uint16_t *)(const void *)(base + ((size_t)source_y * fb->stride));
+
+            memcpy(source_row, src, sizeof(source_row));
+        }
+
+        for (x = 0; x < ROTT64_R99_DST_W; ++x)
+            dst[x] = 0;
+
+        for (x = 0; x < ROTT64_R99_SAFE_W; ++x)
+        {
+            const int source_x = (x * ROTT64_R99_SRC_W) / ROTT64_R99_SAFE_W;
+            dst[ROTT64_R99_SAFE_X + x] = source_row[source_x];
+        }
     }
 }
 
