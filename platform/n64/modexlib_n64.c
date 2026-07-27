@@ -53,14 +53,27 @@ static uint16_t rgba5551(SDL_Color color)
 static void present_frame(void)
 {
 #ifdef __N64__
+    /* ROTT64_R108_DIRECT_CRT_SAFE_PRESENT
+     *
+     * Render ROTT's logical 320x200 indexed framebuffer directly into a
+     * centered 288x216 safe rectangle in the N64's 320x240 4:3 output.
+     */
+    enum {
+        SAFE_X = 16,
+        SAFE_Y = 12,
+        SAFE_W = 288,
+        SAFE_H = 216
+    };
     surface_t *surface;
     uint16_t converted[256];
+    int i;
     int y;
 
     if (!display_ready) {
         return;
     }
-    for (int i = 0; i < 256; ++i) {
+
+    for (i = 0; i < 256; ++i) {
         converted[i] = rgba5551(palette_colors[i]);
     }
 
@@ -71,25 +84,38 @@ static void present_frame(void)
 
     {
         uint16_t *destination = (uint16_t *)surface->buffer;
-        const int destination_stride = surface->stride / (int)sizeof(uint16_t);
+        const int destination_stride =
+            surface->stride / (int)sizeof(uint16_t);
+
         for (y = 0; y < N64_HEIGHT; ++y) {
             uint16_t *row = destination + y * destination_stride;
-            if (y < BORDER_Y || y >= BORDER_Y + ROTT_HEIGHT) {
-                memset(row, 0, ROTT_WIDTH * sizeof(*row));
-            } else {
-                const byte *source = indexed_framebuffer + (y - BORDER_Y) * ROTT_WIDTH;
-                for (int x = 0; x < ROTT_WIDTH; ++x) {
-                    row[x] = converted[source[x]];
+            int x;
+
+            for (x = 0; x < ROTT_WIDTH; ++x) {
+                row[x] = 0;
+            }
+
+            if (y >= SAFE_Y && y < SAFE_Y + SAFE_H) {
+                const int local_y = y - SAFE_Y;
+                const int source_y =
+                    (local_y * ROTT_HEIGHT) / SAFE_H;
+                const byte *source =
+                    indexed_framebuffer + source_y * ROTT_WIDTH;
+
+                for (x = 0; x < SAFE_W; ++x) {
+                    const int source_x =
+                        (x * ROTT_WIDTH) / SAFE_W;
+                    row[SAFE_X + x] = converted[source[source_x]];
                 }
             }
         }
     }
-    rott64_n64_display_show_crt_safe(surface); /* ROTT64_R103_PRESENT_WRAP_CALLSITE */
+
+    display_show(surface);
 #else
     (void)rgba5551;
 #endif
 }
-
 SDL_Window *VL_GetVideoWindow(void) { return NULL; }
 SDL_Surface *VL_GetVideoSurface(void) { return sdl_surface; }
 int VL_SaveBMP(const char *file) { (void)file; return -1; }
