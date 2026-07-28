@@ -138,6 +138,12 @@ jobs:
           grep -Fq 'ROTT64_R122_SKIP_REDUNDANT_SETUPSCREEN_AFTER_LOAD' generated/rott/rt_main.c
           grep -Fq 'ROTT64_R123_USB_POSTLOAD_TRACE' generated/rott/rt_main.c
           grep -Fq 'YAY 57  GAMEPLAY LOOP ENTER' generated/rott/rt_main.c
+          test "$(sha256sum generated/rott/rt_draw.c | awk '{print $1}')" = "$(cat platform/n64/overrides/rt_draw.base.sha256)"
+          cp platform/n64/overrides/rt_draw.c generated/rott/rt_draw.c
+          cmp -s platform/n64/overrides/rt_draw.c generated/rott/rt_draw.c
+          grep -Fq 'ROTT64_R124_N64_LOAD_TRANSITION_ONE_SCREEN_SCRATCH' generated/rott/rt_draw.c
+          grep -Fq 'destscreen = SafeMalloc((long)screensize);' generated/rott/rt_draw.c
+          grep -Fq 'memcpy(dest, src, (size_t)screensize);' generated/rott/modexlib.c
           # ROTT64_R108_SOURCE_OWNED_CRT_PRESENT
           grep -Fq 'ROTT64_R108_DIRECT_CRT_SAFE_PRESENT' generated/rott/modexlib.c
           grep -Fq '#include "n64_platform.h"' generated/rott/modexlib.c
@@ -268,10 +274,10 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/rott64_find_and_package_rom.py
-          test -f rott64-r123.z64
-          test -f rott64-r123.z64.sha256
-          ls -lh rott64.z64 rott64-r123.z64 rott64-r123.z64.sha256
-      - name: Package ROTT64 r123 ROM
+          test -f rott64-r124.z64
+          test -f rott64-r124.z64.sha256
+          ls -lh rott64.z64 rott64-r124.z64 rott64-r124.z64.sha256
+      - name: Package ROTT64 r124 ROM
         run: |
           set -euo pipefail
           python3 tools/rott64_find_and_package_rom.py
@@ -279,30 +285,30 @@ jobs:
           from pathlib import Path
           import shutil
           import zipfile
-          out = Path('rott64-r123-build')
+          out = Path('rott64-r124-build')
           if out.exists():
               shutil.rmtree(out)
           out.mkdir()
-          for name in ('rott64-r123.z64', 'rott64-r123.z64.sha256'):
+          for name in ('rott64-r124.z64', 'rott64-r124.z64.sha256'):
               src = Path(name)
               if not src.is_file():
                   raise SystemExit(f'missing package input: {name}')
               shutil.copy2(src, out / src.name)
-          with zipfile.ZipFile('rott64-r123-build.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
+          with zipfile.ZipFile('rott64-r124-build.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
               for p in sorted(out.rglob('*')):
                   zf.write(p, p.relative_to(out.parent))
           ZIPBUILD
-          test -f rott64-r123-build.zip
-          ls -lh rott64-r123-build.zip
+          test -f rott64-r124-build.zip
+          ls -lh rott64-r124-build.zip
       - name: Upload Dark War ROM
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-r123-build
+          name: rott64-r124-build
           if-no-files-found: error
           path: |
-            rott64-r123.z64
-            rott64-r123.z64.sha256
-            rott64-r123-build.zip
+            rott64-r124.z64
+            rott64-r124.z64.sha256
+            rott64-r124-build.zip
       - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
