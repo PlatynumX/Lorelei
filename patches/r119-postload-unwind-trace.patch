@@ -1,0 +1,191 @@
+diff --git a/generated/rott/rt_menu.c b/generated/rott/rt_menu.c
+--- a/generated/rott/rt_menu.c
++++ b/generated/rott/rt_menu.c
+@@ -70,10 +70,13 @@
+ #include "rt_net.h"
+ #include "rt_scale.h"
+ 
+ #include "rt_battl.h"
+ #include "develop.h"
++#ifdef __N64__
++#include "n64_platform.h"
++#endif
+ #include "m_misc.h"
+ extern boolean ROTT64_ValidateSaveGameSlot(int num, gamestorage_t *game, boolean strict);
+ extern gamestorage_t rott64_save_scratch; /* ROTT64_R109_ROTTDS_SAVE_SCRATCH */
+ 
+ //******************************************************************************
+@@ -1375,25 +1378,53 @@
+ 
+ void CleanUpControlPanel(void)
+ {
+ 	int joyx, joyy;
+ 
++		#ifdef __N64__
++	if (loadedgame)
++		n64_platform_checkpoint("YAY 40  CLEANUP ENTRY");
++	#endif
+ 	if ((playstate == ex_resetgame) || (loadedgame == true))
+ 		ShutdownClientControls();
++		#ifdef __N64__
++		if (loadedgame)
++			n64_platform_checkpoint("YAY 41  CLIENT CONTROLS DOWN");
++		#endif
+ 
+ 	// Free up saved screen image
+ 
+ 	FreeSavedScreenPtr();
++	#ifdef __N64__
++	if (loadedgame)
++		n64_platform_checkpoint("YAY 42  SAVED SCREEN FREED");
++	#endif
+ 
+ 	WriteConfig();
++	#ifdef __N64__
++	if (loadedgame)
++		n64_platform_checkpoint("YAY 43  CONFIG WRITTEN");
++	#endif
+ 
+ 	INL_GetJoyDelta(joystickport, &joyx, &joyy);
++	#ifdef __N64__
++	if (loadedgame)
++		n64_platform_checkpoint("YAY 44  JOY DELTA DONE");
++	#endif
+ 
+ 	if (mouseenabled)
+ 		PollMouseMove(); // Trying to kill movement
++		#ifdef __N64__
++		if (loadedgame)
++			n64_platform_checkpoint("YAY 45  MOUSE POLL DONE");
++		#endif
+ 
+ 	RefreshPause = true;
++	#ifdef __N64__
++	if (loadedgame)
++		n64_platform_checkpoint("YAY 46  CLEANUP DONE");
++	#endif
+ }
+ 
+ //******************************************************************************
+ //
+ // CP_CheckQuick ()
+@@ -1444,10 +1475,14 @@
+ 
+ {
+ 	if (scancode == sc_Escape)
+ 	{
+ 		CP_MainMenu();
++		#ifdef __N64__
++		if (loadedgame)
++			n64_platform_checkpoint("YAY 50  CONTROLPANEL MAIN RETURN");
++		#endif
+ 		if ((playstate == ex_stillplaying) && (loadedgame == false))
+ 		{
+ 			fizzlein = true;
+ 		}
+ 		return;
+@@ -1546,10 +1581,14 @@
+ 		StartGame = false;
+ 
+ 		IN_ClearKeysDown();
+ 
+ 		which = HandleMenu(&MainItems, &MainMenu[0], NULL);
++		#ifdef __N64__
++		if (StartGame && loadedgame)
++			n64_platform_checkpoint("YAY 38  HANDLEMENU RETURN");
++		#endif
+ 
+ 		switch (which)
+ 		{
+ 			case backtodemo:
+ 				if (!ingame)
+@@ -1572,13 +1611,29 @@
+ 				}
+ 		}
+ 	}
+ 
+ 	// Deallocate everything
++		#ifdef __N64__
++	if (StartGame && loadedgame)
++		n64_platform_checkpoint("YAY 39  MAIN LOOP EXIT");
++	#endif
+ 	CleanUpControlPanel();
++	#ifdef __N64__
++	if (loadedgame)
++		n64_platform_checkpoint("YAY 47  CLEANUP RETURN");
++	#endif
+ 	ShutdownMenuBuf();
+-
++	#ifdef __N64__
++	if (loadedgame)
++		n64_platform_checkpoint("YAY 48  MENU BUFFER DOWN");
++	#endif
++
++		#ifdef __N64__
++	if (loadedgame)
++		n64_platform_checkpoint("YAY 49  MAINMENU RETURN");
++	#endif
+ 	return (which);
+ }
+ 
+ //******************************************************************************
+ //
+@@ -2047,10 +2102,14 @@
+ 	switch (exit)
+ 	{
+ 		case 1:
+ 			if ((items + handlewhich)->routine.v != NULL)
+ 				(items + handlewhich)->routine.vi(0);
++						#ifdef __N64__
++			if (StartGame && loadedgame)
++				n64_platform_checkpoint("YAY 37  MAIN ROUTINE RETURN");
++			#endif
+ 			return (handlewhich);
+ 
+ 		case 2:
+ 			MN_PlayMenuSnd(SD_ESCPRESSEDSND);
+ 			return (-1);
+@@ -3001,10 +3060,15 @@
+ 			loadedgame = false;
+ 			DrawLoadSaveScreenAlt(0);
+ 		}
+ 	}
+ 
++		/* ROTT64_R119_POSTLOAD_UNWIND_TRACE: r118 proved this point is reached; trace the caller unwind next. */
++	#ifdef __N64__
++	if (exit)
++		n64_platform_checkpoint("YAY 34  DOLOAD RETURN");
++	#endif
+ 	return (exit);
+ }
+ 
+ //******************************************************************************
+ //
+@@ -3074,19 +3138,27 @@
+ 		if ((exit = DoLoad(which)))
+ 			break;
+ 
+ 	} while (which >= 0);
+ 
++		#ifdef __N64__
++	if (exit)
++		n64_platform_checkpoint("YAY 35  CPLOAD LOOP EXIT");
++	#endif
+ 	handlewhich = OUTOFRANGE;
+ 
+ 	if (MainMenu[loadgame].active ==
+ 		CP_Inactive) // If all the saved games have been
+ 	{
+ 		MainItems.curpos = 0; //  deleted dehighlight LOADGAME
+ 		MainMenu[newgame].active = CP_CursorLocation;
+ 	}
+ 
++		#ifdef __N64__
++	if (exit)
++		n64_platform_checkpoint("YAY 36  CPLOAD RETURN");
++	#endif
+ 	return exit;
+ }
+ 
+ //******************************************************************************
+ //
