@@ -353,7 +353,31 @@ void n64_platform_init(void)
 
 void n64_platform_checkpoint(const char *message)
 {
+#ifdef __N64__
+    /* ROTT64_R116_YAY_TRACE_SCREEN
+     *
+     * The normal 320x240 display is already active. Do not reinitialize it.
+     * Each completed load stage presents one simple YAY screen. If the next
+     * operation freezes, the last YAY remains visible on the CRT.
+     */
+    surface_t *surface = display_get();
+    if (surface == NULL)
+        return;
+
+    graphics_fill_screen(surface, graphics_make_color(0, 0, 32, 255));
+    graphics_set_default_font();
+    graphics_set_color(
+        graphics_make_color(255, 255, 255, 255),
+        graphics_make_color(0, 0, 0, 0)
+    );
+    graphics_draw_text(surface, 96, 54, "ROTT64 LOAD TRACE");
+    graphics_draw_text(surface, 52, 108, message ? message : "YAY ?");
+    graphics_draw_text(surface, 70, 166, "LAST YAY = LAST GOOD STAGE");
+    display_show(surface);
+    wait_ms(110);
+#else
     (void)message;
+#endif
 }
 
 void n64_platform_fatal(const char *message)
