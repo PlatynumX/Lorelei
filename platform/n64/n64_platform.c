@@ -354,20 +354,20 @@ void n64_platform_init(void)
 void n64_platform_checkpoint(const char *message)
 {
 #ifdef __N64__
-    /* ROTT64_R117_YAY_TRACE_STARTUP_GUARD
+    /* ROTT64_R121_NONBLOCKING_YAY_TRACE
      *
      * n64_platform_checkpoint() is also called during startup after the boot
      * display has already been closed.  Only r116 LoadTheGame trace messages
-     * begin with "YAY ".  Reject every other checkpoint before display_get(),
-     * so startup stays display-free while the existing load trace remains
-     * completely unchanged.
+     * begin with "YAY ".  Reject every other checkpoint before touching the display,
+     * so startup stays display-free. YAY tracing uses display_try_get(),
+     * which can never spin-wait for a framebuffer.
      */
     surface_t *surface;
 
     if (message == NULL || strncmp(message, "YAY ", 4) != 0)
         return;
 
-    surface = display_get();
+    surface = display_try_get();
     if (surface == NULL)
         return;
 
