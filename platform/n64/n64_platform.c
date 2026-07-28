@@ -354,13 +354,20 @@ void n64_platform_init(void)
 void n64_platform_checkpoint(const char *message)
 {
 #ifdef __N64__
-    /* ROTT64_R116_YAY_TRACE_SCREEN
+    /* ROTT64_R117_YAY_TRACE_STARTUP_GUARD
      *
-     * The normal 320x240 display is already active. Do not reinitialize it.
-     * Each completed load stage presents one simple YAY screen. If the next
-     * operation freezes, the last YAY remains visible on the CRT.
+     * n64_platform_checkpoint() is also called during startup after the boot
+     * display has already been closed.  Only r116 LoadTheGame trace messages
+     * begin with "YAY ".  Reject every other checkpoint before display_get(),
+     * so startup stays display-free while the existing load trace remains
+     * completely unchanged.
      */
-    surface_t *surface = display_get();
+    surface_t *surface;
+
+    if (message == NULL || strncmp(message, "YAY ", 4) != 0)
+        return;
+
+    surface = display_get();
     if (surface == NULL)
         return;
 
@@ -371,7 +378,7 @@ void n64_platform_checkpoint(const char *message)
         graphics_make_color(0, 0, 0, 0)
     );
     graphics_draw_text(surface, 96, 54, "ROTT64 LOAD TRACE");
-    graphics_draw_text(surface, 52, 108, message ? message : "YAY ?");
+    graphics_draw_text(surface, 52, 108, message);
     graphics_draw_text(surface, 70, 166, "LAST YAY = LAST GOOD STAGE");
     display_show(surface);
     wait_ms(110);
@@ -379,7 +386,6 @@ void n64_platform_checkpoint(const char *message)
     (void)message;
 #endif
 }
-
 void n64_platform_fatal(const char *message)
 {
 #ifdef __N64__
