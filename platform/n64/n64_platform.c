@@ -12,6 +12,7 @@ static bool initialized;
 
 #ifdef __N64__
 static bool boot_display_ready;
+static bool rott64_r123_usb_trace_ready;
 static uint64_t rumble_until_ms;
 static uint64_t rumble_started_ms;
 static uint8_t rumble_strength;
@@ -344,6 +345,9 @@ void n64_platform_init(void)
     boot_display_show("Stage 6/6: Dark War data found\nStarting Taradino...");
     wait_ms(1500);
     boot_display_close();
+    rott64_r123_usb_trace_ready = debug_init_usblog();
+    if (rott64_r123_usb_trace_ready)
+        debugf("[ROTT64 TRACE] USB READY\n");
 #endif
     initialized = true;
 
@@ -354,34 +358,15 @@ void n64_platform_init(void)
 void n64_platform_checkpoint(const char *message)
 {
 #ifdef __N64__
-    /* ROTT64_R121_NONBLOCKING_YAY_TRACE
+    /* ROTT64_R123_SC64_USB_LOAD_TRACE
      *
-     * n64_platform_checkpoint() is also called during startup after the boot
-     * display has already been closed.  Only r116 LoadTheGame trace messages
-     * begin with "YAY ".  Reject every other checkpoint before touching the display,
-     * so startup stays display-free. YAY tracing uses display_try_get(),
-     * which can never spin-wait for a framebuffer.
-     */
-    surface_t *surface;
-
+     * Load diagnostics must not touch the framebuffer or SD card. The SC64
+     * USB channel is initialized once in n64_platform_init(), and YAY messages
+     * are emitted directly through libdragon debugf()/stderr. */
     if (message == NULL || strncmp(message, "YAY ", 4) != 0)
         return;
-
-    surface = display_try_get();
-    if (surface == NULL)
-        return;
-
-    graphics_fill_screen(surface, graphics_make_color(0, 0, 32, 255));
-    graphics_set_default_font();
-    graphics_set_color(
-        graphics_make_color(255, 255, 255, 255),
-        graphics_make_color(0, 0, 0, 0)
-    );
-    graphics_draw_text(surface, 96, 54, "ROTT64 LOAD TRACE");
-    graphics_draw_text(surface, 52, 108, message);
-    graphics_draw_text(surface, 70, 166, "LAST YAY = LAST GOOD STAGE");
-    display_show(surface);
-    wait_ms(110);
+    if (rott64_r123_usb_trace_ready)
+        debugf("[ROTT64 TRACE] %s\n", message);
 #else
     (void)message;
 #endif

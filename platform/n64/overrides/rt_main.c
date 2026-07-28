@@ -1763,6 +1763,10 @@ void PlayLoop(void)
 	}
 
 fromloadedgame:
+	#ifdef __N64__
+	if (loadedgame)
+		n64_platform_checkpoint("YAY 53  FROMLOADEDGAME ENTER");
+	#endif
 
 	GamePaused = false;
 
@@ -1773,8 +1777,14 @@ fromloadedgame:
 	}
 	else
 	{
+		#ifdef __N64__
+		n64_platform_checkpoint("YAY 54  BEFORE LOAD GAME SEQUENCE");
+		#endif
 		loadedgame = false;
 		DoLoadGameSequence();
+		#ifdef __N64__
+		n64_platform_checkpoint("YAY 55  LOAD GAME SEQUENCE RETURN");
+		#endif
 	}
 
 	tics = 0;
@@ -1787,6 +1797,9 @@ fromloadedgame:
 	{
 		ShutdownClientControls();
 	}
+	#ifdef __N64__
+	n64_platform_checkpoint("YAY 56  CLIENT CONTROL TRANSITION RETURN");
+	#endif
 
 	// set detail level
 	doublestep = 2 - DetailLevel;
@@ -1801,6 +1814,10 @@ fromloadedgame:
 		AddMessage("opponents.  Have fun and explore.", MSG_GAME);
 	}
 
+	#ifdef __N64__
+	n64_platform_checkpoint("YAY 57  GAMEPLAY LOOP ENTER");
+	#endif
+	/* ROTT64_R123_USB_POSTLOAD_TRACE */
 	while (playstate == ex_stillplaying)
 	{
 		UpdateClientControls();
@@ -1881,6 +1898,10 @@ fromloadedgame:
 			}
 
 			ControlPanel(LastScan);
+			#ifdef __N64__
+			if (loadedgame)
+				n64_platform_checkpoint("YAY 51  PLAYLOOP CONTROL RETURN");
+			#endif
 
 			// set detail level
 			doublestep = 2 - DetailLevel;
@@ -1907,6 +1928,9 @@ fromloadedgame:
 
 			if (loadedgame == true)
 			{
+				#ifdef __N64__
+				n64_platform_checkpoint("YAY 52  LOADEDGAME GOTO");
+				#endif
 				goto fromloadedgame;
 			}
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 import hashlib
 
-VERSION = "r122"
+VERSION = "r123"
 MAGIC_Z64 = b"\x80\x37\x12\x40"
 MAGIC_V64 = b"\x37\x80\x40\x12"
 MAGIC_N64 = b"\x40\x12\x37\x80"
@@ -180,7 +180,7 @@ def main() -> int:
     if not sha_file.is_file() or sha not in sha_file.read_text(encoding="utf-8"):
         fail(f"sha256 sidecar missing or invalid: {sha_file}")
 
-    print("PASS: ROTT64_R122_ROM_DISCOVERY_PACKAGE")
+    print("PASS: ROTT64_R123_ROM_DISCOVERY_PACKAGE")
     print(f"PASS: source ROM: {src} ({kind})")
     print(f"PASS: canonical ROM: {canonical} ({canonical.stat().st_size} bytes)")
     print(f"PASS: versioned ROM: {versioned} ({versioned.stat().st_size} bytes)")
