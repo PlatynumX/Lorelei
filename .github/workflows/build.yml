@@ -124,8 +124,8 @@ jobs:
           python3 tools/r110_patch_menu_save_probe.py generated/rott
           python3 tools/r111_patch_stdio_loadfile.py generated/rott
           python3 tools/r111_patch_stdio_loadfile.py generated/rott --check
-          python3 tools/r113_isolate_before_level_teardown.py generated/rott
-          python3 tools/r113_isolate_before_level_teardown.py generated/rott --check
+          python3 tools/r114_isolate_after_level_setup.py generated/rott
+          python3 tools/r114_isolate_after_level_setup.py generated/rott --check
           python3 tools/rott64_patch_load_audio_guard.py generated/rott
           python3 tools/rott64_patch_n64_save_music_skip.py generated/rott
           python3 tools/rott64_patch_n64_load_noop_progress.py generated/rott
@@ -259,10 +259,10 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/rott64_find_and_package_rom.py
-          test -f rott64-r113.z64
-          test -f rott64-r113.z64.sha256
-          ls -lh rott64.z64 rott64-r113.z64 rott64-r113.z64.sha256
-      - name: Package ROTT64 r113 ROM
+          test -f rott64-r114.z64
+          test -f rott64-r114.z64.sha256
+          ls -lh rott64.z64 rott64-r114.z64 rott64-r114.z64.sha256
+      - name: Package ROTT64 r114 ROM
         run: |
           set -euo pipefail
           python3 tools/rott64_find_and_package_rom.py
@@ -270,30 +270,30 @@ jobs:
           from pathlib import Path
           import shutil
           import zipfile
-          out = Path('rott64-r113-build')
+          out = Path('rott64-r114-build')
           if out.exists():
               shutil.rmtree(out)
           out.mkdir()
-          for name in ('rott64-r113.z64', 'rott64-r113.z64.sha256'):
+          for name in ('rott64-r114.z64', 'rott64-r114.z64.sha256'):
               src = Path(name)
               if not src.is_file():
                   raise SystemExit(f'missing package input: {name}')
               shutil.copy2(src, out / src.name)
-          with zipfile.ZipFile('rott64-r113-build.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
+          with zipfile.ZipFile('rott64-r114-build.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
               for p in sorted(out.rglob('*')):
                   zf.write(p, p.relative_to(out.parent))
           ZIPBUILD
-          test -f rott64-r113-build.zip
-          ls -lh rott64-r113-build.zip
+          test -f rott64-r114-build.zip
+          ls -lh rott64-r114-build.zip
       - name: Upload Dark War ROM
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-r113-build
+          name: rott64-r114-build
           if-no-files-found: error
           path: |
-            rott64-r113.z64
-            rott64-r113.z64.sha256
-            rott64-r113-build.zip
+            rott64-r114.z64
+            rott64-r114.z64.sha256
+            rott64-r114-build.zip
       - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
