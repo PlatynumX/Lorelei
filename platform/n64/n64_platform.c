@@ -12,7 +12,6 @@ static bool initialized;
 
 #ifdef __N64__
 static bool boot_display_ready;
-static bool rott64_r123_usb_trace_ready;
 static uint64_t rumble_until_ms;
 static uint64_t rumble_started_ms;
 static uint8_t rumble_strength;
@@ -345,9 +344,6 @@ void n64_platform_init(void)
     boot_display_show("Stage 6/6: Dark War data found\nStarting Taradino...");
     wait_ms(1500);
     boot_display_close();
-    rott64_r123_usb_trace_ready = debug_init_usblog();
-    if (rott64_r123_usb_trace_ready)
-        debugf("[ROTT64 TRACE] USB READY\n");
 #endif
     initialized = true;
 
@@ -357,18 +353,39 @@ void n64_platform_init(void)
 
 void n64_platform_checkpoint(const char *message)
 {
-#ifdef __N64__
-    /* ROTT64_R123_SC64_USB_LOAD_TRACE
-     *
-     * Load diagnostics must not touch the framebuffer or SD card. The SC64
-     * USB channel is initialized once in n64_platform_init(), and YAY messages
-     * are emitted directly through libdragon debugf()/stderr. */
-    if (message == NULL || strncmp(message, "YAY ", 4) != 0)
-        return;
-    if (rott64_r123_usb_trace_ready)
-        debugf("[ROTT64 TRACE] %s\n", message);
-#else
+    /* ROTT64_R125_SILENT_CHECKPOINTS:
+     * Release build keeps the API for old call sites, but diagnostics are
+     * intentionally silent and touch neither framebuffer, USB nor SD. */
     (void)message;
+}
+void n64_platform_wait_for_reset_exit(void)
+{
+#ifdef __N64__
+    surface_t *surface;
+
+    /* ROTT64_R125_SUMMERCART_RESET_SCREEN:
+     * CP_Quit is already running inside the normal 320x240 display lifetime.
+     * Draw directly into that live display instead of trying to initialize a
+     * second boot display on top of it. */
+    n64_platform_rumble_stop();
+    surface = display_get();
+    if (surface != NULL)
+    {
+        graphics_set_default_font();
+        graphics_fill_screen(surface, graphics_make_color(0, 0, 0, 255));
+        graphics_set_color(
+            graphics_make_color(255, 255, 255, 255),
+            graphics_make_color(0, 0, 0, 0)
+        );
+        graphics_draw_text(surface, 64, 100, "PRESS RESET TO RETURN TO");
+        graphics_draw_text(surface, 100, 116, "SUMMERCART MENU");
+        display_show(surface);
+    }
+
+    for (;;)
+        wait_ms(1000);
+#else
+    /* Desktop builds continue through CP_Quit() to their normal QuitGame(). */
 #endif
 }
 void n64_platform_fatal(const char *message)

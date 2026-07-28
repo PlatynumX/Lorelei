@@ -6,6 +6,7 @@
 
 
 void n64_platform_init(void);
+void n64_platform_wait_for_reset_exit(void);
 void n64_platform_fatal(const char *message);
 void n64_platform_checkpoint(const char *message);
 uint64_t n64_platform_ticks_ms(void);

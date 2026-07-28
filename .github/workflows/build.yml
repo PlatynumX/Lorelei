@@ -126,18 +126,19 @@ jobs:
           python3 tools/r111_patch_stdio_loadfile.py generated/rott --check
           test "$(sha256sum generated/rott/rt_menu.c | awk '{print $1}')" = "$(cat platform/n64/overrides/rt_menu.base.sha256)"
           cp platform/n64/overrides/rt_menu.c generated/rott/rt_menu.c
+          grep -Fq 'ROTT64_R125_RELEASE_NO_LOAD_TRACE' generated/rott/rt_menu.c
+          grep -Fq 'ROTT64_R125_SUMMERCART_RESET_EXIT' generated/rott/rt_menu.c
+          ! grep -Fq "Y""AY " generated/rott/rt_menu.c
           grep -Fq 'ROTT64_R120_POSTLOAD_SOURCE_OVERLAY' generated/rott/rt_menu.c
-          grep -Fq 'YAY 34  DOLOAD RETURN' generated/rott/rt_menu.c
-          grep -Fq 'YAY 50  CONTROLPANEL MAIN RETURN' generated/rott/rt_menu.c
           python3 tools/rott64_patch_load_audio_guard.py generated/rott
           python3 tools/rott64_patch_n64_save_music_skip.py generated/rott
           python3 tools/rott64_patch_n64_load_noop_progress.py generated/rott
           test "$(sha256sum generated/rott/rt_main.c | awk '{print $1}')" = "$(cat platform/n64/overrides/rt_main.base.sha256)"
           cp platform/n64/overrides/rt_main.c generated/rott/rt_main.c
+          grep -Fq 'ROTT64_R125_RELEASE_NO_LOAD_TRACE' generated/rott/rt_main.c
+          ! grep -Fq "Y""AY " generated/rott/rt_main.c
           cmp -s platform/n64/overrides/rt_main.c generated/rott/rt_main.c
           grep -Fq 'ROTT64_R122_SKIP_REDUNDANT_SETUPSCREEN_AFTER_LOAD' generated/rott/rt_main.c
-          grep -Fq 'ROTT64_R123_USB_POSTLOAD_TRACE' generated/rott/rt_main.c
-          grep -Fq 'YAY 57  GAMEPLAY LOOP ENTER' generated/rott/rt_main.c
           test "$(sha256sum generated/rott/rt_draw.c | awk '{print $1}')" = "$(cat platform/n64/overrides/rt_draw.base.sha256)"
           cp platform/n64/overrides/rt_draw.c generated/rott/rt_draw.c
           cmp -s platform/n64/overrides/rt_draw.c generated/rott/rt_draw.c
@@ -159,6 +160,14 @@ jobs:
           grep -q 'ROTT64_STOCK_VIDEO_OPTIONS_MENU_R59' generated/rott/rt_menu.c
           grep -R -q 'ROTT64_STOCK_VIDEO_OPTIONS_BACKEND_R59' platform/n64
           ! grep -Fq '<libdragon.h>' platform/n64/n64_platform.h
+          grep -Fq 'ROTT64_R125_SILENT_CHECKPOINTS' platform/n64/n64_platform.c
+          grep -Fq 'ROTT64_R125_SUMMERCART_RESET_SCREEN' platform/n64/n64_platform.c
+          grep -Fq 'void n64_platform_wait_for_reset_exit(void);' platform/n64/n64_platform.h
+          grep -Fq 'surface = display_get();' platform/n64/n64_platform.c
+          ! grep -Fq 'debug_init_usblog' platform/n64/n64_platform.c
+          test "$(grep -Ec '^[[:space:]]*void[[:space:]]+n64_platform_fatal[[:space:]]*\(' platform/n64/n64_platform.c)" -eq 1
+          test "$(grep -Ec '^[[:space:]]*uint64_t[[:space:]]+n64_platform_ticks_ms[[:space:]]*\(' platform/n64/n64_platform.c)" -eq 1
+          test "$(grep -Ec '^[[:space:]]*void[[:space:]]+n64_platform_wait_for_reset_exit[[:space:]]*\(' platform/n64/n64_platform.c)" -eq 1
           ! grep -q 'ROTT64_START_DIRECT_EX_TITLES' generated/rott/rt_main.c generated/rott/rt_playr.c 2>/dev/null
           ! grep -R -q 'relative_x += n64_mouse_axis(input.stick_x);' platform/n64
           ! grep -R -q 'relative_y -= n64_mouse_axis(input.stick_y);' platform/n64
@@ -274,10 +283,10 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/rott64_find_and_package_rom.py
-          test -f rott64-r124.z64
-          test -f rott64-r124.z64.sha256
-          ls -lh rott64.z64 rott64-r124.z64 rott64-r124.z64.sha256
-      - name: Package ROTT64 r124 ROM
+          test -f rott64-r125.z64
+          test -f rott64-r125.z64.sha256
+          ls -lh rott64.z64 rott64-r125.z64 rott64-r125.z64.sha256
+      - name: Package ROTT64 r125 ROM
         run: |
           set -euo pipefail
           python3 tools/rott64_find_and_package_rom.py
@@ -285,30 +294,30 @@ jobs:
           from pathlib import Path
           import shutil
           import zipfile
-          out = Path('rott64-r124-build')
+          out = Path('rott64-r125-build')
           if out.exists():
               shutil.rmtree(out)
           out.mkdir()
-          for name in ('rott64-r124.z64', 'rott64-r124.z64.sha256'):
+          for name in ('rott64-r125.z64', 'rott64-r125.z64.sha256'):
               src = Path(name)
               if not src.is_file():
                   raise SystemExit(f'missing package input: {name}')
               shutil.copy2(src, out / src.name)
-          with zipfile.ZipFile('rott64-r124-build.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
+          with zipfile.ZipFile('rott64-r125-build.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
               for p in sorted(out.rglob('*')):
                   zf.write(p, p.relative_to(out.parent))
           ZIPBUILD
-          test -f rott64-r124-build.zip
-          ls -lh rott64-r124-build.zip
+          test -f rott64-r125-build.zip
+          ls -lh rott64-r125-build.zip
       - name: Upload Dark War ROM
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-r124-build
+          name: rott64-r125-build
           if-no-files-found: error
           path: |
-            rott64-r124.z64
-            rott64-r124.z64.sha256
-            rott64-r124-build.zip
+            rott64-r125.z64
+            rott64-r125.z64.sha256
+            rott64-r125-build.zip
       - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
