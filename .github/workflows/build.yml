@@ -31,6 +31,15 @@ jobs:
           test -s filesystem/rott/DARKWAR.RTC
           test ! -e filesystem/rott/HUNTBGIN.WAD
 
+      - name: Verify generated r126 FX limits
+        shell: bash
+        run: |
+          set -eux
+          python3 tools/rott64_scan_voc_rates.py \
+            filesystem/rott/DARKWAR.WAD \
+            platform/n64/rott64_fx_limits_generated.h \
+            --check
+
       - name: Run host validation
         run: |
           make test-host
@@ -160,7 +169,13 @@ jobs:
           grep -q 'ROTT64_STOCK_VIDEO_OPTIONS_MENU_R59' generated/rott/rt_menu.c
           grep -R -q 'ROTT64_STOCK_VIDEO_OPTIONS_BACKEND_R59' platform/n64
           ! grep -Fq '<libdragon.h>' platform/n64/n64_platform.h
-          grep -Fq 'ROTT64_R125_SILENT_CHECKPOINTS' platform/n64/n64_platform.c
+          grep -Fq 'ROTT64_R126_DOS_STARTUP' platform/n64/n64_platform.c
+          grep -Fq 'Registered Version' platform/n64/n64_platform.c
+          grep -Fq 'ROTT64_R126_FX_LIMITS_AND_PREWARM' platform/n64/sdl_mixer_stub.c
+          grep -Fq 'mixer_ch_set_limits(i, 8, (float)ROTT64_FX_MAX_FREQUENCY, 0);' platform/n64/sdl_mixer_stub.c
+          grep -Fq 'mixer_ch_play(i, &prewarm_wave);' platform/n64/sdl_mixer_stub.c
+          grep -Fq 'mixer_ch_stop(i);' platform/n64/sdl_mixer_stub.c
+          python3 tools/rott64_scan_voc_rates.py filesystem/rott/DARKWAR.WAD platform/n64/rott64_fx_limits_generated.h --check
           grep -Fq 'ROTT64_R125_SUMMERCART_RESET_SCREEN' platform/n64/n64_platform.c
           grep -Fq 'void n64_platform_wait_for_reset_exit(void);' platform/n64/n64_platform.h
           grep -Fq 'surface = display_get();' platform/n64/n64_platform.c
@@ -283,10 +298,10 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/rott64_find_and_package_rom.py
-          test -f rott64-r125.z64
-          test -f rott64-r125.z64.sha256
-          ls -lh rott64.z64 rott64-r125.z64 rott64-r125.z64.sha256
-      - name: Package ROTT64 r125 ROM
+          test -f rott64-r126.z64
+          test -f rott64-r126.z64.sha256
+          ls -lh rott64.z64 rott64-r126.z64 rott64-r126.z64.sha256
+      - name: Package ROTT64 r126 ROM
         run: |
           set -euo pipefail
           python3 tools/rott64_find_and_package_rom.py
@@ -294,35 +309,35 @@ jobs:
           from pathlib import Path
           import shutil
           import zipfile
-          out = Path('rott64-r125-build')
+          out = Path('rott64-r126-build')
           if out.exists():
               shutil.rmtree(out)
           out.mkdir()
-          for name in ('rott64-r125.z64', 'rott64-r125.z64.sha256'):
+          for name in ('rott64-r126.z64', 'rott64-r126.z64.sha256'):
               src = Path(name)
               if not src.is_file():
                   raise SystemExit(f'missing package input: {name}')
               shutil.copy2(src, out / src.name)
-          with zipfile.ZipFile('rott64-r125-build.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
+          with zipfile.ZipFile('rott64-r126-build.zip', 'w', zipfile.ZIP_DEFLATED) as zf:
               for p in sorted(out.rglob('*')):
                   zf.write(p, p.relative_to(out.parent))
           ZIPBUILD
-          test -f rott64-r125-build.zip
-          ls -lh rott64-r125-build.zip
+          test -f rott64-r126-build.zip
+          ls -lh rott64-r126-build.zip
       - name: Upload Dark War ROM
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-r125-build
+          name: rott64-r126-build
           if-no-files-found: error
           path: |
-            rott64-r125.z64
-            rott64-r125.z64.sha256
-            rott64-r125-build.zip
+            rott64-r126.z64
+            rott64-r126.z64.sha256
+            rott64-r126-build.zip
       - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rott64-darkwar-r45d-build-reports
+          name: rott64-darkwar-r126-build-reports
           path: |
             ci-reports/
             build/reports/

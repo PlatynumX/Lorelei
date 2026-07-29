@@ -1,6 +1,7 @@
 #include "SDL_mixer.h"
 #include "rott64_audio.h"
 #include "n64_platform.h"
+#include "rott64_fx_limits_generated.h"
 
 #include <stdbool.h>
 #include <math.h>
@@ -280,6 +281,32 @@ static void setup_waveform(Mix_Chunk *chunk)
     backend->wave.ctx = chunk;
 }
 
+/* ROTT64_R126_FX_LIMITS_AND_PREWARM
+ * ROTT VOC effects decoded by this backend are 8-bit mono. Libdragon defaults
+ * every mixer voice to 16-bit at the full output sample rate and allocates the
+ * samplebuffer lazily on first use. Tighten channels 0..7 to the actual WAD
+ * limit, then play/stop a one-sample silent waveform so all eight buffers are
+ * allocated now, while startup memory is predictable, rather than mid-level.
+ */
+static void rott64_r126_prepare_fx_channels(void)
+{
+    static waveform_t prewarm_wave = {
+        .name = "ROTT64 FX prewarm",
+        .bits = 8,
+        .channels = 1,
+        .frequency = (float)ROTT64_FX_MAX_FREQUENCY,
+        .len = 1,
+        .loop_len = 0,
+        .read = NULL,
+        .ctx = NULL,
+    };
+
+    for (int i = 0; i < ROTT64_FX_CHANNELS; ++i) {
+        mixer_ch_set_limits(i, 8, (float)ROTT64_FX_MAX_FREQUENCY, 0);
+        mixer_ch_play(i, &prewarm_wave);
+        mixer_ch_stop(i);
+    }
+}
 static void apply_channel_mix(int channel)
 {
     Mix_Chunk *chunk;
@@ -394,6 +421,7 @@ int Mix_OpenAudio(int frequency, Uint16 format, int channels, int chunksize)
     audio_init(output_frequency, 4);
     output_frequency = audio_get_frequency();
     mixer_init(ROTT64_MIXER_CHANNELS);
+    rott64_r126_prepare_fx_channels();
     mixer_set_vol(1.0f);
 #endif
 

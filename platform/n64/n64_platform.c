@@ -9,9 +9,13 @@
 #endif
 
 static bool initialized;
+static bool rott64_r126_save_ready;
 
 #ifdef __N64__
 static bool boot_display_ready;
+static bool rott64_r126_dos_active;
+static const char *rott64_r126_dos_lines[12];
+static int rott64_r126_dos_line_count;
 static uint64_t rumble_until_ms;
 static uint64_t rumble_started_ms;
 static uint8_t rumble_strength;
@@ -179,6 +183,76 @@ static void boot_display_close(void)
     display_close();
     boot_display_ready = false;
 }
+
+/* ROTT64_R126_DOS_STARTUP
+ * Full-screen 320x240 DOS/VGA-style startup staging. The normal boot display
+ * remains owned by n64_platform until T30, then it is closed immediately
+ * before Taradino enters VL_SetVGAPlaneMode and opens the gameplay display.
+ */
+static void rott64_r126_dos_render(void)
+{
+    surface_t *surface;
+    int y;
+
+    if (!rott64_r126_dos_active || !boot_display_ready)
+        return;
+
+    surface = display_get();
+    graphics_fill_screen(surface, graphics_make_color(0, 0, 0, 255));
+    graphics_draw_box(surface, 0, 0, 320, 44,
+                      graphics_make_color(0, 0, 168, 255));
+    graphics_set_color(
+        graphics_make_color(255, 255, 255, 255),
+        graphics_make_color(0, 0, 0, 0)
+    );
+    graphics_draw_text(surface, 12, 8,
+                       "Rise of the Triad Startup  Version 64");
+    graphics_draw_text(surface, 88, 24, "Registered Version");
+
+    y = 56;
+    for (int i = 0; i < rott64_r126_dos_line_count; ++i) {
+        graphics_draw_text(surface, 12, y, rott64_r126_dos_lines[i]);
+        y += 14;
+    }
+    display_show(surface);
+}
+
+static void rott64_r126_dos_startup_begin(void)
+{
+    boot_display_open();
+    rott64_r126_dos_line_count = 0;
+    rott64_r126_dos_active = true;
+    rott64_r126_dos_render();
+}
+
+static void rott64_r126_dos_startup_add(const char *line)
+{
+    if (!rott64_r126_dos_active || line == NULL || line[0] == '\0')
+        return;
+    for (int i = 0; i < rott64_r126_dos_line_count; ++i) {
+        if (strcmp(rott64_r126_dos_lines[i], line) == 0)
+            return;
+    }
+    if (rott64_r126_dos_line_count <
+        (int)(sizeof(rott64_r126_dos_lines) / sizeof(rott64_r126_dos_lines[0]))) {
+        rott64_r126_dos_lines[rott64_r126_dos_line_count++] = line;
+    }
+    rott64_r126_dos_render();
+    wait_ms(90);
+}
+
+static void rott64_r126_dos_startup_finish(void)
+{
+    if (!rott64_r126_dos_active)
+        return;
+    rott64_r126_dos_startup_add(
+        rott64_r126_save_ready ? "Save system: ok" : "Save system: unavailable"
+    );
+    wait_ms(850);
+    rott64_r126_dos_active = false;
+    boot_display_close();
+}
+
 #endif
 
 
@@ -301,17 +375,15 @@ void n64_platform_init(void)
 #ifdef __N64__
     FILE *wad;
 
-    boot_display_show("Stage 1/6: entered N64 main()");
+    rott64_r126_dos_startup_begin();
     for (volatile uint32_t i = 0; i < 20000000u; ++i) __asm__ volatile("nop");
 
     timer_init();
-    boot_display_show("Stage 2/6: timer initialized");
     wait_ms(750);
 
     joypad_init();
     if (dfs_init(DFS_DEFAULT_LOCATION) != DFS_ESUCCESS)
         n64_platform_fatal("Stage 3 failed: DragonFS mount error");
-    boot_display_show("Stage 3/6: DragonFS mounted");
     wait_ms(750);
 
     if (!is_memory_expanded()) {
@@ -326,14 +398,13 @@ void n64_platform_init(void)
     if (wad == NULL)
         n64_platform_fatal("Stage 4 failed: DARKWAR.WAD not found\nExpected rom://rott/DARKWAR.WAD");
     fclose(wad);
-    boot_display_show("Stage 4/6: DARKWAR.WAD found");
+    rott64_r126_dos_startup_add("Adding darkwar.wad");
     wait_ms(500);
 
     wad = fopen("rom://rott/DARKWAR.RTL", "rb");
     if (wad == NULL)
         n64_platform_fatal("Stage 5 failed: DARKWAR.RTL not found\nExpected rom://rott/DARKWAR.RTL");
     fclose(wad);
-    boot_display_show("Stage 5/6: DARKWAR.RTL found");
     wait_ms(500);
 
     wad = fopen("rom://rott/DARKWAR.RTC", "rb");
@@ -341,22 +412,38 @@ void n64_platform_init(void)
         n64_platform_fatal("Stage 6 failed: DARKWAR.RTC not found\nExpected rom://rott/DARKWAR.RTC");
     fclose(wad);
 
-    boot_display_show("Stage 6/6: Dark War data found\nStarting Taradino...");
     wait_ms(1500);
-    boot_display_close();
 #endif
     initialized = true;
 
     rott64_r88_init_sd_saves();
+    rott64_r126_save_ready = rott64_n64_sd_saves_ready() != 0;
 }
 
 
 void n64_platform_checkpoint(const char *message)
 {
-    /* ROTT64_R125_SILENT_CHECKPOINTS:
-     * Release build keeps the API for old call sites, but diagnostics are
-     * intentionally silent and touch neither framebuffer, USB nor SD. */
+#ifdef __N64__
+    if (message == NULL || !rott64_r126_dos_active)
+        return;
+
+    if (strncmp(message, "T15:", 4) == 0)
+        rott64_r126_dos_startup_add("Z_INIT: Zone memory initialized");
+    else if (strncmp(message, "T16:", 4) == 0)
+        rott64_r126_dos_startup_add("IN_Startup: Controller Present");
+    else if (strncmp(message, "T20:", 4) == 0)
+        rott64_r126_dos_startup_add("W_Wad: Wad Manager Started");
+    else if (strncmp(message, "T21:", 4) == 0)
+        rott64_r126_dos_startup_add("RT_DRAW: Tables Initialized");
+    else if (strncmp(message, "T24:", 4) == 0)
+        rott64_r126_dos_startup_add("SD_SetupFXCard: Fx ok");
+    else if (strncmp(message, "T26:", 4) == 0)
+        rott64_r126_dos_startup_add("MU_Startup: Music ok");
+    else if (strncmp(message, "T30:", 4) == 0)
+        rott64_r126_dos_startup_finish();
+#else
     (void)message;
+#endif
 }
 void n64_platform_wait_for_reset_exit(void)
 {
