@@ -1822,10 +1822,14 @@ fromloadedgame:
 		}
 		else
 		{
+			fprintf(stderr, "[R127] before UpdateGameObjects\n");
 			if (controlupdatestarted == 1)
 				UpdateGameObjects();
+			fprintf(stderr, "[R127] after UpdateGameObjects\n");
 
+			fprintf(stderr, "[R127] before ThreeDRefresh\n");
 			ThreeDRefresh();
+			fprintf(stderr, "[R127] after ThreeDRefresh\n");
 		}
 
 		SyncToServer();

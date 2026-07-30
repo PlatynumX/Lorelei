@@ -779,6 +779,7 @@ void SortVisibleList(int numvisible, visobj_t *vlist)
 
 void DrawScaleds(void)
 {
+	fprintf(stderr, "[R127] DrawScaleds enter\n");
 
 	int i, numvisible;
 	int gx, gy;
@@ -843,6 +844,7 @@ void DrawScaleds(void)
 	//
 	// place static objects
 	//
+	fprintf(stderr, "[R127] DrawScaleds before statics\n");
 	UpdateClientControls();
 	for (statptr = firstactivestat; statptr; statptr = statptr->nextactive)
 	{ // redraw:
@@ -943,6 +945,7 @@ void DrawScaleds(void)
 	//
 	// place active objects
 	//
+	fprintf(stderr, "[R127] DrawScaleds before actors\n");
 	UpdateClientControls();
 	for (obj = firstactive; obj; obj = obj->nextactive)
 	{
@@ -1057,13 +1060,16 @@ void DrawScaleds(void)
 	//
 	// draw from back to front
 	//
+	fprintf(stderr, "[R127] DrawScaleds before sort\n");
 	numvisible = visptr - &vislist[0];
 	if (!numvisible)
 		return; // no visible objects
 	SortVisibleList(numvisible, &vislist[0]);
+	fprintf(stderr, "[R127] DrawScaleds before scale loop count=%d\n", numvisible);
 	UpdateClientControls();
 	for (i = 0; i < numvisible; i++)
 	{
+		fprintf(stderr, "[R127] scale i=%d shape=%d size=%d\n", i, sortedvislist[i]->shapenum, sortedvislist[i]->shapesize);
 		//
 		// draw farthest
 		//
@@ -1094,6 +1100,7 @@ void DrawScaleds(void)
 			ScaleShape(sortedvislist[i]);
 		}
 	}
+	fprintf(stderr, "[R127] DrawScaleds exit\n");
 }
 
 //==========================================================================

@@ -420,6 +420,9 @@ int Mix_OpenAudio(int frequency, Uint16 format, int channels, int chunksize)
 #ifdef __N64__
     audio_init(output_frequency, 4);
     output_frequency = audio_get_frequency();
+    /* ROTT64_R127_SUMMERCART_ZONE_TRACE */
+    debug_init_usblog();
+    debugf("[R127 TRACE] USB READY - zone breadcrumbs enabled\n");
     mixer_init(ROTT64_MIXER_CHANNELS);
     rott64_r126_prepare_fx_channels();
     mixer_set_vol(1.0f);
