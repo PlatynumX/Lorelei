@@ -29,6 +29,11 @@ test-tools:
 
 prepare:
 	python3 tools/prepare_engine.py
+	# ROTT64_R128_SERVICE_AUDIO_DURING_WAD_LOADS
+	test "$$(sha256sum generated/rott/w_wad.c | awk '{print $$1}')" = "$$(cat platform/n64/overrides/w_wad.base.sha256)"
+	cp platform/n64/overrides/w_wad.c generated/rott/w_wad.c
+	cmp -s platform/n64/overrides/w_wad.c generated/rott/w_wad.c
+	grep -Fq 'ROTT64_R128_SERVICE_AUDIO_DURING_WAD_LOADS' generated/rott/w_wad.c
 
 preflight:
 	python3 tools/preflight_engine.py generated/rott platform/n64

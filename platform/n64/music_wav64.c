@@ -37,6 +37,25 @@ static int current_open;
 static int current_paused;
 static float paused_sample_position;
 static int current_volume = 255;
+#ifdef __N64__
+/* ROTT64_R128_SAFE_WAV64_SEEK
+ * Compressed WAV64 streams can only seek to legal skip points. */
+static float rott64_seek_music_samples(float requested_samples)
+{
+    double frequency = (double)current_wav.wave.frequency;
+    double adjusted_seconds;
+    if (frequency <= 0.0) return 0.0f;
+    if (requested_samples < 0.0f) requested_samples = 0.0f;
+    if (current_wav.wave.len > 0
+        && requested_samples > (float)current_wav.wave.len) {
+        requested_samples = (float)current_wav.wave.len;
+    }
+    adjusted_seconds = wav64_seek(
+        &current_wav, ROTT64_MUSIC_CHANNEL,
+        (double)requested_samples / frequency);
+    return (float)(adjusted_seconds * frequency);
+}
+#endif
 
 static uint32_t rott64_crc32(const unsigned char *data, size_t size)
 {
@@ -139,7 +158,7 @@ void MUSIC_Continue(void)
     }
 #ifdef __N64__
     wav64_play(&current_wav, ROTT64_MUSIC_CHANNEL);
-    mixer_ch_set_pos(ROTT64_MUSIC_CHANNEL, paused_sample_position);
+    paused_sample_position = rott64_seek_music_samples(paused_sample_position);
 #endif
     current_paused = 0;
     apply_music_volume();
@@ -215,7 +234,7 @@ void MUSIC_SetSongTime(unsigned long milliseconds)
         if (current_paused) {
             paused_sample_position = position;
         } else {
-            mixer_ch_set_pos(ROTT64_MUSIC_CHANNEL, position);
+            (void)rott64_seek_music_samples(position);
         }
     }
 #else
